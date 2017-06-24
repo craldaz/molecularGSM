@@ -1,0 +1,6 @@
+nstates:  2
+wstate:   1 2 
+nclosed: 36
+nocc:    41  !4e,5o
+nelec:   78
+basis: 6-31G*

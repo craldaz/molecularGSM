@@ -8,10 +8,14 @@ INCLUDE(${CMAKE_SOURCE_DIR}/ProjectName.cmake)
 #Indicate to TriBITS that we might use Python
 SET(${PROJECT_NAME}_USES_PYTHON TRUE)
 
+#set a variable for executable name
 set(TARGET_NAME "gsm" CACHE STRING "Description")
 
 PROJECT(${PROJECT_NAME} NONE)
+
+#turn on package
 SET(${PROJECT_NAME}_ENABLE_gsm ON CACHE BOOL "")
+
 SET(TPL_ENABLE_MPI OFF )
 
 #Pull in TriBITS for the project
@@ -27,5 +31,4 @@ get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 #Process the TriBITS Project
 TRIBITS_PROJECT()
 
-ADD_SUBDIRECTORY(TEST)
 ADD_SUBDIRECTORY(docs)

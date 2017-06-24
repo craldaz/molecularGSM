@@ -1,0 +1,9 @@
+{merge
+orbital,2100.2
+move,1.1,110.1,1.1
+rotate,19.1,17.1,0
+rotate,18.1,16.1,0
+rotate,22.1,29.1,0
+save,2100.2
+}
+

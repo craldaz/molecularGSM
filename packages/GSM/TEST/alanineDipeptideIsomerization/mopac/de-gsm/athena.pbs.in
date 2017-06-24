@@ -1,0 +1,7 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=1 -l walltime=18:00:00
+#PBS -N ${TEST_NAME}
+#PBS -o ${TEST_NAME}
+#PBS -e ${TEST_NAME}
+cd $PBS_O_WORKDIR
+${PROJECT_BINARY_DIR}/packages/GSM/src/gsm.mopac.exe 1 1 > output
