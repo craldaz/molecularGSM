@@ -379,19 +379,10 @@ void GString::String_Method_Optimization()
   bondsic.print_bonds();
 #endif
 
-#if 0
-//cartesian rotation, incomplete
-  align_string(ic1,ic2);
-
-  return;
-#endif
-
-
 #ifdef _OPENMP
   printf(" Number of OpenMP threads: %i \n",omp_get_max_threads());
 #endif
 
-  //prepare grads
   printf("\n\n ---- Now preparing gradients ---- \n");
   string nstr = StringTools::int2str(runNum,4,"0");
   //icoords[1].write_ic("scratch/qcsave"+nstr+".ics");
@@ -401,6 +392,7 @@ void GString::String_Method_Optimization()
   for (int n=0;n<nnmax0;n++)
     icoords[n].grad_init(infile0,ncpu,runNum,runend+n,0,CHARGE); //level 3 is exact kNNR only, 0 is QM grad always
 #else
+
   //molpro gradients will call seed() for initial orbitals
   // doing so from starting geometry only
   for (int n=0;n<nnmax0;n++)
@@ -424,7 +416,28 @@ void GString::String_Method_Optimization()
   printf("\n MOLPRO/QCHEMSF mode: turning off r in opt \n");
   for (int n=0;n<nnmax0;n++)
     icoords[n].revertOpt = 0;
-#endif
+#
+
+
+	printf("###############################################################\n");
+	printf("###############################################################\n");
+	printf("###############################################################\n");
+	printf("###############################################################\n");
+	printf("###############################################################\n");
+	printf("########### Starting experimental program #####################\n");
+	printf("###############################################################\n");
+	printf("###############################################################\n");
+	printf("###############################################################\n");
+	printf("###############################################################\n");
+	Conical meci(nnmax0,icoords); //constructor
+	meci.print_bp();
+	meci.print_xyz();
+	
+	printf(" Finished with experiment\n");
+	exit(-1);
+
+
+endif
 
 
   if (initialOpt>0 && !isRestart)

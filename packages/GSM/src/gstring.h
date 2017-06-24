@@ -19,6 +19,7 @@
 #include "stringtools.h"
 #include "pTable.h"
 #include "eckart.h"
+#include "conical.h"
 
 void print_xyz_gen(int natoms, string* anames, double* coords);
 
