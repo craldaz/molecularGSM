@@ -4,4 +4,6 @@
 #PBS -o ${TEST_NAME}
 #PBS -e ${TEST_NAME}
 cd $PBS_O_WORKDIR
+
+source /export/zimmerman/paulzim/qchem/qchemapr272016/paul.set.local
 ${PROJECT_BINARY_DIR}/packages/GSM/src/gsm.qchem.exe 1 1 > output

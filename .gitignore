@@ -6,8 +6,7 @@ tags
 grad.py
 example.tgz
 gstring.cpp_1
-BUILD/
-BUILD2/
+BUILD*
 TriBITS/
 getOptEnergy
 makeXYZ

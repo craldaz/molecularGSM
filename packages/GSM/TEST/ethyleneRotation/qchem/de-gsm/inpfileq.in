@@ -6,7 +6,6 @@
  ------------ String Info --------------------------------
  SM_TYPE                 GSM    # SSM, FSM or GSM
  RESTART                 0      # read restart.xyz
- RESTART_WFN						 1
  MAX_OPT_ITERS           100     # maximum iterations
  STEP_OPT_ITERS          3    # for FSM/SSM
  CONV_TOL           	0.0005 # perp grad

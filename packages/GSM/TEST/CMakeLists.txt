@@ -81,7 +81,7 @@ execute_process(COMMAND bash -c "chmod +x ${CMAKE_BINARY_DIR}/gsm.sh")
 if(GSM_ENABLE_QCHEM)
     MESSAGE(STATUS "QCHEM is enabled.")
 		#don't run because it crashes
-    #GFSTRINGQ_TEST(alanineDipeptideIsomerization/qchem/de-gsm alanine)
+    GFSTRINGQ_TEST(alanineDipeptideIsomerization/qchem/de-gsm alanine)
     GFSTRINGQ_TEST(ammoniaBorane/qchem/de-gsm ammonia)
     GFSTRINGQ_TEST(dielsAlder/qchem/de-gsm diels)
 		##don't run ethylene because it crashes
