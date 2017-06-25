@@ -74,5 +74,20 @@ void Conical::form_MECI_space()
 	printf(" Forming the 3N-6 dimensional space defined by a MECI\n");
 	conical.dgrad_to_dgradq(dgrad);
 	conical.dvec_to_dvecq(dvec);
+
+#if DG_ROT
+	double norm_dg=conical.dgrot_mag();
+	conical.project_dgradq();
+	conical.project_dvecq();
+#else
+	//need to code dvec rot
+	project(dvecq,dvecq_U);
+	norm_dg=project(dgradq,dgradq_U);
+	printf(" norm_dg = %1.2f",norm_dg); 
+#endif
+	conical.constrain_bp();
+	conical.bmat_create();
+	conical.print_q();
+
 	return;
 }

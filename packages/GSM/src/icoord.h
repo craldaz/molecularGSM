@@ -231,8 +231,14 @@ class ICoord {
 
 	double* dgradq;
 	double* dvecq;
+	double* dgrad_U;
+	double* dvec_U;
 	void dgrad_to_dgradq(double* dgrad);
 	void dvec_to_dvecq(double* dvec);
+	double dgrot_mag();
+	double project_dgradq();
+	double project_dvecq();
+	void constrain_bp();
 
   int ic_create();
   int ic_create_nobonds();

@@ -98,6 +98,8 @@ int ICoord::alloc(int size){
 
  dgradq = new double[nicd0+50]; //for meci
  dvecq = new double[nicd0+50];
+ dgrad_U = new double[3*natoms+50]; //for meci
+ dvec_U = new double[3*natoms+50];
 
  alloc_mem();
 
@@ -2096,4 +2098,232 @@ void ICoord::dvec_to_dvecq(double* dvec)
 
 
 	return;
+}
+
+
+double ICoord::dgrot_mag()
+{
+	//rotates the difference gradient to be orthogonal to the derivative coupling 
+	printf(" Orthogonalize the dgrad wrt dvec\n");
+	int len=nicd0;
+#if 0
+	printf(" dgradq\n");
+	for (int i=0;i<len;i++)
+		printf(" %1.2f",dgradq[i]);
+	printf(" \ndvecq\n");
+	for (int i=0;i<len;i++)
+		printf(" %1.2f",dvecq[i]);
+#endif
+	double overlap2=0.;
+	for (int i=0;i<len;i++)
+		overlap2+=dvecq[i]*dvecq[i];
+	printf(" dot(dvec,dvec)  = %1.2f,",overlap2);
+	
+	double overlap=0.;
+	for (int i=0;i<len;i++)
+		overlap+=dgradq[i]*dvecq[i];
+
+	//printf(" overlap(x1,x2) = %1.3f, Schmidt orthogonolize",overlap);
+
+	printf(" Schmidt orthogonalize x1 wrt x2\n");
+	for (int i=0;i<len;i++)
+		dgradq[i]=dgradq[i] - overlap*dvecq[i]/overlap2;
+	overlap=0.;
+	for (int i=0;i<len;i++)
+		overlap+=dgradq[i]*dvecq[i];
+	printf(" overlap after = %1.3f,",overlap);
+
+	double norm_dg=0.;
+	for (int i=0;i<len;i++)
+		norm_dg+=dgradq[i]*dgradq[i];
+	norm_dg=sqrt(norm_dg);
+	printf(" norm x1 after = %1.3f\n",norm_dg);
+	//cout << endl;
+	
+	return norm_dg;
+}
+
+double ICoord::project_dgradq()
+{
+	printf(" Projecting\n"); 
+	
+  int len = nbonds+nangles+ntor;
+  nicd = nicd0;
+	//printf(" len=%i, nicd0=%i\n",len,nicd0);
+  nicd--;
+	double norm=0.;
+
+  for (int i=0;i<nicd0;i++)
+    norm += dgradq[i]*dgradq[i];
+
+	 norm=sqrt(norm);
+	printf("norm %1.4f\n",norm);
+	
+#if 0
+  for (int i=0;i<nicd0;i++)
+    printf(" %12.10f",dgradq[i]);
+  printf("\n");
+#endif
+
+	for (int i=0;i<len;i++)
+		dgrad_U[i]=0.;
+	for (int i=0;i<len;i++)
+		for (int j=0;j<nicd0;j++)
+			dgrad_U[i]+=dgradq[j]*Ut[j*len+i]/norm;//this wasn't being normalized fixed 06/25/2017
+
+#if 1
+	norm=0.;
+	printf("check if dgrad_U is normalized\n");
+	for (int i=0;i<len;i++)
+		norm += dgrad_U[i]*dgrad_U[i];
+	norm=	sqrt(norm);
+	printf("norm: %1.3f\n",norm);
+#endif
+
+#if 1
+	printf(" Normalized dgrad_U vector\n");
+	for (int i=0;i<len;i++)
+		printf("%1.2f ",dgrad_U[i]);
+	printf("\n");
+	
+#endif
+		
+	return norm;
+
+}
+
+double ICoord::project_dvecq()
+{
+	printf(" Projecting\n"); 
+	
+  int len = nbonds+nangles+ntor;
+  nicd = nicd0;
+	//printf(" len=%i, nicd0=%i\n",len,nicd0);
+  nicd--;
+	double norm=0.;
+
+  for (int i=0;i<nicd0;i++)
+    norm += dvecq[i]*dvecq[i];
+
+	 norm=sqrt(norm);
+	printf("norm %1.4f\n",norm);
+	
+#if 0
+  for (int i=0;i<nicd0;i++)
+    printf(" %12.10f",dvecq[i]);
+  printf("\n");
+#endif
+
+	for (int i=0;i<len;i++)
+		dvec_U[i]=0.;
+	for (int i=0;i<len;i++)
+		for (int j=0;j<nicd0;j++)
+			dvec_U[i]+=dvecq[j]*Ut[j*len+i]/norm;//this wasn't being normalized fixed 06/25/2017
+
+#if 1
+	norm=0.;
+	printf("check if dvec_U is normalized\n");
+	for (int i=0;i<len;i++)
+		norm += dvec_U[i]*dvec_U[i];
+	norm=	sqrt(norm);
+	printf("norm: %1.3f\n",norm);
+#endif
+
+#if 1
+	printf(" Normalized dvec_U vector\n");
+	for (int i=0;i<len;i++)
+		printf("%1.2f ",dvec_U[i]);
+	printf("\n");
+	
+#endif
+		
+	return norm;
+
+}
+
+
+void ICoord::constrain_bp()
+{
+	int len = nicd0;
+#if 0
+	for (int i=0;i<len;i++)
+		printf(" %1.2f",dgrad_U[i]);
+	printf("\n");
+	for (int i=0;i<len;i++)
+		printf(" %1.2f",dvec_U[i]);
+	printf("\n");
+#endif 
+#if 0
+	double overlap=0.;
+	for (int i=0;i<len;i++)
+		overlap+=dvec_U[i]*dgrad_U[i];
+	printf(" Overlap between ortho-normalized GD and DC = %1.3f\n",overlap);	
+#endif
+	printf(" Orthonormalizing coordinates U vs BP\n"); 
+  double* dot_gd = new double[len];
+  for (int i=0;i<len;i++) dot_gd[i] =0.;
+  for (int i=0;i<len;i++) 
+  for (int j=0;j<len;j++)
+    dot_gd[i] += dgrad_U[j]*Ut[i*len+j]; 
+  double* dot_dc = new double[len];
+  for (int i=0;i<len;i++) dot_dc[i] =0.;
+  for (int i=0;i<len;i++) 
+  for (int j=0;j<len;j++)
+    dot_dc[i] += dvec_U[j]*Ut[i*len+j]; 
+	
+  for (int i=0;i<nicd0;i++)
+  {
+    if (i!=nicd0-1)
+    for (int j=0;j<len;j++)
+      Ut[i*len+j] -= (dot_gd[i] * dgrad_U[j] + dot_dc[i] * dvec_U[j]);
+		
+    for (int k=0;k<i;k++)
+    {
+      double dot2 = 0.;
+      for (int j=0;j<len;j++)
+        dot2 += Ut[i*len+j] * Ut[k*len+j];
+
+      for (int j=0;j<len;j++)
+        Ut[i*len+j] -= dot2 * Ut[k*len+j];
+
+    } // loop k over previously formed vectors
+
+    double norm = 0.;
+    for (int j=0;j<len;j++)
+      norm += Ut[i*len+j] * Ut[i*len+j];
+    norm = sqrt(norm);
+    if (abs(norm)<0.00001) norm = 1;
+    if (abs(norm)<0.00001) printf(" WARNING: small norm: %1.7f \n",norm);
+    for (int j=0;j<len;j++)
+      Ut[i*len+j] = Ut[i*len+j]/norm;
+  }
+	//printf(" Last vector in U is dgrad_U");
+  for (int j=0;j<len;j++)
+    Ut[nicd*len+j] = dgrad_U[j];
+	nicd--;
+#if 1
+printf(" second to last vector in Ut is dgrad_U\n");
+	for (int j=0;j<len;j++)
+		Ut[nicd*len+j] = dvec_U[j];
+	cout << endl;
+#endif
+#if 1
+  printf(" printing dgrad_U vs. Ut[nicd*len]\n");
+  for (int j=0;j<len;j++)
+    printf(" %1.2f/%1.2f\n",dgrad_U[j],Ut[(nicd+1)*len+j]);
+#endif
+#if 1
+  printf(" printing orthonormalized vectors \n");
+  for (int i=0;i<nicd0;i++)
+  {
+    for (int j=0;j<len;j++)
+      printf(" %1.3f",Ut[i*len+j]);
+    printf("\n");
+  }
+#endif
+	
+	delete [] dot_gd;
+	delete [] dot_dc;
+	return;
+
 }
