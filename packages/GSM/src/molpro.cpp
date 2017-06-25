@@ -15,28 +15,11 @@ using namespace std;
 #define DIRECT 1
 
 
-//run molpro for gradient of n, derivative coupling between n,m
-int Molpro::run(int n, int m)
+int Molpro::run()
 {
-  //printf(" beginning Molpro run! \n"); fflush(stdout);
-  int runGrad = 1;
-  if (n<=0)
-  {
-    runGrad = 0;
-    n *= -1;
-  }
 
-  if (n>nstates)
-  {
-    printf(" ERROR: n>nstates! (%i>%i) \n",n,nstates);
-    exit(-1);
-  }
-  if (m>nstates)
-  { 
-    printf(" ERROR: n>nstates! \n");
-    exit(-1);
-  }
-  //if (m==0) printf(" not computing derivative coupling \n");
+  int runGrad = 1;
+
 #if ONLY_RHF
   printf(" WARNING: using RHF! \n");
 #endif
@@ -50,7 +33,6 @@ int Molpro::run(int n, int m)
   inpfile.setf(ios::fixed);
   inpfile.setf(ios::left);
   inpfile << setprecision(6);
-
   inpfile << "memory," << MEMORY << ",m" << endl;
   inpfile << "file,2," << scratchname << endl;
   inpfile << "symmetry,nosym" << endl;
@@ -59,124 +41,98 @@ int Molpro::run(int n, int m)
   for (int i=0;i<natoms;i++)
     inpfile << " " << anames[i] << " " << xyz[3*i+0] << " " << xyz[3*i+1] << " " << xyz[3*i+2] << " " << endl;
   inpfile << "}" << endl;
-
   inpfile << endl << "basis=" << basis << endl << endl;
-
-  inpfile << "start,2100.2 !read orbitals" << endl;
 
 #if DIRECT
   inpfile << " direct " << endl;
 #endif
 #if !READ_SCF || ONLY_RHF
-  //recalculate HF at each iteration
   inpfile << "hf" << endl;
 #endif
 
 #if !ONLY_RHF
-  //first two settings from AIMS molpro example
-  //inpfile << "gthresh,twoint=1.0d-13" << endl;
-  //inpfile << "gthresh,energy=1.0d-7,gradient=1.0d-2" << endl;
-  //inpfile << "data,copy, 2100.2, 3000.2" << endl;
   if (runGrad)
   {
-    inpfile << "{casscf" << endl;
+    inpfile << "{multi" << endl;
     inpfile << "closed," << nclosed << " !core orbs" << endl;
     inpfile << "occ," << nocc << "    !active orbs" << endl;
     inpfile << "wf," << nelec << ",1,0 !nelectrons,symm,singlet" << endl;
     inpfile << "state," << nstates << "   !nstates" << endl;
+		inpfile << "direct" << endl;
 #if DYNWEIGHT
     inpfile << "dynw,-8.0   !dynamic weight" << endl;
 #endif
-    //if (nstates>=3)
-    //  inpfile << "weight,0.2,0.4,0.4   !state averaging" << endl;
-    //inpfile << "maxiter,40 " << endl;
-    inpfile << "CPMCSCF,GRAD," << n << ".1" << endl;
-    inpfile << "ciguess,2501.2" << endl;
+
+if (wstate2==0)
+	{
+		int i=wstate; 
+		string grad_num=StringTools::int2str(i,1,"0");
+		string grad_name= "510"+grad_num+".1";
+		inpfile << "CPMCSCF,GRAD,"<< i<<".1," <<"record=" << grad_name  << endl;
+	}
+else if (wstate2>0 && wstate3==0)
+		{	
+		for (int i=wstate; i<wstate2+1; i++)
+			{
+			  string grad_num=StringTools::int2str(i,1,"0");
+				string grad_name= "510"+grad_num+".1";
+				inpfile << "CPMCSCF,GRAD,"<< i<<".1," <<"record=" << grad_name  << endl;
+			}	
+		}
+	else
+		{
+		for (int i=wstate; i<wstate3+1; i++)
+			{
+			  string grad_num=StringTools::int2str(i,1,"0");
+				string grad_name= "510"+grad_num+".1";
+				inpfile << "CPMCSCF,GRAD,"<< i<<".1," << "record="<< grad_name << endl;
+			}	
+		}
     inpfile << "save,ci=2501.2" << endl;
-    inpfile << "orbital,2100.2 !write orbitals" << endl;
-    //inpfile << "{ iterations" << endl;
-    //inpfile << " do,diagci,1,to,20 }" << endl; 
 
 #if PSPACE
     inpfile << "pspace,100.0" << endl;
 #endif
-    //inpfile << "dm,2105.2" << endl;
-    //inpfile << "diab,3000.2,save=3000.2" << endl;
     inpfile << "}" << endl;
     inpfile << endl;
 #endif
-    inpfile << "{forces; varsav}" << endl;
-#if 0
-    inpfile << "show,gradx" << endl;
-    inpfile << "show,grady" << endl;
-    inpfile << "show,gradz" << endl;
-#endif
-    inpfile << endl;
-  }
+		
 
-#if !ONLY_RHF
-  if (m>0)
-  {
-    inpfile << "{casscf" << endl;
-    inpfile << "closed," << nclosed << " !core orbs" << endl;
-    inpfile << "occ," << nocc << "    !active orbs" << endl;
-    inpfile << "wf," << nelec << ",1,0 !nelectrons,symm,singlet" << endl;
-    inpfile << "state," << nstates << "   !nstates" << endl;
-#if DYNWEIGHT
-    inpfile << "dynw,-8.0   !dynamic weight " << endl;
-#endif
-    //if (nstates>=3)
-    //  inpfile << "weight,0.2,0.4,0.4   !state averaging" << endl;
-    inpfile << "CPMCSCF,NACM," << n << ".1," << m << ".1 " << endl;
-    //inpfile << "ciguess,2501.2" << endl;
-    //inpfile << "save,ci=2501.2" << endl;
-    inpfile << "orbital,2100.2 !write orbitals" << endl;
-    //inpfile << "{ iterations" << endl;
-    //inpfile << " do,diagci,1,to,20 }" << endl; 
+	if (wstate2==0 && wstate3==0)
+	{
+		int i=wstate; 
+		string grad_num=StringTools::int2str(i,1,"0");
+		string grad_name= "510"+grad_num+".1";
+		inpfile << "{FORCE;SAMC," << grad_name <<";varsav}" << endl;
+	}
+	else if (wstate2>0 && wstate3==0)
+		{
+		for (int i=wstate;i<wstate2+1;i++)
+			{
+			  string grad_num=StringTools::int2str(i,1,"0");
+				string grad_name= "510"+grad_num+".1";
+				inpfile << "{FORCE;SAMC," << grad_name <<";varsav}" << endl;
+			}
+		}
+	else
+		{
+		for (int i=wstate;i<wstate3+1;i++)
+			{
+			  string grad_num=StringTools::int2str(i,1,"0");
+				string grad_name= "510"+grad_num+".1";
+				inpfile << "{FORCE;SAMC," << grad_name <<";varsav}" << endl;
+			}
+		}
 
-#if PSPACE
-    inpfile << "pspace,100.0" << endl;
-#endif
-    //inpfile << "dm,2105.2" << endl;
-    //inpfile << "diab,3000.2,save=2100.2" << endl;
-    inpfile << "}" << endl;
-    inpfile << endl;
-    inpfile << "{forces; varsav}" << endl;
-#if 0
-    inpfile << "show,gradx" << endl;
-    inpfile << "show,grady" << endl;
-    inpfile << "show,gradz" << endl;
-#endif
-    inpfile << endl;
-  }
-#endif
-
-  inpfile << endl;
-
-
-  //restart orbitals handled by file,2,...
-  //inpfile << "start,2100.2" << endl;
-#if 0
-//varsav puts forces into gradx,grady,gradz
-{forces; varsav}
-show,gradx
-show,grady
-show,gradz
- 
-table, GRADX, GRADY, GRADZ   
-  save,gopro1.log
-#endif
+	}
 
   inpfile.close();
 
 #if !SAFE_MODE
-  //printf(" executing molpro \n"); fflush(stdout);
-//  string cmd = "/export/zimmerman/paulzim/Molpro_serial/bin/molpro "+filename;
-  string cmd = "/export/applications/Molpro/2012.1.9/molprop_2012_1_Linux_x86_64_i8/bin/molpro";
-//  string cmd = "/export/applications/MolproCopy/2012.1.9/molprop_2012_1_Linux_x86_64_i8/bin/molpro";
+  string cmd = "molpro";
   string nstr = StringTools::int2str(NPROCS,1,"0");
   cmd = cmd + " -W scratch";
-  cmd = cmd + " -n " + nstr + " " + filename;
+  cmd = cmd + " -n " + nstr + " " + filename+ " --no-xml-output";
   system(cmd.c_str());
 #endif
 
@@ -184,15 +140,17 @@ table, GRADX, GRADY, GRADZ
   //printf(" error after read_E: %i \n",error);
   nrun++;
 
-  return 0;
+  return error;
 }
-
 
 
 int Molpro::seed()
 {
   //printf(" beginning Molpro run! \n"); fflush(stdout);
-
+	
+	//need to fix
+	 printf(" break\n");
+	exit(-1);
 #if RHF_ONLY
   printf(" skipping prelim run, no MCSCF \n");
   return 0;
@@ -224,8 +182,10 @@ int Molpro::seed()
 #if DIRECT
   inpfile << " direct " << endl;
 #endif
+#if !READ_SCF || ONLY_RHF
   inpfile << "hf" << endl;
   //inpfile << "orbital,2100.2 !write orbitals" << endl; //on by default
+#endif
 
  //write orbital settings etc from file MOLPRO_INIT
   for (int i=0;i<nhf_lines;i++)
@@ -237,27 +197,11 @@ int Molpro::seed()
   inpfile << "wf," << nelec << ",1,0 !nelectrons,symm,singlet" << endl;
   inpfile << "state," << nstates << "   !nstates" << endl;
   inpfile << "save,ci=2501.2" << endl;
-  inpfile << "orbital,2100.2 !write orbitals" << endl;
-  //inpfile << "{ iterations" << endl;
-  //inpfile << " do,diagci,1,to,20 }" << endl; 
+  inpfile << "orbital,2140.2 !write orbitals" << endl;
 #if PSPACE
   inpfile << "pspace,100.0" << endl;
 #endif
-  //inpfile << "dm,2105.2" << endl;
-  //inpfile << "diab,2100.2,save=3000.2" << endl;
   inpfile << "}" << endl;
-
-#if 0 
-  //for diabatic orbitals
-  inpfile << "{casscf" << endl;
-  inpfile << "closed," << nclosed << " !core orbs" << endl;
-  inpfile << "occ," << nocc << "    !active orbs" << endl;
-  inpfile << "wf," << nelec << ",1,0 !nelectrons,symm,singlet" << endl;
-  inpfile << "state," << nstates << "   !nstates" << endl;
-  inpfile << "diab,2100.2,save=3000.2" << endl;
-  inpfile << "}" << endl;
-  //inpfile << "data,copy, 2100.2, 3000.2" << endl;
-#endif
 #endif
 
   inpfile.close();
@@ -430,6 +374,7 @@ void Molpro::init(int nstates0, int nclosed0, int nocc0, int nelec0, int natoms0
   xyz = new double[3*natoms];
   anames = new string[3*natoms];
   dvec = new double[3*natoms];
+	dgrad = new double[3*natoms];
   grad = new double[3*natoms];
 
   for (int i=0;i<natoms;i++)
@@ -466,7 +411,7 @@ void Molpro::freemem()
 }
 
 
-int Molpro::getGrad(double* grads)
+int Molpro::getGrad(double* grads,int wstate)
 {
   //printf(" in Molpro::getGrad \n");
 
@@ -481,10 +426,12 @@ int Molpro::getGrad(double* grads)
   bool success=true;
   success=getline(outfilei, line);
   int cont = 0;
+	string grad_num=StringTools::int2str(wstate,1,"0");
+	string grad_string = "SA-MC GRADIENT FOR STATE "+ grad_num+ ".1";
   while(!outfilei.eof())
   {
     success=getline(outfilei, line);
-    if (line.find("SA-MC GRADIENT FOR STATE")!=string::npos)
+    if (line.find(grad_string)!=string::npos)
     {
       //cout << " found: " << line << endl;
       getline(outfilei,line);
@@ -537,6 +484,65 @@ int Molpro::getGrad(double* grads)
   return error;
 }
 
+int Molpro::getdGrad(double* dgrads)
+{
+  //printf(" in Molpro::getdGrad \n");
+
+  ifstream outfilei;
+  outfilei.open(outfile.c_str());
+  if (!outfilei){
+    printf(" Error: couldn't open output file \n");
+    return 1;
+  }   
+
+  string line;
+  bool success=true;
+  success=getline(outfilei, line);
+  int cont = 0;
+  while(!outfilei.eof())
+  {
+    success=getline(outfilei, line);
+    if (line.find("SA-MC DIFF. GRADIENT FOR STATES")!=string::npos) 
+    {
+      //cout << " found: " << line << endl;
+              getline(outfilei,line);
+      getline(outfilei,line);
+      getline(outfilei,line);
+      cont = 1;
+      break;
+    }
+  } 
+    
+  if (cont)
+  for (int i=0;i<natoms;i++)
+  {
+    success=getline(outfilei, line);
+    int length=StringTools::cleanstring(line);
+    vector<string> tok_line = StringTools::tokenize(line, " \t");
+    //cout << " RR: " << line << endl;
+          dgrad[3*i+0]=atof(tok_line[1].c_str());
+    dgrad[3*i+1]=atof(tok_line[2].c_str());
+    dgrad[3*i+2]=atof(tok_line[3].c_str());
+  }
+
+  outfilei.close();
+  
+	for (int i=0;i<3*natoms;i++)
+    dgrads[i] = dgrad[i];///BOHRtoANG;
+
+#if 0
+  printf(" \nXYZ dgrad (1/Bohr): \n");
+  for (int i=0;i<natoms;i++)
+    printf(" %s %8.6f %8.6f %8.6f \n",anames[i].c_str(),dgrad[3*i+0],dgrad[3*i+1],dgrad[3*i+2]);
+#endif
+  //printf(" done reading dgrads \n"); fflush(stdout);
+
+  int error = 1;
+  if (success && cont) error = 0;
+
+  return error;
+
+}
 
 
 int Molpro::getDVec(double* dvecs)
@@ -622,3 +628,45 @@ void Molpro::clean_scratch()
   return;
 }
 
+int Molpro::calc_energy()
+{	
+  string filename = infile;
+  //here construct Molpro input
+  ofstream inpfile;
+  string inpfile_string = filename;
+  inpfile.open(inpfile_string.c_str());
+  inpfile.setf(ios::fixed);
+  inpfile.setf(ios::left);
+  inpfile << setprecision(6);
+
+  inpfile << "memory," << MEMORY << ",m" << endl;
+  inpfile << "file,2," << scratchname << endl;
+  inpfile << "symmetry,nosym" << endl;
+  inpfile << "orient,noorient" << endl;
+  inpfile << "geometry={" << endl;
+  for (int i=0;i<natoms;i++)
+    inpfile << " " << anames[i] << " " << xyz[3*i+0] << " " << xyz[3*i+1] << " " << xyz[3*i+2] << " " << endl;
+  inpfile << "}" << endl;
+
+  inpfile << endl << "basis=" << basis << endl << endl;
+  inpfile << "{casscf" << endl;
+  inpfile << "closed," << nclosed << " !core orbs" << endl;
+  inpfile << "occ," << nocc << "    !active orbs" << endl;
+  inpfile << "wf," << nelec << ",1,0 !nelectrons,symm,singlet" << endl;
+  inpfile << "state," << nstates << "   !nstates" << endl;
+  inpfile << "}" << endl;
+  inpfile << endl;
+	inpfile << endl; 
+  inpfile << endl;
+  inpfile.close();
+	
+  string cmd = "molpro";
+  string nstr = StringTools::int2str(NPROCS,1,"0");
+  cmd = cmd + " -W scratch";
+  cmd = cmd + " -n " + nstr + " " + filename+ " --no-xml-output";
+  system(cmd.c_str());
+
+  int error = read_E();
+	nrun++;
+	return error; 
+}

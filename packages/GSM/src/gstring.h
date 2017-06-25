@@ -35,6 +35,9 @@ class GString {
   int bondfrags;
  
   int isSSM; //shooting string flag
+  int isMECI; //MECI opt
+	int isDE_ESSM;
+	int isSE_ESSM;
   int hessSSM; //starting SSM hessian given
   int isFSM; //freezing string flag
   int use_exact_climb; //whether to climb or do exact TS search
@@ -89,6 +92,7 @@ class GString {
   double** grads;
   double** perp_grads;
 
+	void prepare_molpro();
   int climb;
   int find; //eigenvector following TS search
   int TSnode0;
@@ -183,6 +187,7 @@ class GString {
 
   string stringfilename;	//file where the initial string structures are stored (usually initial.xyz)
 
+	int restart_wfn;						//don't seed MOLPRO wfn, use existing files
   int STEP_OPT_ITERS;
   int MAX_OPT_ITERS;
   double CONV_TOL;

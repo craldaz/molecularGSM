@@ -169,54 +169,50 @@ int Gradient::external_grad(double* coords, double* grad)
   energy = qchem1.grads(coords,grad);
 //  printf(" gqce"); fflush(stdout);
 #elif QCHEMSF
-  qchemsf1.calc_grads(coords);
 
-  energy = qchemsf1.getE(0);
-  if (V0==0.) V0 = energy;
-
-  qchemsf1.getGrad(0,grada[0]);
-  if (nstates==1)
-  for (int i=0;i<N3;i++)
-    grad[i] = grada[0][i];
-  if (nstates>1)
-  {
-    energy += qchemsf1.getE(1);
+	if (wstate<0)
+	{
+		printf("wstate must be greater than 1!\n"); 
+		exit(-1); 
+	} 
+	else
+	{
+  	qchemsf1.calc_grads(coords);
+  	energy = qchemsf1.getE(0);
+  	if (V0==0.) V0 = energy;
+  	qchemsf1.getGrad(0,grada[0]);
+  	for (int i=0;i<N3;i++)
+  	  grad[i] = grada[0][i];
+	}
+	if (wstate2>0)
+   {
+		printf("wstate2>0\n");
+    energy += qchemsf1.getE(wstate2);
     qchemsf1.getGrad(1,grada[1]);
-    if (nstates==2)
-    {
-      energy /= 2;
-      for (int i=0;i<N3;i++) 
-        grad[i] = (grada[0][i] + grada[1][i])/2.;
-    }
+    if (wstate3==0)
+    	{
+				energy /= 2;
+    		for (int i=0;i<N3;i++) 
+      		grad[i] = (grada[0][i] + grada[1][i])/2.;
+			} 
   }
-  if (nstates>2)
+  if (wstate3>0)
   {
-    energy += qchemsf1.getE(2);
+    energy += qchemsf1.getE(wstate3);
     qchemsf1.getGrad(2,grada[2]);
-    if (nstates==3)
-    {
-      energy /= 3.;
-      for (int i=0;i<N3;i++) 
-        grad[i] = (grada[0][i] + grada[1][i] + grada[2][i])/3.;
-    }
-  }
-  if (nstates>3)
-  {
-    energy += qchemsf1.getE(3);
-    qchemsf1.getGrad(3,grada[3]);
-    energy /= 4.;
+		energy /=3.;
     for (int i=0;i<N3;i++) 
-      grad[i] = (grada[0][i] + grada[1][i] + grada[2][i] + grada[3][i])/4.;
+      grad[i] = (grada[0][i] + grada[1][i] + grada[2][i])/3.;
   }
   for (int i=0;i<nstates;i++)
     E[i] = qchemsf1.getE(i);
-#elif USE_MOLPRO
-  //printf("  gmp");
-  mp1.reset(coords);
 
+#elif USE_MOLPRO
+  mp1.reset(coords);
+	//cout << " seedType is "<< seedType << endl;
   if (gradcalls==0 && seedType<1)
   {
-    //need to copy wfn 
+    //copy wfn because hasn't been set yet
     int runendCopy = runend;
     if (seedType==0) 
     {
@@ -226,17 +222,27 @@ int Gradient::external_grad(double* coords, double* grad)
     if (seedType==-1) runendCopy--;
     if (seedType==-2) runendCopy++;
 
-    string runNameCopy = StringTools::int2str(runNum,4,"0")+"."+StringTools::int2str(runendCopy,4,"0");
-    printf(" copying wfn from mp_%s to mp_%s \n",runNameCopy.c_str(),runName0.c_str());
-
-    string cmd = "cp scratch/mp_"+runNameCopy+" scratch/mp_"+runName0;
-    //printf("  via: %s \n",cmd.c_str());
-    system(cmd.c_str());
+		if (seedType==-1 || seedType==-2)
+		{
+    	string runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(runendCopy,4,"0");
+    	string cmd = "cp scratch/mp_"+runNameCopy+" scratch/mp_"+runName0;
+    	printf(" copying file from mp_%s to mp_%s \n",runNameCopy.c_str(),runName0.c_str());
+    	system(cmd.c_str());
+		}
   }
 
-  int error = mp1.run(wstate,0); //grad and energy
+  int error = mp1.run(); //grad and energy
+	if (error == 1)
+	{
+		error = mp1.run();
+		if (error==1)
+		{	
+			cout << " Calculation failed twice! Exiting." << endl;
+			exit(-1);
+		}
+	}
   energy = mp1.getE(wstate) * 627.5;
-  error = mp1.getGrad(grada[0]);
+  error = mp1.getGrad(grada[0],wstate);
   for (int i=0;i<N3;i++)
     grada[0][i] *= ANGtoBOHR;
   if (wstate2==0)
@@ -246,10 +252,10 @@ int Gradient::external_grad(double* coords, double* grad)
  //average energy and gradient
   if (wstate2>0)
   {
-    error = mp1.run(wstate2,0); //grad and energy
+    //error = mp1.run(wstate2,0); //grad and energy
     energy += mp1.getE(wstate2) * 627.5;
     energy /= 2.; //average energy
-    error = mp1.getGrad(grada[1]);
+    error = mp1.getGrad(grada[1],wstate2);
     for (int i=0;i<N3;i++)
       grada[1][i] *= ANGtoBOHR;
     if (wstate3==0)
@@ -258,19 +264,21 @@ int Gradient::external_grad(double* coords, double* grad)
   }
   if (wstate3>0)
   {
-    error = mp1.run(wstate3,0); //grad and energy
+    //error = mp1.run(wstate3,0); //grad and energy
     energy = 2*energy + mp1.getE(wstate3) * 627.5;
     energy /= 3.; //average energy
-    error = mp1.getGrad(grada[2]);
+    error = mp1.getGrad(grada[2],wstate3);
     for (int i=0;i<N3;i++)
       grada[2][i] *= ANGtoBOHR;
     for (int i=0;i<N3;i++) 
       grad[i] = (grada[0][i] + grada[1][i] + grada[2][i])/3.;
   }
-
+	
   for (int i=0;i<nstates;i++)
     E[i] = mp1.getE(i+1) * 627.5;
+
   //printf("  gmpe");
+
 #elif USE_ORCA
   //printf( " grad ORCA \n"); fflush(stdout);
   energy = orca1.grads(coords,grad);
@@ -317,7 +325,7 @@ int Gradient::external_grad(double* coords, double* grad)
   if (write_on && success)
   {
     string nstr = StringTools::int2str(gradcalls+res_t,4,"0");
-    string filename = "scratch/qcsave"+runName0+"."+nstr;
+    string filename = "scratch/qcsave"+runName0+"_"+nstr;
     write_xyz_grad(coords,grad,filename);
   }
 #endif
@@ -496,6 +504,9 @@ void Gradient::read_molpro_settings(int& nstates0, int& nclosed, int& nocc, int&
     exit(1);
   }
 
+	mp1.wstate=wstate; 
+	mp1.wstate2=wstate2; 
+	mp1.wstate3=wstate3;
 
   return;
 }
@@ -550,7 +561,7 @@ void Gradient::init(string infilename, int natoms0, int* anumbers0, string* anam
   runNum = run;
   runend = rune;
   string nstr = StringTools::int2str(run,4,"0");
-  runName0 = StringTools::int2str(runNum,4,"0")+"."+StringTools::int2str(runend,4,"0");
+  runName0 = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(runend,4,"0");
   runends = nstr;
 
 #if QCHEM
@@ -724,4 +735,64 @@ int Gradient::force_init(string ffile)
   return use_force;
 }
 
+double Gradient::energy_initial(double* coords,int run, int rune,int penalty, double sigma)
+{
+  printf(" Calculating initial energy\n");
+  runNum = run;
+  runend = rune;
+  mp1.reset(coords);
+  string nstr = StringTools::int2str(run,4,"0");
+  runName0 = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(runend,4,"0");
+  int error=1;
+  //cout << " seedType is "<< seedType << endl;
+#if USE_MOLPRO
+  mp1.runname("mp_"+runName0);
+  error = mp1.calc_energy();
+  if (error == 1)
+  {
+    error = mp1.calc_energy();
+    if (error==1)
+      {
+        cout << " Calculation failed twice! Exiting." << endl;
+        exit(-1);
+      }
+  }
+#else
+  printf(" not yet implemented \n");
+  return error;
+#endif
+
+  if (penalty)
+  {
+    if (wstate2<2)
+    {
+      printf(" Need to have more than 2 states\n");
+      exit(-1);
+    }
+    energy = mp1.getE(wstate) * 627.5;
+    energy += mp1.getE(wstate2) * 627.5;
+    energy /= 2.0;
+    printf(" sigma is %1.2f\n",sigma);
+    //double sigma = 1.0; ///BUUUUUG
+    double alpha = 0.02*627.5; //kcal/mol
+    double deltaE = mp1.getE(wstate2)*627.5 - mp1.getE(wstate)*627.5;
+    double G = pow(deltaE,2)/(deltaE+alpha);
+    energy += sigma*G;
+  }
+  else
+  {
+    if (wstate2)
+      energy = mp1.getE(wstate2) * 627.5;
+    else
+      energy = mp1.getE(wstate) * 627.5;
+  }
+
+  for (int i=0;i<nstates;i++)
+    E[i] = mp1.getE(i+1) * 627.5;
+
+  for (int i=0;i<nstates;i++)
+    printf(" E[%i]=%1.4f\n",i,E[i]);
+
+  return energy;
+}
 

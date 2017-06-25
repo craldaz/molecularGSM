@@ -18,11 +18,10 @@ Conical::Conical(int nnodes_value, ICoord* icoords) : nnodes(nnodes_value)
   for (int i=0;i<nnodes;i++)
       dgrada[i] = new double[3*natoms];                                                   
   for (int n=0;n<nnodes;n++)
-    for (int i=0;i<3*natoms;i++)                                                          
-      dgrada[n][i] = 0.; 
-  dveca = new double*[nnodes];                                                    
-  for (int i=0;i<nnodes;i++)                                                               
-      dveca[i] = new double[3*natoms];                                                    
+    for (int i=0;i<3*natoms;i++)
+      dgrada[n][i] = icoords[n].grad1.grada[1][i] - icoords[n].grad1.grada[0][i]; 
+  dveca = new double*[nnodes];
+	for (int i=0;i<nnodes;i++)                                                	dveca[i] = new double[3*natoms];                                                    
   for (int n=0;n<nnodes;n++)                                                               
     for (int i=0;i<3*natoms;i++)
       dveca[n][i] = 0.;
@@ -65,9 +64,17 @@ Conical::Conical(int nnodes_value, ICoord* icoords) : nnodes(nnodes_value)
 	anames = new string[natoms];
 	for (int i=0;i<natoms;i++)
 		anames[i]=icoords[0].anames[i];
-			
-}
+	anumbers = new int[natoms];
+	for (int i=0;i<natoms;i++)
+		anumbers[i]=icoords[0].anumbers[i];
 
+	ics= new ICoord[nnodes];
+  for (int i=0;i<nnodes;i++)
+    ics[i].alloc(natoms);
+	for (int n=0;n<nnodes;n++)
+		ics[n].reset(natoms,anames,anumbers,coords[n]);
+
+}
 
 void Conical::print_bp()
 {
@@ -85,9 +92,7 @@ void Conical::print_bp()
   	  printf("%1.3f\t",dveca[n][i]);  
   	printf("\n");
 	}
-
 }
-
 
 void Conical::print_xyz()
 {
@@ -102,4 +107,13 @@ void Conical::print_xyz()
 		}
 		printf("\n");
 	}
+}
+
+void Conical::opt_meci()
+{
+	
+	printf(" Optimizing to MECI using Combined-Step Optimizer\n");
+	
+	
+	return;
 }

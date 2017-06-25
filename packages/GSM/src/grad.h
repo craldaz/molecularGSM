@@ -91,6 +91,7 @@ class Gradient
    double* E; //for multiple states
 
    int seedType;
+   double energy_initial(double* coords,int run, int rune,int penalty,double sigma);
    
    int res_t; //restart found files
 

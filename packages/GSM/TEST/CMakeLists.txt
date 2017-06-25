@@ -122,7 +122,7 @@ elseif(GSM_ENABLE_MOLPRO)
     #GFSTRINGQ_TEST(2h-azir/molpro/de-gsm/ 2h-azir_de-gsm 15 0.8)
 
 		#Conical intersection optimizer
-    #GFSTRINGQ_TEST(ethyleneRotation/molpro/ciopt_only/ cethene)
+    GFSTRINGQ_TEST(ethyleneRotation/molpro/ciopt_only/ cethene)
     #GFSTRINGQ_TEST(2h-azir/molpro/ciopt_only/ 2h-azir)
     #GFSTRINGQ_TEST(benzene/molpro/ciopt_only/ benzene)
     #GFSTRINGQ_TEST(CHD/molpro/ciopt_only/ CHD)

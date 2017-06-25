@@ -81,6 +81,12 @@ int ICoord::alloc(int size){
 
  natoms = size;
 
+	//cra put this here
+ anumbers = new int[1+natoms];
+ amasses = new double[1+natoms];
+ amasses3 = new double[1+3*natoms];
+ anames = new string[1+natoms];
+
 //otherwise allocated in structure_read
  anumbers = new int[1+natoms];
  amasses = new double[1+natoms];
@@ -1802,10 +1808,6 @@ void ICoord::structure_read(string xyzfile){
 //    comment=line;
 //  }
   
-  anumbers = new int[1+natoms];
-  amasses = new double[1+natoms];
-  amasses3 = new double[1+3*natoms];
-  anames = new string[1+natoms];
     
   //cout <<"  -Reading the atomic names...";
   for (int i=0;i<natoms;i++){

@@ -4,7 +4,7 @@
  GSM_go1q       # name of run
  ---------------------------------------------------------
  ------------ String Info --------------------------------
- SM_TYPE                 ES-SSM    # SSM, FSM or GSM
+ SM_TYPE                 MECI    # SSM, FSM or GSM
  RESTART                 0      # read restart.xyz
  RESTART_WFN						 1
  MAX_OPT_ITERS           100     # maximum iterations

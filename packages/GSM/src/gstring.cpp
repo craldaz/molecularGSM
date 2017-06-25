@@ -52,6 +52,8 @@ void GString::String_Method_Optimization()
     cout << "****** Starting IC-FSM calculation *****" << endl;
   else if (isSSM>0)
     cout << "****** Starting IC-SSM calculation *****" << endl;
+	else if (isMECI>0)
+		cout << "****** Starting IC-MECI calculation *****" << endl;
   else if (isSSM==-1 && isFSM==-1)
     cout << "****** Starting OPT calculation *****" << endl;
   else
@@ -176,8 +178,6 @@ void GString::String_Method_Optimization()
   active[0] = 0;
   active[nnmax-1] = 0;
 
-
-  //printf(" nnmax: %i nn: %i \n",nnmax,nn);
   int N3 = natoms*3;
   icoords = new ICoord[nnmax+1];
   for (int i=0;i<nnmax;i++)
@@ -187,11 +187,8 @@ void GString::String_Method_Optimization()
   for (int i=1;i<nnmax-1;i++)
     icoords[i].reset(natoms,anames,anumbers,coords[0]);
 
-  //icoords[0].init(natoms,anames,anumbers,coords[0]);
-  //icoords[nn-1].init(natoms,anames,anumbers,coords[nn-1]);
   icoords[0].reset(natoms,anames,anumbers,coords[0]);
   icoords[nnmax-1].reset(natoms,anames,anumbers,coords[nnmax-1]);
-
 
   ICoord ic1,ic2,ic3; 
   ic1.alloc(natoms);
@@ -218,7 +215,6 @@ void GString::String_Method_Optimization()
   ic1.frozen = frozen;
   ic2.frozen = frozen;
 
-
  //add bonds in isomers list
   if (isSSM)
   {
@@ -236,9 +232,6 @@ void GString::String_Method_Optimization()
   ic1.torsions[ic1.ntor][3] = 13;;
   ic1.ntor++;
   printf(" total tor: %i \n",ic1.ntor);
-//  ic1.bonds[ic1.nbonds][0] = 0;
-//  ic1.bonds[ic1.nbonds][1] = 1;
-//  ic1.nbonds++;
 #endif
 
 
@@ -246,7 +239,7 @@ void GString::String_Method_Optimization()
 #if 1
   printf(" printing ic1 ic's \n");
   ic1.print_ic();
-  if (!isSSM)
+  if (!isSSM || !isMECI)
   {
     printf(" printing ic2 ic's \n");
     ic2.print_ic();
@@ -273,10 +266,6 @@ void GString::String_Method_Optimization()
 #if 1
   newic.union_ic(ic1,ic2);  
   intic.copy_ic(newic);
-#if 0
-  newic.union_ic(intic,ic3);
-  intic.copy_ic(newic);
-#endif
   int2ic.copy_ic(newic);
 #else
   newic.distance_matrix_ic(ic1,ic2);
@@ -383,31 +372,27 @@ void GString::String_Method_Optimization()
   printf(" Number of OpenMP threads: %i \n",omp_get_max_threads());
 #endif
 
+#if USE_MOLPRO
+  newic.grad1.seedType = 1;
+	if (restart_wfn)
+		newic.grad1.seedType=3; //restarting from wfn
+  grad1.seedType = 3; //why does grad1 even need to be initialized? Not seeding it now
+  if (isRestart)
+  {
+    newic.grad1.seedType = 3;
+    grad1.seedType = 3;
+  }
+#endif
+
   printf("\n\n ---- Now preparing gradients ---- \n");
   string nstr = StringTools::int2str(runNum,4,"0");
-  //icoords[1].write_ic("scratch/qcsave"+nstr+".ics");
   grad1.init(infile0,natoms,anumbers,anames,icoords[1].coords,runNum,runend,ncpu,1,CHARGE);
   newic.grad_init(infile0,ncpu,runNum,runend-1,0,CHARGE);
 #if !USE_MOLPRO
   for (int n=0;n<nnmax0;n++)
     icoords[n].grad_init(infile0,ncpu,runNum,runend+n,0,CHARGE); //level 3 is exact kNNR only, 0 is QM grad always
 #else
-
-  //molpro gradients will call seed() for initial orbitals
-  // doing so from starting geometry only
-  for (int n=0;n<nnmax0;n++)
-  {
-    printf("\n Node %2i \n",n+1); fflush(stdout);
-
-    icoords[n].grad1.seedType = 0; //seedType set later
-    if (isRestart) icoords[n].grad1.seedType = 3;
-    else if (n==0) icoords[n].grad1.seedType = 1; //seed from INIT1
-    else if (n==nnmax0-1) icoords[n].grad1.seedType = 2; //seed from INIT2
-
-    icoords[n].grad_init(infile0,ncpu,runNum,runend+n,0,CHARGE);
-    if (n==1 && !isRestart) icoords[n].grad1.seedType = -1; //copy from previous node
-    if (n==nnmax0-2 && !isRestart) icoords[n].grad1.seedType = -2; //copy from "next" node
-  }
+	prepare_molpro();
 #endif
   printf(" ---- Done preparing gradients ---- \n\n");
 
@@ -416,9 +401,7 @@ void GString::String_Method_Optimization()
   printf("\n MOLPRO/QCHEMSF mode: turning off r in opt \n");
   for (int n=0;n<nnmax0;n++)
     icoords[n].revertOpt = 0;
-#
-
-
+#endif
 	printf("###############################################################\n");
 	printf("###############################################################\n");
 	printf("###############################################################\n");
@@ -432,13 +415,8 @@ void GString::String_Method_Optimization()
 	Conical meci(nnmax0,icoords); //constructor
 	meci.print_bp();
 	meci.print_xyz();
-	
-	printf(" Finished with experiment\n");
+	printf(" Finished\n");
 	exit(-1);
-
-
-endif
-
 
   if (initialOpt>0 && !isRestart)
   {
@@ -1097,7 +1075,11 @@ void GString::parameter_init(string infilename)
   isRestart = 0;
   isSSM = 0;
   isFSM = 0;
+	isMECI =0;
+	isDE_ESSM =0;
+	isSE_ESSM =0; //these are for excited state methods
   use_exact_climb = 2;
+	restart_wfn=0;  //restart molpro calc with wfu
 
   printf("Initializing Tolerances and Parameters... \n");
   printf("  -Opening %s \n",infilename.c_str());
@@ -1186,6 +1168,11 @@ void GString::parameter_init(string infilename)
       stillreading = true;
       cout <<"  -INT_THRESH: " << PEAK4_EDIFF << endl;
     }
+	  if (tagname=="RESTART_WFN"){
+			restart_wfn = atoi(tok_line[1].c_str());
+			stillreading=true;
+			cout <<"  -restart_wfn = " << restart_wfn << endl; 
+		}
     if (tagname=="SM_TYPE") {
       if (tok_line[1]=="SSM")
       {
@@ -1212,6 +1199,11 @@ void GString::parameter_init(string infilename)
         isFSM = -1;
         isSSM = -1;
       }
+			else if (tok_line[1]=="MECI")
+			{
+				printf("  -using MECI \n");
+				isMECI = 1;
+			}
       else
       {
         printf("  -using GSM \n");
@@ -1351,7 +1343,7 @@ void GString::structure_init(string xyzfile)
 
   for (int i=0;i<2;i++)
   {
-    if (isSSM && i==1) break;
+    if ((isSSM || isMECI) && i==1) break;
     success=getline(infile, line);
     success=getline(infile, line);
     for (int j=0;j<natoms;j++)
@@ -1377,7 +1369,7 @@ void GString::structure_init(string xyzfile)
     }
   }
 
-  if (isSSM)
+  if (isSSM || isMECI)
   for (int i=0;i<3*natoms;i++)
     coords[nnmax-1][i] = coords[0][i];
 
@@ -7670,4 +7662,58 @@ void GString::trim_string(int nextmin)
   find = 0;
 
   return;
+}
+
+
+void GString::prepare_molpro()
+{
+
+  //molpro gradients will call seed() for initial orbitals
+  //seedType=3 skip seeding or copying because already have wfn
+	//seedType=1 seed from INIT1
+	//seedType=2 seed from INIT2
+	int wstate2 = grad1.wstate2;
+	int wstate = grad1.wstate;
+
+  for (int n=0;n<nnmax0;n++)
+  {
+    printf("\n Node %2i \n",n); fflush(stdout);
+    icoords[n].grad1.seedType = 0; //seedType set later
+    if (isRestart) icoords[n].grad1.seedType = 3;
+    if (n==0) icoords[n].grad1.seedType = 1; //seed from INIT1
+    if (n==nnmax0-1) icoords[n].grad1.seedType = 2; //seed from INIT2
+	
+	 	//skip seeding or copying because single-ended
+		if ((isSSM || isMECI) && (n==nnmax0-1)) icoords[n].grad1.seedType = 3; 
+		
+		if (restart_wfn && (n==0 || n==nnmax0-1))
+			icoords[n].grad1.seedType = 3; 		
+
+ 	  icoords[n].grad_init(infile0,ncpu,runNum,runend+n,0,0);
+
+		//calculate initial energy and/or gradient
+		//restart_wfn means already have the wfn files
+		if (restart_wfn && n==0 && !isRestart) 
+		{
+  		printf("  wstate: %i, wstate2: %i\n",wstate,wstate2);
+			if (isMECI || isDE_ESSM )
+				V0=icoords[n].grad1.grads(coords[0], grads[0], icoords[0].Ut, 3); 
+			else if (isSSM || isSE_ESSM)
+				V0 = icoords[n].grad1.energy_initial(coords[n],runNum,runend+n,1,0.);
+			else 
+				V0 = icoords[n].grad1.energy_initial(coords[n],runNum,runend+n,0,0.);
+  	 	printf("  setting V0 to: %8.1f (%12.8f au) \n",V0,V0/627.5);
+			printf(" icoords[0].grad1.E[wstate]=%1.4f\n",icoords[0].grad1.E[wstate-1]);
+			printf(" icoords[0].grad1.E[wstate2]=%1.4f\n",icoords[0].grad1.E[wstate2-1]);
+		 	 	
+		}
+		if (restart_wfn && n==nnmax-1 && !isRestart && isDE_ESSM) 
+		{
+			icoords[n].grad1.seedType = 3;	
+			V_profile[nnmax0-1] =icoords[nnmax-1].grad1.grads(coords[nnmax-1],grads[nnmax-1],icoords[nnmax-1].Ut,3) -V0;
+		}
+    if (n==1 && !isRestart) icoords[n].grad1.seedType = -1; //copy from previous node
+    if (n==nnmax0-2 && !isRestart) icoords[n].grad1.seedType = -2; //copy from "next" node
+  }
+
 }
