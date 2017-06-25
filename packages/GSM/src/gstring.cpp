@@ -421,6 +421,7 @@ void GString::String_Method_Optimization()
 	V0 = meci.calc_BP();
 	//meci.icoord.print_xyz();
 	meci.print_bp();
+	meci.form_MECI_space();
 	//meci.icoord.opt_meci(2,runNum); //optimize node 2
 	printf(" Finished\n");
 	exit(-1);

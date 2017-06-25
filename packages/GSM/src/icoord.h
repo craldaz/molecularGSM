@@ -231,6 +231,8 @@ class ICoord {
 
 	double* dgradq;
 	double* dvecq;
+	void dgrad_to_dgradq(double* dgrad);
+	void dvec_to_dvecq(double* dvec);
 
   int ic_create();
   int ic_create_nobonds();

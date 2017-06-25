@@ -96,8 +96,8 @@ int ICoord::alloc(int size){
  coordsts = new double[natoms*3];
  coords0 = new double[natoms*3];
 
- dgradq = new double[natoms*3]; //for meci
- dvecq = new double[natoms*3];
+ dgradq = new double[nicd0+50]; //for meci
+ dvecq = new double[nicd0+50];
 
  alloc_mem();
 
@@ -2021,3 +2021,79 @@ int ICoord::read_ics(string filename)
         if (a3>-1) break;
       }
 #endif
+
+
+void ICoord::dgrad_to_dgradq(double* dgrad)
+{
+  int N3 = 3*natoms;
+  int len_d = nicd0;
+  int len0 = nbonds+nangles+ntor; 
+  for (int i=0;i<len_d;i++) 
+    dgradq[i] = 0.0;
+  
+#if 0
+  printf("\ndgrad\n");
+  for (int i=0;i<N3;i++)
+    printf("%1.3f ",dgrad[i]);
+  printf("\n");
+#endif                                                                                              
+#if 1
+  printf("\nbmatti\n"); 
+  for (int i=0;i<len_d;i++)
+   {
+   printf("\n");
+   for (int j=0;j<N3;j++)
+     printf("%1.3f ",bmatti[i*N3+j]);
+   }
+#endif 
+  for (int i=0;i<len_d;i++)
+  for (int j=0;j<N3;j++)
+    dgradq[i] += bmatti[i*N3+j] * dgrad[j];
+#if 1
+  printf(" \ndgrad in delocalized IC:\n"); 
+  int len = nicd0;
+  for (int i=0;i<len;i++)
+    printf(" %1.4f",dgradq[i]);
+  printf("\n");
+#endif  
+
+
+	return;
+}
+void ICoord::dvec_to_dvecq(double* dvec)
+{
+  int N3 = 3*natoms;
+  int len_d = nicd0;
+  int len0 = nbonds+nangles+ntor; 
+  for (int i=0;i<len_d;i++) 
+    dvecq[i] = 0.0;
+  
+#if 0
+  printf("\ndvec\n");
+  for (int i=0;i<N3;i++)
+    printf("%1.3f ",dvec[i]);
+  printf("\n");
+#endif                                                                                              
+#if 1
+  printf("\nbmatti\n"); 
+  for (int i=0;i<len_d;i++)
+   {
+   printf("\n");
+   for (int j=0;j<N3;j++)
+     printf("%1.3f ",bmatti[i*N3+j]);
+   }
+#endif 
+  for (int i=0;i<len_d;i++)
+  for (int j=0;j<N3;j++)
+    dvecq[i] += bmatti[i*N3+j] * dvec[j];
+#if 1
+  printf(" \ndvec in delocalized IC:\n"); 
+  int len = nicd0;
+  for (int i=0;i<len;i++)
+    printf(" %1.4f",dvecq[i]);
+  printf("\n");
+#endif  
+
+
+	return;
+}

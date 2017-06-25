@@ -13,7 +13,11 @@ class Conical {
 
 	 double* coords;	
    double* dgrad; 
+   //double* dgrad_q; 
+   //double* dgrad_U; 
    double* dvec;
+   //double* dvec_q; 
+   //double* dvec_U; 
 	 double* grad; 
 
 	double energy; 
@@ -42,6 +46,7 @@ class Conical {
 	 void calc_dgrad();
 	 void calc_dvec();
 	 double calc_BP();
+	 void form_MECI_space();
 };
 
 #endif

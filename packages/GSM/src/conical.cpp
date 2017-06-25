@@ -31,6 +31,7 @@ Conical::Conical(int nnodes_value, ICoord icoord, int ncpu, int runNum, int rune
 	dgrad = new double[3*natoms];
 	dvec = new double[3*natoms];
 
+
 }
 
 void Conical::calc_dgrad()
@@ -66,4 +67,12 @@ void Conical::print_bp()
     printf("%1.3f\t",dvec[i]);  
   printf("\n");
 	
+}
+
+void Conical::form_MECI_space()
+{
+	printf(" Forming the 3N-6 dimensional space defined by a MECI\n");
+	conical.dgrad_to_dgradq(dgrad);
+	conical.dvec_to_dvecq(dvec);
+	return;
 }
