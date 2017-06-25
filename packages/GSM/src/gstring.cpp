@@ -394,7 +394,6 @@ void GString::String_Method_Optimization()
 #else
 	prepare_molpro();
 #endif
-  printf(" ---- Done preparing gradients ---- \n\n");
 
 #if USE_MOLPRO || QCHEMSF
   printf("\n MOLPRO/QCHEMSF mode: turning off H-follow (t/ol) in opt \n");
@@ -412,10 +411,17 @@ void GString::String_Method_Optimization()
 	printf("###############################################################\n");
 	printf("###############################################################\n");
 	printf("###############################################################\n");
-	Conical meci(nnmax0,icoords,ncpu, runNum, runend); //constructor
-	meci.print_xyz();
-	meci.opt_meci(2,runNum); //optimize node 2
+
+
+	Conical meci(nnmax0,icoords[1],ncpu, runNum, runend,isMECI); //constructor
+  printf(" ---- Done preparing gradients ---- \n\n");
+
+
+	//constructs icoord class
+	V0 = meci.calc_BP();
+	//meci.icoord.print_xyz();
 	meci.print_bp();
+	//meci.icoord.opt_meci(2,runNum); //optimize node 2
 	printf(" Finished\n");
 	exit(-1);
 
@@ -7676,6 +7682,7 @@ void GString::prepare_molpro()
 	int wstate2 = grad1.wstate2;
 	int wstate = grad1.wstate;
 
+	if (!isMECI)
   for (int n=0;n<nnmax0;n++)
   {
     printf("\n Node %2i \n",n); fflush(stdout);
@@ -7685,7 +7692,7 @@ void GString::prepare_molpro()
     if (n==nnmax0-1) icoords[n].grad1.seedType = 2; //seed from INIT2
 	
 	 	//skip seeding or copying because single-ended
-		if ((isSSM || isMECI) && (n==nnmax0-1)) icoords[n].grad1.seedType = 3; 
+		if ((isSSM) && (n==nnmax0-1)) icoords[n].grad1.seedType = 3; 
 		
 		if (restart_wfn && (n==0 || n==nnmax0-1))
 			icoords[n].grad1.seedType = 3; 		
@@ -7697,7 +7704,7 @@ void GString::prepare_molpro()
 		if (restart_wfn && n==0 && !isRestart) 
 		{
   		printf("  wstate: %i, wstate2: %i\n",wstate,wstate2);
-			if (isMECI || isDE_ESSM )
+			if (isDE_ESSM)
 				V0=icoords[n].grad1.grads(coords[0], grads[0], icoords[0].Ut, 3); 
 			else if (isSSM || isSE_ESSM)
 				V0 = icoords[n].grad1.energy_initial(coords[n],runNum,runend+n,1,0.);

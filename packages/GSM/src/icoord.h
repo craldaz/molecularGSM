@@ -229,6 +229,9 @@ class ICoord {
   int* coordn;                  //coordination number
   int nimptor;
 
+	double* dgradq;
+	double* dvecq;
+
   int ic_create();
   int ic_create_nobonds();
   int mm_grad();

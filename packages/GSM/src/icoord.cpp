@@ -96,6 +96,9 @@ int ICoord::alloc(int size){
  coordsts = new double[natoms*3];
  coords0 = new double[natoms*3];
 
+ dgradq = new double[natoms*3]; //for meci
+ dvecq = new double[natoms*3];
+
  alloc_mem();
 
  return 1;

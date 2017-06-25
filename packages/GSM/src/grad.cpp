@@ -800,9 +800,6 @@ int Gradient::dvec_calc(double* coords, double* dvec,int run,int rune)
     		//printf(" copying wfn from mp_%s to mp_%s \n",runNameCopy.c_str(),runName0.c_str());
     		string cmd = "cp scratch/mp_"+runNameCopy+" scratch/mp_"+runName0;
     		system(cmd.c_str());
-    	 // cmd = "cp mp_"+runNameCopy+".orb mp_"+runName0+".orb";
-    		//printf(" copying orbs from mp_%s.orb to mp_%s.orb \n",runNameCopy.c_str(),runName0.c_str());
-    	//	system(cmd.c_str());
 				mp1.calc_dvec();
   			error = mp1.getDVec(dvec);
 				if (error==1)

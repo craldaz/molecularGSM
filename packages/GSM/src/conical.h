@@ -9,34 +9,39 @@
 
 class Conical {
 	private:
-	 ICoord* ics;
-	 double** coords;	
-   double** dgrada; 
-   double** dgrada_q; 
-   double** dgrada_U; 
-   double** dveca; 
-   double** dveca_q; 
-   double** dveca_U; 
+	 ICoord conical;
 
-   double** grada; 
+	 double* coords;	
+   double* dgrad; 
+   double* dvec;
+	 double* grad; 
 
-	 string* anames;
-  int* anumbers;		//array of atomic indices (for looking up period table stuff)
-	 int nnodes;
+	double energy; 
+
+	int nnodes;
 	int n_cpu;
 	int runEnd;
 	int run;
 	int natoms;
-	int len_d;
-	int size_ic;
+
 	double dE;
 	int wstate;
 	int wstate2;
+	int nstates;
+	//void form_MECI_space(int node);
+	//void constrain_bp(double* dgrad_U,double* dvec_U,int node);
+	//void project(double* gradq,double* gradq_U);
+	//void vec_to_q(double* grad1,double* gradq1);
+	//double dgrot_mag(double* dgradq,double* dvecq);
 
 	public:
-	 Conical(int nnodes, ICoord* icoords,int ncpu, int runNum, int runend); //constructor
+	 Conical(int nnodes, ICoord icoord,int ncpu, int runNum, int runend,int isMECI); //constructor
 	 void print_bp();
-	 void print_xyz();
-	 void opt_meci(int node,int runNum);
+	 //void print_xyz();
+	 //void opt_meci(int node,int runNum);
+	 void calc_dgrad();
+	 void calc_dvec();
+	 double calc_BP();
 };
+
 #endif
