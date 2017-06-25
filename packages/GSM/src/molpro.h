@@ -51,7 +51,6 @@ class Molpro
     void runname(string name);
     int seed(); //run RHF to get initial orbitals
 
-		int calc_dgrad();
 		int calc_dvec();
 		int calc_energy();
    	int wstate; 

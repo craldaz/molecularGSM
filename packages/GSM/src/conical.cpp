@@ -4,7 +4,7 @@
 using namespace std;
 
 
-Conical::Conical(int nnodes_value, ICoord* icoords) : nnodes(nnodes_value)
+Conical::Conical(int nnodes_value, ICoord* icoords, int ncpu, int runNum, int runend) : nnodes(nnodes_value), n_cpu(ncpu), run(runNum), runEnd(runend)
 {
 	printf(" Default constructor\n");
 	//dynamic memopry allocation
@@ -73,7 +73,14 @@ Conical::Conical(int nnodes_value, ICoord* icoords) : nnodes(nnodes_value)
     ics[i].alloc(natoms);
 	for (int n=0;n<nnodes;n++)
 		ics[n].reset(natoms,anames,anumbers,coords[n]);
-
+	
+	string infilename="inpfileq";
+	for (int n=0;n<nnodes;n++)
+	{
+		ics[n].grad1.seedType = icoords[n].grad1.seedType;
+ 		ics[n].grad_init(infilename,n_cpu,run,runEnd+n,0,0);
+	}
+		
 }
 
 void Conical::print_bp()
@@ -109,11 +116,15 @@ void Conical::print_xyz()
 	}
 }
 
-void Conical::opt_meci()
+void Conical::opt_meci(int node,int runNum)
 {
-	
-	printf(" Optimizing to MECI using Combined-Step Optimizer\n");
-	
-	
+	//node is the node num you want to opt (1-based)
+	int n = node -1;
+	printf(" Optimizing node: %i to MECI using Combined-Step Optimizer\n",n);
+	printf(" calculating dvec[%i]\n",n);
+	ics[n].grad1.dvec_calc(ics[n].coords,dveca[n],runNum,n);
 	return;
 }
+
+
+

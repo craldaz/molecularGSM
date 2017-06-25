@@ -23,8 +23,8 @@ class Gradient
   
   private:
   
-   int runNum;
-   int runend;
+   int runNum; //the job number
+   int runend; //the node number
    string runends;
    string runName;
    string runName0;
@@ -91,6 +91,7 @@ class Gradient
    double* E; //for multiple states
 
    int seedType;
+	 int dvec_calc(double* coords, double* dvec, int run, int rune);
    double energy_initial(double* coords,int run, int rune,int penalty,double sigma);
    
    int res_t; //restart found files

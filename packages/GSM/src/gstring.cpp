@@ -412,9 +412,10 @@ void GString::String_Method_Optimization()
 	printf("###############################################################\n");
 	printf("###############################################################\n");
 	printf("###############################################################\n");
-	Conical meci(nnmax0,icoords); //constructor
-	meci.print_bp();
+	Conical meci(nnmax0,icoords,ncpu, runNum, runend); //constructor
 	meci.print_xyz();
+	meci.opt_meci(2,runNum); //optimize node 2
+	meci.print_bp();
 	printf(" Finished\n");
 	exit(-1);
 

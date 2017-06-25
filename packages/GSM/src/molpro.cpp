@@ -575,6 +575,11 @@ int Molpro::getDVec(double* dvecs)
       cont = 1;
       break;
     }
+		if (line.find("NO CONVERGENCE OF CP-MCSCF")!=string::npos)
+		{
+			cout << " ERROR!!!: NO CONVERGENCE OF CP-MCSCF" << endl;
+			cont =0;
+		}
   } 
     
   if (cont)
@@ -601,7 +606,7 @@ int Molpro::getDVec(double* dvecs)
     dvecs[i] = dvec[i];///BOHRtoANG;
 
   //printf(" done reading dvec \n"); fflush(stdout);
-
+	//cout << success<<endl;
   int error = 1;
   if (success && cont) error = 0;
 
@@ -670,3 +675,48 @@ int Molpro::calc_energy()
 	nrun++;
 	return error; 
 }
+
+int Molpro::calc_dvec()
+{	
+
+  printf(" in calc_dvec\n"); 
+  string filename = infile;
+
+  ofstream inpfile;
+  string inpfile_string = filename;
+  inpfile.open(inpfile_string.c_str());
+  inpfile.setf(ios::fixed);
+  inpfile.setf(ios::left);
+  inpfile << setprecision(6);
+
+  inpfile << "memory," << MEMORY << ",m" << endl;
+  inpfile << "file,2," << scratchname << endl;
+  inpfile << "symmetry,nosym" << endl;
+  inpfile << "orient,noorient" << endl;
+  inpfile << "geometry={" << endl;
+  for (int i=0;i<natoms;i++)
+    inpfile << " " << anames[i] << " " << xyz[3*i+0] << " " << xyz[3*i+1] << " " << xyz[3*i+2] << " " << endl;
+  inpfile << "}" << endl;
+
+  inpfile << endl << "basis=" << basis << endl << endl;
+
+  inpfile << " direct " << endl;
+  inpfile << "{casscf" << endl;
+  inpfile << "closed," << nclosed << " !core orbs" << endl;
+  inpfile << "occ," << nocc << "    !active orbs" << endl;
+  inpfile << "wf," << nelec << ",1,0 !nelectrons,symm,singlet" << endl;
+  inpfile << "state," << nstates << "   !nstates" << endl;
+	inpfile << "CPMCSCF,NACM," <<wstate << ".1,"<< wstate2<<".1,record=5100.1" << endl;
+  inpfile << "}" << endl;
+  inpfile << endl;
+	inpfile << "{FORCE;SAMC,5100.1}" << endl; 
+	inpfile << endl; 
+  inpfile.close();
+	
+  string cmd = "molpro";
+  string nstr = StringTools::int2str(NPROCS,1,"0");
+  cmd = cmd + " -W scratch";
+  cmd = cmd + " -n " + nstr + " " + filename+ " --no-xml-output";
+  system(cmd.c_str());
+	return 0; 
+} 

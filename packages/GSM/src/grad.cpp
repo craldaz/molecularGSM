@@ -735,6 +735,107 @@ int Gradient::force_init(string ffile)
   return use_force;
 }
 
+int Gradient::dvec_calc(double* coords, double* dvec,int run,int rune)
+{ 
+  runNum = run;
+  runend = rune;
+  mp1.reset(coords);
+  string nstr = StringTools::int2str(run,4,"0");
+  runName0 = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(runend,4,"0");
+	int error=1;
+#if USE_MOLPRO
+	mp1.runname("mp_"+runName0);
+  mp1.calc_dvec();
+  error = mp1.getDVec(dvec);
+
+#if 0
+	if (error==1) //use Josh Kamm's BP Dvec method
+	{
+  	string xyzfile_pre = "scratch/xyz"+runName0;
+  	string xyzfile_string = xyzfile_pre+".xyz";
+  	ofstream xyzfile;
+  	xyzfile.open(xyzfile_string.c_str());
+  	xyzfile.setf(ios::fixed);
+  	xyzfile.setf(ios::left);
+  	xyzfile << setprecision(6);
+  	xyzfile << " " << natoms << endl;
+  	xyzfile << " " << " " << endl;
+  	for (int i=0;i<natoms;i++) 
+  	{
+  	  xyzfile << "  " << anames[i];
+  	  xyzfile << " " << coords[3*i+0] << " " << coords[3*i+1] << " " << coords[3*i+2];
+  	  xyzfile << endl;
+  	}
+		xyzfile.close();
+		
+		mp1.bp_calc_dvec(run,xyzfile_pre);
+		error=	mp1.getBPdvec(dvec,xyzfile_pre+".DDvec");
+		if (error==1)
+		{
+			printf(" Exiting.");
+			exit(-1);
+		}
+	}
+#else
+	if (error==1)
+	{
+    int runendCopy = runend-1;
+    string runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(runendCopy,4,"0");
+    printf(" copying wfn from mp_%s to mp_%s \n",runNameCopy.c_str(),runName0.c_str());
+    string cmd = "cp scratch/mp_"+runNameCopy+" scratch/mp_"+runName0;
+    system(cmd.c_str());
+    //cmd = "cp mp_"+runNameCopy+".orb mp_"+runName0+".orb";
+    //printf(" copying orbs from mp_%s.orb to mp_%s.orb \n",runNameCopy.c_str(),runName0.c_str());
+    //system(cmd.c_str());
+		mp1.calc_dvec();
+  	error = mp1.getDVec(dvec);
+		//cout << "error is " << error << endl;
+		if (error==1)
+			{	
+				printf(" Dvec Calculation failed twice!");
+				runendCopy--;
+    		string runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(runendCopy,4,"0");
+				if (runendCopy<0)
+					exit(-1);
+    		//printf(" copying wfn from mp_%s to mp_%s \n",runNameCopy.c_str(),runName0.c_str());
+    		string cmd = "cp scratch/mp_"+runNameCopy+" scratch/mp_"+runName0;
+    		system(cmd.c_str());
+    	 // cmd = "cp mp_"+runNameCopy+".orb mp_"+runName0+".orb";
+    		//printf(" copying orbs from mp_%s.orb to mp_%s.orb \n",runNameCopy.c_str(),runName0.c_str());
+    	//	system(cmd.c_str());
+				mp1.calc_dvec();
+  			error = mp1.getDVec(dvec);
+				if (error==1)
+				{
+					printf(" Exiting.");
+					exit(-1);
+				}
+			}
+	}
+#endif 
+
+#else
+	printf(" not yet implemented \n");
+	return 1;
+#endif
+
+	for (int i=0;i<N3;i++)
+    dvec[i] *= ANGtoBOHR;
+	
+#if 0
+  printf(" XYZ: \n");
+  for (int i=0;i<natoms;i++)
+    printf(" %s %4.3f %4.3f %4.3f \n",anames[i].c_str(),coords[3*i+0],coords[3*i+1],coords[3*i+2]);
+#endif
+#if 0
+  printf(" dvec (1/Ang): \n");
+  for (int i=0;i<natoms;i++)
+    printf(" %s %12.10f %12.10f %12.10f \n",anames[i].c_str(),dvec[3*i+0],dvec[3*i+1],dvec[3*i+2]);
+#endif
+
+	return error;
+
+}
 double Gradient::energy_initial(double* coords,int run, int rune,int penalty, double sigma)
 {
   printf(" Calculating initial energy\n");

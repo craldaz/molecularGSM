@@ -23,6 +23,9 @@ class Conical {
 	 string* anames;
   int* anumbers;		//array of atomic indices (for looking up period table stuff)
 	 int nnodes;
+	int n_cpu;
+	int runEnd;
+	int run;
 	int natoms;
 	int len_d;
 	int size_ic;
@@ -31,9 +34,9 @@ class Conical {
 	int wstate2;
 
 	public:
-	 Conical(int nnodes, ICoord* icoords); //constructor
+	 Conical(int nnodes, ICoord* icoords,int ncpu, int runNum, int runend); //constructor
 	 void print_bp();
 	 void print_xyz();
-	 void opt_meci();
+	 void opt_meci(int node,int runNum);
 };
 #endif
