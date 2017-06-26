@@ -585,7 +585,7 @@ void Gradient::init(string infilename, int natoms0, int* anumbers0, string* anam
   else if (seedType>0)
     read_molpro_init(hf_lines);
   nstates = nstates0;
-  mp1.init(nstates,nclosed,nocc,nelec,natoms,anames,coords0,ncpu,basis);
+  mp1.init(nstates,nclosed,nocc,nelec,natoms,anames,coords0,ncpu,basis,run);
   mp1.runname("mp_"+runName0);
   printf("   runname set to mp_%s \n",runName0.c_str());
   if (seedType>0 && seedType!=3)

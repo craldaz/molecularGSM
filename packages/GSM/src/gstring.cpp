@@ -414,7 +414,7 @@ void GString::String_Method_Optimization()
 	printf("###############################################################\n");
 
 
-	Conical meci(nnmax0,icoords[1],ncpu, runNum,runend,STEP_OPT_ITERS,isMECI); //constructor
+	Conical meci(nnmax0,icoords[0],ncpu, runNum,runend-1,STEP_OPT_ITERS,isMECI); //constructor
   printf(" ---- Done preparing gradients ---- \n\n");
 
 

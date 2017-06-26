@@ -5880,8 +5880,8 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
 	  deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
   	dq0[nicd0-1] = -deltaE/norm_dg; //not sure
   	printf(" dq0[constraint]: %1.4f ",dq0[nicd0-1]);
-		if (dq0[nicd0-1] < -0.075)
-			dq0[nicd0-1]=-0.075;
+		if (dq0[nicd0-1] < -0.05)
+			dq0[nicd0-1]=-0.05;
     update_ic_eigen();
 
     if (n==0) gradrmsl = gradrms;
@@ -5895,6 +5895,28 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
 		//print_xyz();
 		//print_q();
     rflag = ic_to_xyz_opt();
+	
+    if (nrflag > 4) break;
+    if (ixflag>2)
+		{
+      DMAX = DMAX/1.5;
+      //MAXAD = MAXAD/1.1;
+      sprintf(sbuff," bc problem, r Ut "); printout += sbuff;
+			bmatp_create();
+			bmatp_to_U();
+			dgrad_to_dgradq(dgrad);
+			dvec_to_dvecq(dvec);
+			norm_dg=dgrot_mag();
+			project_dgradq();
+			project_dvecq();
+			constrain_bp();
+      make_Hint();
+      do_bfgs = 0;
+      ixflag = 0;
+      bcp = 1;
+    }
+    else bcp = 0;
+
     //print_xyz();
 		//print_q();
     update_ic();
@@ -5906,7 +5928,6 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
 		for (int i=0;i<nstates-1;i++)
 			grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
 	  deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
-
 		printf(" Calculating dgrad ... ");
 		for (int i=0;i<3*natoms;i++)	
 			dgrad[i]= grad1.grada[1][i]- grad1.grada[0][i];
@@ -5919,10 +5940,9 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
 		project_dvecq();
 		constrain_bp();
 	  bmat_create();
-	
-    if (nrflag > 4) break;
 
     sprintf(sbuff," E(M): %1.2f gRMS: %1.4f",energy,gradrms); printout += sbuff;
+    sprintf(sbuff," DeltaE: %4.3f",grad1.dE[wstate2-2]); printout += sbuff;
     if (gradrms<OPTTHRESH && !bcp && deltaE < 0.001)  
     {
       sprintf(sbuff," * \n"); printout += sbuff;
@@ -5936,10 +5956,14 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
 
       if (energy > 1000.) { gradrms = 1.; break; }
 
+			double correction =gradq[nicd0-1]*dq0[nicd0-1]*627.5;
+			printf(" Correction is %1.4f\n",correction);
+			dEpre += correction;
       double dE = energy - energyp;
       energyp = energy;
       //if (abs(dEpre)<0.05) dEpre = sign(dEpre)*0.05; 
       double ratio = dE/dEpre;
+			printf("dEpre=%1.4f, dE=%1.4f, ratio=%2.4f\n",dEpre,dE,ratio);
       sprintf(sbuff," ratio: %2.3f ",ratio); printout += sbuff;
 #if STEPCONTROLG
       if (gradrms>pgradrms)
@@ -5960,17 +5984,18 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
       if (DMAX<DMIN0) DMAX = DMIN0;
 #endif
 #if 1
-		if (grad1.dE[wstate2-2] < 0.1 && gradrms<0.01  || grad1.dE[wstate2-2]<5.0 && gradrms< 0.005) 
-		{
       if (dE > 0.001 && !isTSnode)
       {
-        sprintf(sbuff," dE>0, decreasing DMAX "); printout += sbuff;
-        if (smag<DMAX)
-          DMAX = smag / 1.5;
-        else
-          DMAX = DMAX / 1.5;
+				if (deltaE>1.0)	
+				{
+        	sprintf(sbuff," dE>0, decreasing DMAX "); printout += sbuff;
+        	if (smag<DMAX)
+        	  DMAX = smag / 1.5;
+        	else
+        	  DMAX = DMAX / 1.5;
+				}
       }
-      else if ((ratio < 0.25 || ratio > 1.5) && abs(dEpre)>0.05)
+      else if ((ratio < 0.25 || ratio > 1.5) ) //&& abs(dEpre)>0.05 this included before
       {
         sprintf(sbuff," decreasing DMAX "); printout += sbuff;
         if (smag<DMAX)
@@ -5978,15 +6003,33 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
         else
           DMAX = DMAX / 1.2;
       }
-      else if (ratio > 0.75 && ratio < 1.25 && smag>DMAX && gradrms<pgradrms*1.35)
+      else if (ratio > 0.75 && ratio < 1.25 && smag>DMAX && gradrms<pgradrms*1.35 )
       {
         sprintf(sbuff," increasing DMAX "); printout += sbuff;
         DMAX = DMAX * 1.1;
         if (DMAX > 0.2)
           DMAX = 0.2;
       }
+			
+			//else
+			//{
+      //	if (gradrms>pgradrms)
+      //	{
+      //	  sprintf(sbuff," decreasing DMAX "); printout += sbuff;
+      //	  if (smag<DMAX)
+      //	    DMAX = smag / 1.1;
+      //	  else
+      //	    DMAX = DMAX / 1.2;
+      //	}
+      //	if (gradrms<pgradrms/2) //was 1.25
+      //	{
+      //	  sprintf(sbuff," increasing DMAX "); printout += sbuff;
+      //	  DMAX = DMAX * 1.05;
+      //	  if (DMAX > 0.15)
+      //	    DMAX = 0.15;
+      //	}
+			//}
       if (DMAX<DMIN0) DMAX = DMIN0;
-		}
 #endif
     }
     sprintf(sbuff,"\n"); printout += sbuff;

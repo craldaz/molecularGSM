@@ -45,7 +45,7 @@ class Molpro
 
   public:
 
-    void init(int nstates0, int nclosed0, int nocc0, int nelec0, int natoms0, string* anames0, double* xyz0, int NPROCS0, string basis0);
+    void init(int nstates0, int nclosed0, int nocc0, int nelec0, int natoms0, string* anames0, double* xyz0, int NPROCS0, string basis0,int run);
     void init_hf(int nhf_lines1, string* hf_lines1);
     void reset(double* xyz);
     void runname(string name);

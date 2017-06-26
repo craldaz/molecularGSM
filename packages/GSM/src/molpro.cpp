@@ -209,7 +209,8 @@ int Molpro::seed()
 #if !SAFE_MODE
   //printf(" executing molpro \n"); fflush(stdout);
 //  string cmd = "/export/zimmerman/paulzim/Molpro_serial/bin/molpro "+filename;
-  string cmd = "/export/applications/Molpro/2012.1.9/molprop_2012_1_Linux_x86_64_i8/bin/molpro";
+ // string cmd = "/export/applications/Molpro/2012.1.9/molprop_2012_1_Linux_x86_64_i8/bin/molpro";
+    string cmd = "molpro";
 //  string cmd = "/export/applications/MolproCopy/2012.1.9/molprop_2012_1_Linux_x86_64_i8/bin/molpro";
   string nstr = StringTools::int2str(NPROCS,1,"0");
   cmd = cmd + " -W scratch";
@@ -343,12 +344,15 @@ void Molpro::init_hf(int nhf_lines1, string* hf_lines1)
   return;
 }
 
-void Molpro::init(int nstates0, int nclosed0, int nocc0, int nelec0, int natoms0, string* anames0, double* xyz0, int NPROCS0, string basis0)
+void Molpro::init(int nstates0, int nclosed0, int nocc0, int nelec0, int natoms0, string* anames0, double* xyz0, int NPROCS0, string basis0,int run)
 {
   NPROCS = NPROCS0;
 
-  infile = "scratch/gopro.com";
-  outfile = "scratch/gopro.out";
+	string nstr = StringTools::int2str(run,4,"0");
+  //infile = "scratch/gopro.com";
+  //outfile = "scratch/gopro.out";
+  infile = "scratch/gopro"+nstr+".com";
+  outfile = "scratch/gopro"+nstr+".out";
 
   nclosed = nclosed0;
   nocc = nocc0;

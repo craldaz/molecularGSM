@@ -3,8 +3,7 @@
 FUNCTION(GFSTRINGQ_TEST TEST_DIR TEST_NAME)
 
  		#copy input files to the testing folder
-		file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_DIR}/ DESTINATION
-${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME})
+		file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_DIR}/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME})
 
     #configure the PBS script to know where the executable is.
     CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/${TEST_DIR}/athena.pbs.in"
@@ -122,15 +121,22 @@ elseif(GSM_ENABLE_MOLPRO)
     #GFSTRINGQ_TEST(2h-azir/molpro/de-gsm/ 2h-azir_de-gsm 15 0.8)
 
 		#Conical intersection optimizer
-    GFSTRINGQ_TEST(ethyleneRotation/molpro/ciopt_only/ cethene)
-    #GFSTRINGQ_TEST(2h-azir/molpro/ciopt_only/ 2h-azir)
-    #GFSTRINGQ_TEST(benzene/molpro/ciopt_only/ benzene)
-    #GFSTRINGQ_TEST(CHD/molpro/ciopt_only/ CHD)
-    #GFSTRINGQ_TEST(ethylidene/molpro/ciopt_only/ ethylidene)
-    #GFSTRINGQ_TEST(nbor/molpro/ciopt_only/ nbor)
-    #GFSTRINGQ_TEST(ncpi/molpro/ciopt_only/ ncpi)
-    #GFSTRINGQ_TEST(ny14/molpro/ciopt_only/ ny14)
-    #GFSTRINGQ_TEST(ny16/molpro/ciopt_only/ ny16)
+    GFSTRINGQ_TEST(ethyleneRotation/molpro/ciopt_only/ ethene)
+    GFSTRINGQ_TEST(2h-azir/molpro/ciopt_only/ 2h-azir)
+    GFSTRINGQ_TEST(benzene/molpro/ciopt_only/ benzene)
+    GFSTRINGQ_TEST(CHD/molpro/ciopt_only/ CHD)
+    GFSTRINGQ_TEST(ethylidene/molpro/ciopt_only/ ethylidene)
+    GFSTRINGQ_TEST(nbor/molpro/ciopt_only/ nbor)
+    GFSTRINGQ_TEST(ncpi/molpro/ciopt_only/ ncpi)
+    GFSTRINGQ_TEST(ny14/molpro/ciopt_only/ ny14)
+    GFSTRINGQ_TEST(ny16/molpro/ciopt_only/ ny16)
+
+    GFSTRINGQ_TEST(ethyleneRotation/molpro/meci_test1/ eth-a)
+    GFSTRINGQ_TEST(ethyleneRotation/molpro/meci_test2/ eth-bc)
+    GFSTRINGQ_TEST(methaniminium/molpro/meci_test/ methanim)
+    GFSTRINGQ_TEST(ketene/molpro/meci_test/ ketene)
+    GFSTRINGQ_TEST(2h-azir/molpro/meci_test/ diazo)
+		
 
 		#Single-Ended Excited State String Method
     #GFSTRINGQ_TEST(ethyleneRotation/molpro/essm/ ethene_essm)
