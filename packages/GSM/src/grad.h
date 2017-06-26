@@ -87,6 +87,7 @@ class Gradient
    int wstate;
    int wstate2;
    int wstate3;
+	 double* dE;
    double** grada; //multistate gradients
    double* E; //for multiple states
 

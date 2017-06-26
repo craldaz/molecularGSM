@@ -627,6 +627,9 @@ void Gradient::init(string infilename, int natoms0, int* anumbers0, string* anam
     E[i] = mp1.getE(i+1) * 627.5;
 #endif
 
+  dE = new double[nstates-1];
+  for (int i=0;i<nstates-1;i++) dE[i]=1000.;
+
   knnr_active = 0;
   knn_k = KNN_K;
 #if USE_KNNR

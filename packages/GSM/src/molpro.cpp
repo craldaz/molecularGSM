@@ -679,7 +679,7 @@ int Molpro::calc_energy()
 int Molpro::calc_dvec()
 {	
 
-  printf(" in calc_dvec\n"); 
+  //printf(" in calc_dvec\n"); 
   string filename = infile;
 
   ofstream inpfile;

@@ -1,4 +1,5 @@
 #include "gstring.h"
+#include "GitSHA1.h"
 #include "omp.h"
 using namespace std;
 
@@ -413,15 +414,16 @@ void GString::String_Method_Optimization()
 	printf("###############################################################\n");
 
 
-	Conical meci(nnmax0,icoords[1],ncpu, runNum, runend,isMECI); //constructor
+	Conical meci(nnmax0,icoords[1],ncpu, runNum,runend,STEP_OPT_ITERS,isMECI); //constructor
   printf(" ---- Done preparing gradients ---- \n\n");
 
 
 	//constructs icoord class
-	V0 = meci.calc_BP();
+	//V0 = meci.calc_BP();
 	//meci.icoord.print_xyz();
-	meci.print_bp();
-	meci.form_MECI_space();
+	//meci.print_bp();
+	//meci.form_MECI_space();
+	meci.opt_meci();
 	//meci.icoord.opt_meci(2,runNum); //optimize node 2
 	printf(" Finished\n");
 	exit(-1);

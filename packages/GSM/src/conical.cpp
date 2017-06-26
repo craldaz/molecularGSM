@@ -6,7 +6,7 @@
 using namespace std;
 
 
-Conical::Conical(int nnodes_value, ICoord icoord, int ncpu, int runNum, int runend,int isMECI) : nnodes(nnodes_value), n_cpu(ncpu), run(runNum), runEnd(runend)
+Conical::Conical(int nnodes_value, ICoord icoord, int ncpu, int runNum, int runend,int nsteps,int isMECI) : nnodes(nnodes_value), n_cpu(ncpu), run(runNum), runEnd(runend), opt_steps(nsteps)
 {
 	printf(" Default constructor\n");
 
@@ -69,8 +69,11 @@ void Conical::print_bp()
 	
 }
 
-void Conical::form_MECI_space()
+double Conical::form_MECI_space()
 {
+
+	energy = calc_BP();
+	print_bp();
 	printf(" Forming the 3N-6 dimensional space defined by a MECI\n");
 	conical.dgrad_to_dgradq(dgrad);
 	conical.dvec_to_dvecq(dvec);
@@ -81,13 +84,32 @@ void Conical::form_MECI_space()
 	conical.project_dvecq();
 #else
 	//need to code dvec rot
-	project(dvecq,dvecq_U);
-	norm_dg=project(dgradq,dgradq_U);
+	//project(dvecq,dvecq_U);
+	//norm_dg=project(dgradq,dgradq_U);
 	printf(" norm_dg = %1.2f",norm_dg); 
 #endif
 	conical.constrain_bp();
 	conical.bmat_create();
 	conical.print_q();
 
+	return energy;
+}
+
+
+void Conical::opt_meci()
+{
+	printf(" Optimizing node to MECI using Combined-Step Optimizer\n");
+	energy = form_MECI_space();	
+	printf(" Initial energy is %1.4f\n",energy);
+	conical.V0 = energy;
+   
+	string runName0 = StringTools::int2str(run,4,"0")+"."+StringTools::int2str(runEnd,4,"0");	
+	//use combined step optimizer
+	conical.gradrms = 100.;
+	conical.make_Hint();
+	conical.opt_MECI("scratch/cfile_"+runName0+".xyz",opt_steps,runEnd,run,grad,dvec,dgrad);
+	
+  printf(" %s",conical.printout.c_str());
+	
 	return;
 }

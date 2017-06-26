@@ -32,6 +32,7 @@ class Conical {
 	int wstate;
 	int wstate2;
 	int nstates;
+	int opt_steps;
 	//void form_MECI_space(int node);
 	//void constrain_bp(double* dgrad_U,double* dvec_U,int node);
 	//void project(double* gradq,double* gradq_U);
@@ -39,14 +40,14 @@ class Conical {
 	//double dgrot_mag(double* dgradq,double* dvecq);
 
 	public:
-	 Conical(int nnodes, ICoord icoord,int ncpu, int runNum, int runend,int isMECI); //constructor
+	 Conical(int nnodes, ICoord icoord,int ncpu, int runNum, int runend,int nsteps,int isMECI); //constructor
 	 void print_bp();
 	 //void print_xyz();
-	 //void opt_meci(int node,int runNum);
+	 void opt_meci();
 	 void calc_dgrad();
 	 void calc_dvec();
 	 double calc_BP();
-	 void form_MECI_space();
+	 double form_MECI_space();
 };
 
 #endif

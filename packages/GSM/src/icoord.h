@@ -267,6 +267,7 @@ class ICoord {
   double opt_a(int nnewb, int* newb, int nnewt, int* newt, string xyzfile_string, int nsteps);
   double opt_b(string xyzfile_string, int nsteps);
   double opt_c(string xyzfile_string, int nsteps, double* C, double* C0);
+	double opt_MECI(string xysfile_string,int nsteps,int node, int run, double* grads,double* dvec, double* dgrad);
   double opt_r(string xyzfile_string, int nsteps, double* C, double* C0, double* D, int type);
   double opt_eigen_ts(string xyzfile_string, int nsteps, double* C, double* C0);
   void update_ic();
