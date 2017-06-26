@@ -5880,8 +5880,8 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
 	  deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
   	dq0[nicd0-1] = -deltaE/norm_dg; //not sure
   	printf(" dq0[constraint]: %1.4f ",dq0[nicd0-1]);
-		if (dq0[nicd0-1] < -0.05)
-			dq0[nicd0-1]=-0.05;
+		if (dq0[nicd0-1] < -0.075)
+			dq0[nicd0-1]=-0.075;
     update_ic_eigen();
 
     if (n==0) gradrmsl = gradrms;
