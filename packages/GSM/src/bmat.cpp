@@ -5984,9 +5984,9 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
       if (DMAX<DMIN0) DMAX = DMIN0;
 #endif
 #if 1
-      if (dE > 0.001 && !isTSnode)
+      if (dE > 0.001 && !isTSnode) //only apply this after reaching seam
       {
-				if (deltaE>1.0)	
+				if (grad1.dE[wstate2-2]<1.0)	
 				{
         	sprintf(sbuff," dE>0, decreasing DMAX "); printout += sbuff;
         	if (smag<DMAX)

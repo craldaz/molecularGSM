@@ -131,7 +131,7 @@ elseif(GSM_ENABLE_MOLPRO)
     GFSTRINGQ_TEST(ny14/molpro/ciopt_only/ ny14)
     GFSTRINGQ_TEST(ny16/molpro/ciopt_only/ ny16)
 
-    GFSTRINGQ_TEST(ethyleneRotation/molpro/meci_test1/ eth-a)
+    GFSTRINGQ_TEST(ethyleneRotation/molpro/meci_test/ eth-a)
     GFSTRINGQ_TEST(ethyleneRotation/molpro/meci_test2/ eth-bc)
     GFSTRINGQ_TEST(methaniminium/molpro/meci_test/ methanim)
     GFSTRINGQ_TEST(ketene/molpro/meci_test/ ketene)
