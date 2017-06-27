@@ -40,10 +40,10 @@ class Conical {
 	//double dgrot_mag(double* dgradq,double* dvecq);
 
 	public:
-	 Conical(int nnodes, ICoord icoord,int ncpu, int runNum, int runend,int nsteps,int isMECI); //constructor
+	 Conical(int nnodes, ICoord icoord,int ncpu, int runNum, int runend,int nsteps,int isMECI); //constructs the object
 	 void print_bp();
 	 //void print_xyz();
-	 void opt_meci();
+	 void opt_meci(); // function optimizes geometry to meci
 	 void calc_dgrad();
 	 void calc_dvec();
 	 double calc_BP();

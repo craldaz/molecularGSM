@@ -897,3 +897,136 @@ double Gradient::energy_initial(double* coords,int run, int rune,int penalty, do
   return energy;
 }
 
+double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int type,double sigma)
+{
+  wrote_grad = 0;
+  energy = -99.;
+  type = 0;
+	//printf(" In Levine penalty fxn\n");
+  int do_exact = 1;
+  if (do_exact)
+  {
+    printf(" eg"); fflush(stdout);
+  	mp1.reset(coords);
+
+  	if (gradcalls==0 && seedType<1)
+  	{
+  	  //need to copy wfn 
+  	  int runendCopy = runend;
+  	  if (seedType==0) 
+  	  {
+  	    printf(" ERROR: seedType not set! \n");
+  	    exit(1);
+  	  }
+  	  if (seedType==-1) runendCopy--;
+  	  if (seedType==-2) runendCopy++;
+
+			if (seedType==-1 || seedType==-2)
+			{
+  	 	 string runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(runendCopy,4,"0");
+  	 	 printf(" copying wfn from mp_%s to mp_%s \n",runNameCopy.c_str(),runName0.c_str());
+     	 //string cmd = "cp mp_"+runNameCopy+".orb mp_"+runName0+".orb";
+     	 //printf(" copying orbs from mp_%s.orb to mp_%s.orb \n",runNameCopy.c_str(),runName0.c_str());
+
+  	 	 string cmd = "cp scratch/mp_"+runNameCopy+" scratch/mp_"+runName0;
+		 	 //printf("temporarily disabling this feature\n");
+  	 	 system(cmd.c_str());
+			}
+  	}
+
+  	int error = mp1.run(); //grad and energy
+		if (error == 1)
+		{
+			error = mp1.run();
+			if (error==1)
+				{	
+					cout << " Calculation failed twice! Exiting." << endl;
+					exit(-1);
+				}
+		}
+
+		if (wstate2<2)
+		{
+			printf(" Need to have more than 2 states\n");
+			exit(-1);
+		}		
+
+ #if 1
+  	energy = mp1.getE(wstate) * 627.5;
+  	energy+= mp1.getE(wstate2) * 627.5; // try with this off
+		energy /= 2.0;
+		//double sigma = 1.0; //no longer fixed.
+  	//energy+= mp1.getE(wstate2) * 627.5; 
+		double alpha = 0.02*627.5; //kcal/mol
+		double deltaE = mp1.getE(wstate2)*627.5 - mp1.getE(wstate)*627.5;
+		double G = pow(deltaE,2)/(deltaE+alpha);	
+		energy += sigma*G;
+#else
+  	energy= mp1.getE(wstate2) * 627.5;
+#endif
+
+  	error = mp1.getGrad(grada[0],wstate);
+		if (error==1)
+		{
+			printf(" error in get grad\n");
+			exit(-1);
+		}
+  	error = mp1.getGrad(grada[1],wstate2);
+		if (error==1)
+		{
+			printf(" error in get grad\n");
+			exit(-1);
+		}
+
+  	for (int i=0;i<N3;i++)
+  	  grada[0][i] *= ANGtoBOHR;
+  	for (int i=0;i<N3;i++)
+  	  grada[1][i] *= ANGtoBOHR;
+
+#if 1
+  	for (int i=0;i<N3;i++) 
+  		  grad[i] = (grada[0][i] + grada[1][i])/2.;
+			//	grad[i] = grada[1][i];
+		double factor = sigma*(pow(deltaE,2) + 2*alpha*deltaE)/pow(deltaE+alpha,2);
+  	for (int i=0;i<N3;i++) 
+  	  grad[i] += factor*(grada[1][i] - grada[0][i]);
+#else
+  	for (int i=0;i<N3;i++) 
+  	  grad[i] = grada[1][i];
+#endif
+		
+  	for (int i=0;i<nstates;i++)
+  	  E[i] = mp1.getE(i+1) * 627.5;
+
+  	  xyz_grad = 1;
+  }
+
+#if 0
+  if (xyz_grad)
+  {
+    printf(" Grad: \n");
+    for (int i=0;i<natoms;i++)
+      printf(" %s %12.10f %12.10f %12.10f \n",anames[i].c_str(),grad[3*i+0],grad[3*i+1],grad[3*i+2]);
+  }
+#endif
+
+#if 0
+  printf(" XYZ: \n");
+  for (int i=0;i<natoms;i++)
+    printf(" %s %4.3f %4.3f %4.3f \n",anames[i].c_str(),coords[3*i+0],coords[3*i+1],coords[3*i+2]);
+#endif
+
+  gradcalls++;
+  int success = 1;
+  if (V0==0.0)  V0 = energy;
+  if (energy-V0>2000. || energy-V0 < -2000.)  success = 0;
+	if (success == 0)
+	{
+		printf(" Energy is too large.\n");
+		printf(" Energy is %1.4f\n",energy);
+		printf(" V0= %1.4f\n",V0);
+		//exit(-1);
+	}
+
+  return energy;
+}

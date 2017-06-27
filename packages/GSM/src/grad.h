@@ -94,6 +94,7 @@ class Gradient
    int seedType;
 	 int dvec_calc(double* coords, double* dvec, int run, int rune);
    double energy_initial(double* coords,int run, int rune,int penalty,double sigma);
+	double levine_penalty(double* coords, double* grad, double* Ut, int type,double sigma);
    
    int res_t; //restart found files
 

@@ -131,15 +131,15 @@ elseif(GSM_ENABLE_MOLPRO)
     GFSTRINGQ_TEST(ny14/molpro/ciopt_only/ ny14)
     GFSTRINGQ_TEST(ny16/molpro/ciopt_only/ ny16)
 
-    GFSTRINGQ_TEST(ethyleneRotation/molpro/meci_test/ eth-a)
-    GFSTRINGQ_TEST(ethyleneRotation/molpro/meci_test2/ eth-bc)
-    GFSTRINGQ_TEST(methaniminium/molpro/meci_test/ methanim)
-    GFSTRINGQ_TEST(ketene/molpro/meci_test/ ketene)
-    GFSTRINGQ_TEST(2h-azir/molpro/meci_test/ diazo)
+    #GFSTRINGQ_TEST(ethyleneRotation/molpro/meci_test/ eth-a)
+    #GFSTRINGQ_TEST(ethyleneRotation/molpro/meci_test2/ eth-bc)
+    #GFSTRINGQ_TEST(methaniminium/molpro/meci_test/ methanim)
+    #GFSTRINGQ_TEST(ketene/molpro/meci_test/ ketene)
+    #GFSTRINGQ_TEST(2h-azir/molpro/meci_test/ diazo)
 		
 
 		#Single-Ended Excited State String Method
-    #GFSTRINGQ_TEST(ethyleneRotation/molpro/essm/ ethene_essm)
+    GFSTRINGQ_TEST(ethyleneRotation/molpro/essm/ ethene_essm)
     #GFSTRINGQ_TEST(ethylidene/molpro/essm/ ethylidene_essm)
     #GFSTRINGQ_TEST(benzene/molpro/essm/ benzene_essm)
     ###GFSTRINGQ_TEST(cyclobutene/molpro/essm/ cyclobutene)

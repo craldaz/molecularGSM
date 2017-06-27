@@ -123,7 +123,7 @@ class GString {
   void scan_r(int eigen);
   void opt_tr();
   void opt_r();
-  void opt_steps(double** dqa, double** ictan, int osteps, int oesteps);
+  void opt_steps(double** dqa, double** ictan, int osteps, int oesteps,int penalty,double &K);
   int knnr_vs_opt(int n);
   void ic_reparam_g(double** dqa, double* dqmaga);
   void ic_reparam(double** dqa, double* dqmaga, int type);
@@ -221,6 +221,10 @@ class GString {
   void structure_init(string xyzfile);
   void allelse_init();
   void restart_string(string pstring);
+
+	int check_essm_done(int osteps, int oesteps, double** dqa,int runNum,double K);
+	double get_sigma(int n, double K);
+
 
  public:
 

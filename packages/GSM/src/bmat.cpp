@@ -1997,7 +1997,7 @@ double ICoord::opt_a(int nnewb, int* newb, int nnewt, int* newt, string xyzfile_
   return energy;
 }
 
-double ICoord::opt_b(string xyzfile_string, int nsteps){
+double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma){
 
   printout = "";
 
@@ -2203,7 +2203,7 @@ double ICoord::opt_b(string xyzfile_string, int nsteps){
 
 
 
-double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0)
+double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0,int penalty,double sigma)
 {
   //printf(" oc"); fflush(stdout);
   printout = "";
@@ -2288,8 +2288,12 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0)
   int nrflag = 0;
   int bcp = 0;
   noptdone = 1;
-
-  double energy = grad1.grads(coords, grad, Ut, 1) - V0;
+	
+	double energy;
+	if (penalty)
+		energy = grad1.levine_penalty(coords,grad,Ut,1,sigma)-V0;
+	else
+ 		energy = grad1.grads(coords, grad, Ut, 1) - V0;
 
   energyp = energy;
   energyl = energy;
@@ -2416,7 +2420,10 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0)
     if (n<OPTSTEPS-1)
     {
       noptdone++;
-      energy = grad1.grads(coords, grad, Ut, 1) - V0;
+			if (penalty)
+				energy = grad1.levine_penalty(coords,grad,Ut,1,sigma)-V0;
+			else
+ 				energy = grad1.grads(coords, grad, Ut, 1) - V0;
       if (energy > 1000.) { gradrms = 1.; break; }
 
       double dE = energy - energyp;

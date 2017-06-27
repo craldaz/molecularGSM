@@ -402,31 +402,25 @@ void GString::String_Method_Optimization()
   for (int n=0;n<nnmax0;n++)
     icoords[n].revertOpt = 0;
 #endif
-	printf("###############################################################\n");
-	printf("###############################################################\n");
-	printf("###############################################################\n");
-	printf("###############################################################\n");
-	printf("###############################################################\n");
-	printf("########### Starting experimental program #####################\n");
-	printf("###############################################################\n");
-	printf("###############################################################\n");
-	printf("###############################################################\n");
-	printf("###############################################################\n");
 
-
-	Conical meci(nnmax0,icoords[0],ncpu, runNum,runend-1,STEP_OPT_ITERS,isMECI); //constructor
-  printf(" ---- Done preparing gradients ---- \n\n");
-
-
-	//constructs icoord class
-	//V0 = meci.calc_BP();
-	//meci.icoord.print_xyz();
-	//meci.print_bp();
-	//meci.form_MECI_space();
-	meci.opt_meci();
-	//meci.icoord.opt_meci(2,runNum); //optimize node 2
-	printf(" Finished\n");
-	exit(-1);
+	if (isMECI)
+	{
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("########### Starting experimental program #####################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		Conical meci(nnmax0,icoords[0],ncpu, runNum,runend-1,STEP_OPT_ITERS,isMECI); //constructor
+  	printf(" ---- Done preparing gradients ---- \n\n");
+		meci.opt_meci();
+		printf(" Finished\n");
+		exit(-1);
+	}
 
   if (initialOpt>0 && !isRestart)
   {
@@ -440,7 +434,7 @@ void GString::String_Method_Optimization()
       icoords[0].OPTTHRESH = CONV_TOL;
     }
     icoords[0].make_Hint();
-    V_profile[0] = icoords[0].opt_b("scratch/firstnode.xyz"+nstr,initialOpt);
+    V_profile[0] = icoords[0].opt_b("scratch/firstnode.xyz"+nstr,initialOpt,0,0.0);
     icoords[0].OPTTHRESH = CONV_TOL;
     gradJobCount += icoords[0].noptdone;
     printf(" %s \n",icoords[0].printout.c_str()); 
@@ -716,7 +710,7 @@ void GString::String_Method_Optimization()
     printf(" tid: %i/%i node: %i status: %i \n",omp_get_thread_num()+1,omp_get_num_threads(),n,active[n]);
 #endif
     icoords[n].grad1.write_on = 0;
-    V_profile[n] = icoords[n].opt_b("scratch/xyzfile.xyz"+nstr,0);
+    V_profile[n] = icoords[n].opt_b("scratch/xyzfile.xyz"+nstr,0,0,0.0);
   }
 #endif
 
@@ -735,7 +729,7 @@ void GString::String_Method_Optimization()
     add_last_node(1);
     nnmax = nnR;
     if (noptsteps>0)
-      V_profile[nnmax-1] = icoords[nnmax-1].opt_b("scratch/lastnode.xyz"+nstr,noptsteps);
+      V_profile[nnmax-1] = icoords[nnmax-1].opt_b("scratch/lastnode.xyz"+nstr,noptsteps,0,0.0);
     gradJobCount += icoords[nnmax-1].noptdone;
     printf(" %s \n",icoords[nnmax-1].printout.c_str());     
   }
@@ -1213,6 +1207,12 @@ void GString::parameter_init(string infilename)
 			{
 				printf("  -using MECI \n");
 				isMECI = 1;
+			}
+			else if (tok_line[1]=="SE-ESSM")
+			{
+				printf("  -using SE-ESSM \n");
+				isSSM = 1; //both are turned on 
+				isSE_ESSM=1;
 			}
       else
       {
@@ -3016,7 +3016,7 @@ void GString::opt_r()
 }
 
 
-void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps)
+void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,int penalty,double &K)
 {
   printf("\n"); fflush(stdout);
 
@@ -3029,6 +3029,8 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps)
   double* aC0 = new double[nnmax*size_ic];
   int* do_knnr = new int[nnmax];
   for (int n=0;n<nnmax;n++) do_knnr[n] = 0;
+	int wstate2 = icoords[0].grad1.wstate2;
+	int wstate = icoords[0].grad1.wstate;
 
  
   int TSnode = 0;
@@ -3160,17 +3162,56 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps)
         C0[nbonds+nangles+i] = icoords[n].torv[i]*3.14159/180*C[nbonds+nangles+i];
 
       string nstr = StringTools::int2str(n,2,"0");
+  		string runName0 = StringTools::int2str(runNum,4,"0")+"."+StringTools::int2str(n,4,"0");
       if (!(find && n==TSnode))
       {
-#if !HESS_TANG || USE_MOLPRO || QCHEMSF
-        icoords[n].opt_constraint(ictan[n]);
+#if !HESS_TANG 
+        icoords[n].opt_constraint(ictan[n]); //|| USE_MOLPRO || QCHEMSF
 #endif
         if (growing) icoords[n].stage1opt = 1;
         else icoords[n].stage1opt = 0;
 
         int do_opt = 1;
         if (do_knnr[n]) do_opt = knnr_vs_opt(n);
-        if (do_opt) V_profile[n] = icoords[n].opt_c("scratch/xyzfile.xyz"+nstr,osteps*exsteps,C,C0);
+        if (do_opt)
+				{	
+					if (penalty==1)
+					{
+						if (oi>0 && (V_profile[nnR-2] - V_profile[nnR-1])>0.0)
+							K+=1.;
+						printf(" n=%i\n",n);
+						double sigma=get_sigma(n-1,K);
+						V0=(icoords[0].grad1.E[wstate-1] + icoords[0].grad1.E[wstate2-1])/2.0;
+						double alpha = 0.02*627.5; //kcal/mol
+						double deltaE = icoords[0].grad1.E[wstate2-1] - icoords[0].grad1.E[wstate-1];
+						double G = pow(deltaE,2)/(deltaE+alpha);	
+						V0 += sigma*G;
+						for (int i=0;i<nnmax;i++)
+						{
+							icoords[i].grad1.V0=V0;
+  					  icoords[n].V0 = V0;
+						}
+  					printf("  setting V0 to: %8.1f (%12.8f au) \n",V0,V0/627.5);
+						for (int i=0;i<nnR;i++)	
+						{
+						 	V_profile[i] = (icoords[i].grad1.E[wstate-1]+icoords[i].grad1.E[wstate2-1])/2.0;
+						 	double alpha = 0.02*627.5; //kcal/mol
+						 	double deltaE = icoords[i].grad1.E[wstate2-1] - icoords[i].grad1.E[wstate-1];
+						 	double G = pow(deltaE,2)/(deltaE+alpha);	
+						 	V_profile[i] += sigma*G;
+						 	V_profile[i] -= V0;
+						}
+						V_profile[n] = icoords[n].opt_c("scratch/xyzfile_"+runName0+".xyz",osteps*exsteps,C,C0,1,sigma);
+					}
+					else if (penalty==2)
+					{
+					 double sigma=get_sigma(n,K);
+					 V_profile[n] = icoords[n].opt_c("scratch/xyzfile_"+runName0+".xyz",osteps*exsteps,C,C0,1,sigma);
+					}
+					else 
+					 V_profile[n] = icoords[n].opt_c("scratch/xyzfile_"+runName0+".xyz",osteps*exsteps,C,C0,0,0);
+				}
+
       }
       else
         V_profile[n] = icoords[n].opt_eigen_ts("scratch/xyzfile.xyzt"+nstr,oesteps,C,C0);
@@ -3179,7 +3220,7 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps)
     if (optlastnode && n==nnmax-1)
     {
       string nstr = StringTools::int2str(n,2,"0");
-      V_profile[n] = icoords[n].opt_b("scratch/xyzfile.xyz"+nstr,osteps);
+      V_profile[n] = icoords[n].opt_b("scratch/xyzfile.xyz"+nstr,osteps,0,0.0);
     } 
   } //loop over opt
 
@@ -4367,7 +4408,7 @@ void GString::ic_reparam_cut(int min, double** dqa, double* dqmaga, int rtype)
   newic.bmatp_to_U();
   newic.bmat_create();
   newic.make_Hint();
-  double energyn = newic.opt_b("scratch/cut.xyz"+nstr,osteps);
+  double energyn = newic.opt_b("scratch/cut.xyz"+nstr,osteps,0,0.0);
 
   icoords[nnmax-1].reset(natoms,anames,anumbers,newic.coords);
   icoords[nnmax-1].update_ic();
@@ -6638,6 +6679,11 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
   int pastts = 0;
   int addednode = 0;
   endearly = 0;
+	
+  int wstate2=icoords[0].grad1.wstate2;
+  int wstate=icoords[0].grad1.wstate;	
+	int nstates = icoords[0].grad1.nstates;
+	double K = 1.0; //parameter for penalty function
 
   if (isSSM)
     osteps = STEP_OPT_ITERS;
@@ -6648,9 +6694,6 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
     printf("\n at limit of growth (%i growth attempts) \n",ngrowth);
     exit(1);
   }
-
-//  for (int n=0;n<nnmax0;n++) icoords[n].grad1.knnr_active = 3;
-
   for (;oi<max_iter;oi++)
   {
     printf("\n growing iter: %i \n",oi+1);
@@ -6665,6 +6708,12 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       {
         addednode = addNode(nnR-1,nnR,nnmax-nnP);
         if (addednode) nnR++;
+				else if (isSE_ESSM) //finish because driving is done
+				{
+    			check_essm_done(osteps,oesteps,dqa,runNum,K);
+    		  printf(" Finished\n");
+    		  exit(1);
+				}
         else
         {
           set_fsm_active(nnR-1,nnR-1); 
@@ -6672,7 +6721,6 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
         }
       }
     } 
-    //printf(" icoords[nnmax-nnP].gradrms: %8.5f GROWD: %i \n",icoords[nnmax-nnP].gradrms,GROWD);
     if((icoords[nnmax-nnP].gradrms<gaddmax && GROWD!=1) || isFSM)
     {
       if (oi>0 && nn < nnmax && !isSSM)
@@ -6686,7 +6734,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       if (isFSM)
       {
         get_tangents_1g(dqa,dqmaga,ictan);
-        opt_steps(dqa,ictan,osteps,oesteps);
+        opt_steps(dqa,ictan,osteps,oesteps,0,K);
       }
       else if (!isSSM)
       {
@@ -6698,9 +6746,14 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       ic_reparam_g(dqa,dqmaga);
 
     get_tangents_1g(dqa,dqmaga,ictan);
-    opt_steps(dqa,ictan,osteps,oesteps);
-
-    if (isSSM)
+		if (isSE_ESSM)
+    	opt_steps(dqa,ictan,osteps,oesteps,1,K);
+		else
+      opt_steps(dqa,ictan,osteps,oesteps,0,K);
+				
+		if (!isSE_ESSM)
+		{
+    if (isSSM )
     {
       pastts = past_ts();
       if (pastts && using_break_planes)
@@ -6741,18 +6794,8 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
         nnmax = nnR;
         break;
       }
-#if 0
-      if (fp>0) //for TS starting from first node
-      {
-        printf(" gopt_iter: SSM string grew past TS \n");
-//        n0 = find_peaks(3) - 3; //put 2 free nodes prior to TS
-        n0 = find_uphill(3.0); //go to first node X kcal/mol above start
-        if (n0<0) n0 = 0;
-        printf(" new n0: %i \n",n0);
-        break;
-      }
-#endif
     } //SSM growth terminations
+		}
 
     totalgrad = 0.;
     gradrms = 0.;
@@ -6779,6 +6822,40 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       emax = V_profile[i];
       nmax = i;
     }
+
+
+	//isSE_ESSM growth termination
+	  if (isSE_ESSM)
+    {
+      for (int n=0;n<nnR;n++)
+      {
+        printf("node: %i\n",n);
+        for (int i=0;i<nstates-1;i++)
+        {
+          icoords[n].grad1.dE[i] = icoords[n].grad1.E[i+1] - icoords[n].grad1.E[i];
+          printf(" dE[%i]:  %5.4f\t ",i,icoords[n].grad1.dE[i]);
+        }
+        cout <<endl;
+      }
+    }
+   	if (isSE_ESSM && (icoords[nnR-1].grad1.dE[wstate2-2]-icoords[nnR-2].grad1.dE[wstate2-2])>0.0)
+    {
+      printf("%i %1.4f\n",nnR-1,icoords[nnR-1].grad1.dE[wstate2-2]);
+      printf("%i %1.4f\n",nnR-2,icoords[nnR-2].grad1.dE[wstate2-2]);
+      nnR-=1;
+      int done=check_essm_done(osteps,oesteps,dqa,runNum,K);
+      if (done)
+      {
+        printf(" Finished\n");
+        exit(1);
+      }
+      else
+      {
+        printf(" CI is too far away\n");
+        exit(-1);
+      }
+    }
+
     printf("\n");
     printf(" gopt_iter: %2i totalgrad: %4.3f gradrms: %5.4f tgrads: %3i",oi+1,totalgrad,gradrms,gradJobCount);
     printf(" max E: %5.1f",emax-emin);
@@ -6905,14 +6982,12 @@ void GString::opt_iters(int max_iter, double& totalgrad, double& gradrms, double
   int isDiss = 0;
   int dfailed = 0;
   endearly = 0;
-
-//  for (int i=0;i<nnmax;i++) icoords[i].grad1.always_do_exact = 1;
-//  for (int n=0;n<nnmax0;n++) icoords[n].grad1.knnr_active = 1;
+	double K = 1.0; //parameter for penalty function
 
   for (;oi<max_iter;oi++)
   {
     get_tangents_1e(dqa,dqmaga,ictan);
-    opt_steps(dqa,ictan,osteps,oesteps);
+    opt_steps(dqa,ictan,osteps,oesteps,0,K);
 
     totalgrad = 0.;
     gradrms = 0.;
@@ -7553,7 +7628,7 @@ void GString::add_last_node(int type)
   }
   string nstr = StringTools::int2str(runNum,4,"0");
   icoords[nnR].grad1.update_knnr();
-  V_profile[nnR] = icoords[nnR].opt_b("scratch/intopt"+nstr+".xyz",noptsteps);
+  V_profile[nnR] = icoords[nnR].opt_b("scratch/intopt"+nstr+".xyz",noptsteps,0,0.0);
   gradJobCount += icoords[nnR].noptdone;
   
   printf(" %s",icoords[nnR].printout.c_str()); 
@@ -7727,4 +7802,58 @@ void GString::prepare_molpro()
     if (n==nnmax0-2 && !isRestart) icoords[n].grad1.seedType = -2; //copy from "next" node
   }
 
+}
+
+
+int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,double K)
+{
+	int wstate2=icoords[0].grad1.wstate2;
+	int wstate=icoords[0].grad1.wstate;
+	int nstates = icoords[0].grad1.nstates;
+	int essm_counter=0.;
+	int done=0;
+  double E0 = icoords[0].grad1.E[1];
+  string nstr = StringTools::int2str(runNum,4,"0");
+  string runName0 = StringTools::int2str(runNum,4,"0");
+
+	printf(" Optimizing on penalty function on node %i",nnR-1);
+  icoords[nnR-1].OPTTHRESH =CONV_TOL;
+  double sigma=	get_sigma(nnR-1,K);
+	icoords[nnR-1].opt_b("scratch/xyzfile_"+runName0+".xyz",osteps,1,sigma);
+  string strfileg = "stringfile.xyz"+nstr+"g";
+  printf(" writing grown string %s \n",strfileg.c_str());
+  string strfile = "stringfile.xyz"+nstr;
+  print_string(nnR,allcoords,strfileg);
+	printf(" Optimizing to MECI.\n");
+	Conical meci(nnmax0,icoords[nnR-1],ncpu, runNum,nnR,STEP_OPT_ITERS,isMECI); //constructor
+	meci.opt_meci();
+  printf(" writing string %s \n",strfile.c_str());
+  print_string(nnR,allcoords,strfile);
+	done=1;
+
+	return done;
+}
+
+double GString::get_sigma(int n,double K)
+{
+	if (n==0)
+	{
+		printf(" n=0, setting sigma equal to 0\n");
+		double sigma=0.0;
+		return sigma;
+	}
+	//double B = 2.; //growth rate 
+	
+	int wstate2=icoords[0].grad1.wstate2;
+	printf(" dE[0] = %1.4f\n",icoords[0].grad1.dE[wstate2-2]);
+	printf(" dE[%i]=%1.2f\n",n,icoords[n].grad1.dE[wstate2-2]);
+	double dEdE0 = icoords[n].grad1.dE[wstate2-2]/icoords[0].grad1.dE[wstate2-2];
+	printf(" dE/dE0 = %1.4f\n",dEdE0);
+	//linear
+	double sigma=0.0;
+	if (dEdE0<1.0)
+		sigma = K - K*dEdE0;
+	printf(" K= %1.2f, sigma = %1.4f\n",K, sigma);
+
+	return sigma;
 }
