@@ -11,7 +11,6 @@ class Conical {
 	private:
 	 ICoord conical;
 
-	 double* coords;	
    double* dgrad; 
    //double* dgrad_q; 
    //double* dgrad_U; 
@@ -48,6 +47,7 @@ class Conical {
 	 void calc_dvec();
 	 double calc_BP();
 	 double form_MECI_space();
+	 double* coords;	
 };
 
 #endif

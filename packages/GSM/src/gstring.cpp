@@ -1724,10 +1724,11 @@ double GString::tangent_1b(double* ictan)
       printf(" WARNING: bond %i %i not found! \n",a1+1,a2+1);
       exit(1);
     }
-    double d0 = (newic.getR(a1) + newic.getR(a2))/2.8;
+    double d0 = (newic.getR(a1) + newic.getR(a2))/2.1; // was /2.8
     //if (newic.anumbers[a1]==1 && newic.anumbers[a2]==1) d0 = 0.7;
-    ictan[wbond] = -1 * (d0 - newic.distance(a1,a2));
-    if (ictan[wbond] < 0.)
+    if (newic.distance(a1,a2)>d0)
+    	ictan[wbond] = -1 * (d0 - newic.distance(a1,a2));
+		else
       ictan[wbond] = 0.;
     printf(" bond %i %i d0: %4.3f diff: %4.3f \n",a1+1,a2+1,d0,ictan[wbond]);
     bdist += ictan[wbond] * ictan[wbond];
@@ -1745,18 +1746,22 @@ double GString::tangent_1b(double* ictan)
       printf(" WARNING: bond %i %i not found! \n",b1+1,b2+1);
       exit(1);
     }
-    double d0 = (newic.getR(b1) + newic.getR(b2))*2.0;
-//    ictan[wbond] = -1 * (d0 - newic.distance(b1,b2));
+    double d0 = (newic.getR(b1) + newic.getR(b2));  //was *2
+		//newic.make_frags(); //doesnt work ?
+		//if (newic.nfrags==1)
+		//	d0 = d0/1.5;
+
     if (newic.distance(b1,b2)<d0)
     {
-      if (nadd>0)
-        ictan[wbond] = -breakdq * nadd;
-      else
-        ictan[wbond] = -breakdq;
+			ictan[wbond] = -1 * (d0 - newic.distance(b1,b2));
+      //if (nadd>0)
+      //  ictan[wbond] = -breakdq * nadd;
+      //else
+      //  ictan[wbond] = -breakdq;
     }
-    else
-      ictan[wbond] = -breakdq;
-    printf(" bond %i %i d0: %4.3f diff: %4.3f \n",b1+1,b2+1,d0,ictan[wbond]);
+    //else						//why was this here?
+    //  ictan[wbond] = -breakdq;
+    printf(" bond %i %i d0: %4.3f dist: %4.3f diff: %4.3f \n",b1+1,b2+1,d0,newic.distance(b1,b2),ictan[wbond]);
   }
 
  //angle tangent
@@ -1771,6 +1776,10 @@ double GString::tangent_1b(double* ictan)
     printf(" anglev: %4.3f anglet: %4.3f diff(rad): %4.3f \n",newic.anglev[an1],anglet[i],(anglet[i] - newic.anglev[an1])*3.14159/180.);
 
     ictan[nbonds+an1] = - (anglet[i] - newic.anglev[an1])*3.14159/180.0;
+#if 0
+	for (int i=0;i<size_ic;i++)
+		printf("%1.4f ", ictan[i]);
+#endif
   }
 
  //torsion tangent
@@ -1784,16 +1793,25 @@ double GString::tangent_1b(double* ictan)
     int an1 = newic.tor_num(b1,b2,b3,b4);
 
     double tordiff = tort[i] - newic.torv[an1];
+		printf(" tordiff= %1.2f\n",tordiff);
     double torfix = 0.;
     if (tordiff>180.)
       torfix = -360.;
     else if (tordiff<-180.)
       torfix = 360.;
-
-    ictan[nbonds+nangles+an1] = - (tordiff + torfix)*3.14159/180.0;
+		
+		if ((tordiff+torfix)*3.14159/180. > 0.1 || (tordiff+torfix)*3.14159/180. < 0.1)
+    	ictan[nbonds+nangles+an1] = - (tordiff + torfix)*3.14159/180.0;
+		else
+			ictan[nbonds+nangles+an1] = 0.0;
 
     printf(" tangent tor: %i %i %i %i is #%i \n",b1+1,b2+1,b3+1,b4+1,an1);
     printf(" torv: %4.3f tort: %4.3f diff(rad): %4.3f \n",newic.torv[an1],tort[i],(tordiff+torfix)*3.14159/180.);
+		//printf(" %i, %i\n",size_ic,nbonds+nangles+an1);
+#if 0
+	for (int i=0;i<size_ic;i++)
+		printf("%1.4f ", ictan[i]);
+#endif
   }
 
   //some normalization
@@ -1803,7 +1821,12 @@ double GString::tangent_1b(double* ictan)
   double norm = sqrt(norm0);
   for (int i=0;i<size_ic;i++)
     ictan[i] = ictan[i] / norm;
-
+	
+#if 0
+	printf(" \nAfter \n");
+	for (int i=0;i<size_ic;i++)
+		printf("%1.4f ", ictan[i]);
+#endif
 
 //CPMZ clean up!
 #if 0
@@ -1829,7 +1852,6 @@ double GString::tangent_1b(double* ictan)
  // printf(" bdist: %4.3f norm: %4.3f \n",bdist,norm);
   return bdist;
 }
-
 
 void GString::align_rxn()
 {
@@ -3166,7 +3188,8 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,in
       if (!(find && n==TSnode))
       {
 #if !HESS_TANG 
-        icoords[n].opt_constraint(ictan[n]); //|| USE_MOLPRO || QCHEMSF
+				if !(isSE_ESSM)
+        	icoords[n].opt_constraint(ictan[n]); //|| USE_MOLPRO || QCHEMSF
 #endif
         if (growing) icoords[n].stage1opt = 1;
         else icoords[n].stage1opt = 0;
@@ -7820,13 +7843,17 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
   icoords[nnR-1].OPTTHRESH =CONV_TOL;
   double sigma=	get_sigma(nnR-1,K);
 	icoords[nnR-1].opt_b("scratch/xyzfile_"+runName0+".xyz",osteps,1,sigma);
+  printf(" %s \n",icoords[nnR-1].printout.c_str()); 
+
   string strfileg = "stringfile.xyz"+nstr+"g";
   printf(" writing grown string %s \n",strfileg.c_str());
   string strfile = "stringfile.xyz"+nstr;
   print_string(nnR,allcoords,strfileg);
 	printf(" Optimizing to MECI.\n");
-	Conical meci(nnmax0,icoords[nnR-1],ncpu, runNum,nnR,STEP_OPT_ITERS,isMECI); //constructor
+	Conical meci(nnmax0,icoords[nnR-1],ncpu, runNum,nnR-1,100,1); //constructor
 	meci.opt_meci();
+
+	icoords[nnR-1].reset(natoms,anames,anumbers,meci.coords);
   printf(" writing string %s \n",strfile.c_str());
   print_string(nnR,allcoords,strfile);
 	done=1;

@@ -30,6 +30,10 @@ Conical::Conical(int nnodes_value, ICoord icoord, int ncpu, int runNum, int rune
 	grad = new double[3*natoms];
 	dgrad = new double[3*natoms];
 	dvec = new double[3*natoms];
+	coords = new double[3*natoms];
+
+ for (int i=0;i<3*natoms;i++)
+   coords[i]=icoord.coords[i];
 
 
 }
@@ -73,7 +77,7 @@ double Conical::form_MECI_space()
 {
 
 	energy = calc_BP();
-	print_bp();
+	//print_bp();
 	printf(" Forming the 3N-6 dimensional space defined by a MECI\n");
 	conical.dgrad_to_dgradq(dgrad);
 	conical.dvec_to_dvecq(dvec);
@@ -90,7 +94,7 @@ double Conical::form_MECI_space()
 #endif
 	conical.constrain_bp();
 	conical.bmat_create();
-	conical.print_q();
+	//conical.print_q();
 
 	return energy;
 }
@@ -110,6 +114,8 @@ void Conical::opt_meci()
 	conical.opt_MECI("scratch/cfile_"+runName0+".xyz",opt_steps,runEnd,run,grad,dvec,dgrad);
 	
   printf(" %s",conical.printout.c_str());
+ 	for (int i=0;i<3*natoms;i++)
+ 	  coords[i]=conical.coords[i];
 	
 	return;
 }

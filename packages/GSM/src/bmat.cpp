@@ -59,7 +59,7 @@ int ICoord::bmat_alloc() {
  
   MAXAD = 0.075; //max along one coordinate (was using 0.1)
   DMAX = 0.1; //max of step magnitude (was using 0.125)
-  DMIN0 = DMAX/100.; //was 5.
+  DMIN0 = DMAX/10.; //was 5.
 #if USE_PRIMA
   DMAX = 0.025;
 #endif
@@ -2026,7 +2026,11 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
 
   do_bfgs = 0; //resets at each step
 
-  double energy = grad1.grads(coords, grad, Ut, 1) - V0;
+	double energy;
+	if (penalty)
+		energy = grad1.levine_penalty(coords,grad,Ut,1,sigma)-V0;
+	else
+ 		energy = grad1.grads(coords, grad, Ut, 1) - V0;
   if (energy > 1000.) { sprintf(sbuff,"SCF failed \n"); printout+=sbuff; return 10000.; }
 
   energyp = energy;
@@ -2118,7 +2122,10 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
     if (n<OPTSTEPS-1)
     {
       noptdone++;
-      energy = grad1.grads(coords, grad, Ut, 1) - V0;
+			if (penalty)
+				energy = grad1.levine_penalty(coords,grad,Ut,1,sigma)-V0;
+			else
+ 				energy = grad1.grads(coords, grad, Ut, 1) - V0;
       if (energy > 1000.) { sprintf(sbuff,"SCF failed \n"); printout += sbuff; gradrms = 1.; break; }
 
 #if STEPCONTROL
@@ -5964,13 +5971,13 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
       if (energy > 1000.) { gradrms = 1.; break; }
 
 			double correction =gradq[nicd0-1]*dq0[nicd0-1]*627.5;
-			printf(" Correction is %1.4f\n",correction);
+			//printf(" Correction is %1.4f\n",correction);
 			dEpre += correction;
       double dE = energy - energyp;
       energyp = energy;
       //if (abs(dEpre)<0.05) dEpre = sign(dEpre)*0.05; 
       double ratio = dE/dEpre;
-			printf("dEpre=%1.4f, dE=%1.4f, ratio=%2.4f\n",dEpre,dE,ratio);
+			//printf("dEpre=%1.4f, dE=%1.4f, ratio=%2.4f\n",dEpre,dE,ratio);
       sprintf(sbuff," ratio: %2.3f ",ratio); printout += sbuff;
 #if STEPCONTROLG
       if (gradrms>pgradrms)
@@ -5991,18 +5998,18 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
       if (DMAX<DMIN0) DMAX = DMIN0;
 #endif
 #if 1
-      if (dE > 0.001 && !isTSnode) //only apply this after reaching seam
-      {
-				if (grad1.dE[wstate2-2]<1.0)	
-				{
-        	sprintf(sbuff," dE>0, decreasing DMAX "); printout += sbuff;
-        	if (smag<DMAX)
-        	  DMAX = smag / 1.5;
-        	else
-        	  DMAX = DMAX / 1.5;
-				}
-      }
-      else if ((ratio < 0.25 || ratio > 1.5) || gradrms>pgradrms*1.1 ) //&& abs(dEpre)>0.05 this included before
+      //if (dE > 0.001 && !isTSnode) //only apply this after reaching seam
+      //{
+			//	if (grad1.dE[wstate2-2]<1.0)	
+			//	{
+      //  	sprintf(sbuff," dE>0, decreasing DMAX "); printout += sbuff;
+      //  	if (smag<DMAX)
+      //  	  DMAX = smag / 1.5;
+      //  	else
+      //  	  DMAX = DMAX / 1.5;
+			//	}
+      //}
+      if ((ratio < 0.25 || ratio > 1.5) && gradrms>pgradrms*1.35 ) //&& abs(dEpre)>0.05 this included before
       {
         sprintf(sbuff," decreasing DMAX "); printout += sbuff;
         if (smag<DMAX)
