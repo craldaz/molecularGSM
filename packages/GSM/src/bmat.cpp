@@ -22,6 +22,10 @@ using namespace std;
 #define STEPCONTROLG 0
 #define THRESH 1E-3
 
+
+#define DG_ROT 1
+#define UPDATE_BP 0
+
 int ICoord::bmat_alloc() {
 
   int size_ic = nbonds+nangles+ntor+150; //buffer of 150 for new primitives
@@ -5788,9 +5792,9 @@ void ICoord::create_mwHint_EV(double* Lm, double* Lme)
 
 
 /*!
- * Calculates the combined step towards the MECI.
+ * combined step algorithm towards the MECI.
  */
-double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, double* grads, double* dvec, double* dgrad)
+double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run)
 {
 	printf(" on node %i\n",node);
   printout = "";
@@ -5829,15 +5833,15 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
 	bmat_create();
 	double energy;
 	energy = (grad1.E[1]+grad1.E[0])/2 - V0;
-	for (int i=0;i<3*natoms;i++)
-		grad[i]=grads[i];
+	//for (int i=0;i<3*natoms;i++)
+	//	grad[i]=grads[i];
 	//print_grad();
 	//printf(" Average energy: %1.3f kcal/mol\n",energy);
 	double deltaE;
 	//Form space
 	double norm_dg=0.;
-	dgrad_to_dgradq(dgrad);
-	dvec_to_dvecq(dvec);
+	dgrad_to_dgradq();
+	dvec_to_dvecq();
 	norm_dg=dgrot_mag();
 	project_dgradq();
 	project_dvecq();
@@ -5918,8 +5922,8 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
       sprintf(sbuff," bc problem, r Ut "); printout += sbuff;
 			bmatp_create();
 			bmatp_to_U();
-			dgrad_to_dgradq(dgrad);
-			dvec_to_dvecq(dvec);
+			dgrad_to_dgradq();
+			dvec_to_dvecq();
 			norm_dg=dgrot_mag();
 			project_dgradq();
 			project_dvecq();
@@ -5947,8 +5951,8 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
 			dgrad[i]= grad1.grada[1][i]- grad1.grada[0][i];
 		printf(" Calculating dvec\n");
 		grad1.dvec_calc(coords,dvec,run,node);
-		dgrad_to_dgradq(dgrad);
-		dvec_to_dvecq(dvec);
+		dgrad_to_dgradq();
+		dvec_to_dvecq();
 		norm_dg=dgrot_mag();
 		project_dgradq();
 		project_dvecq();
@@ -6084,3 +6088,130 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
   return energy;
 }
 
+void ICoord::opt_meci(int runNum,int runEnd,int STEP_OPT_ITERS)
+{
+	printf(" Optimizing node to MECI using Combined-Step Optimizer\n");
+	double energy = form_meci_space(runNum,runEnd);	
+	printf(" Initial energy is %1.4f\n",energy);
+	V0 = energy;
+   
+	string runName0 = StringTools::int2str(runNum,4,"0")+"."+StringTools::int2str(runEnd,4,"0");	
+	//use combined step optimizer
+	gradrms = 100.;
+	make_Hint();
+	energy=combined_step("scratch/cfile_"+runName0+".xyz",STEP_OPT_ITERS,runEnd,runNum);
+  printf(" %s",printout.c_str());
+	
+	printf(" opt_energy is %1.4f\n", V0+energy);
+
+	return;
+}
+
+double ICoord::form_meci_space(int run, int node)
+{
+	double energy = calc_BP(run,node);
+	//print_bp();
+	printf(" Forming the 3N-6 dimensional space defined by a MECI\n");
+	dgrad_to_dgradq();
+	dvec_to_dvecq();
+
+#if DG_ROT
+	double norm_dg=dgrot_mag();
+	project_dgradq();
+	project_dvecq();
+#else
+	//need to code dvec rot
+	//project(dvecq,dvecq_U);
+	//norm_dg=project(dgradq,dgradq_U);
+	printf(" norm_dg = %1.2f",norm_dg); 
+#endif
+	constrain_bp();
+	bmat_create();
+	//print_q();
+
+	return energy;
+}
+
+void ICoord::constrain_bp()
+{
+	int len = nbonds+nangles+ntor;
+#if 0
+	for (int i=0;i<len;i++)
+		printf(" %1.2f",dgrad_U[i]);
+	printf("\n");
+	for (int i=0;i<len;i++)
+		printf(" %1.2f",dvec_U[i]);
+	printf("\n");
+#endif 
+#if 0
+	double overlap=0.;
+	for (int i=0;i<len;i++)
+		overlap+=dvec_U[i]*dgrad_U[i];
+	printf(" Overlap between ortho-normalized GD and DC = %1.3f\n",overlap);	
+#endif
+	//printf(" Orthonormalizing coordinates U vs BP\n"); 
+  double* dot_gd = new double[len];
+  for (int i=0;i<len;i++) dot_gd[i] =0.;
+  for (int i=0;i<len;i++) 
+  for (int j=0;j<len;j++)
+    dot_gd[i] += dgrad_U[j]*Ut[i*len+j]; 
+  double* dot_dc = new double[len];
+  for (int i=0;i<len;i++) dot_dc[i] =0.;
+  for (int i=0;i<len;i++) 
+  for (int j=0;j<len;j++)
+    dot_dc[i] += dvec_U[j]*Ut[i*len+j]; 
+	
+  for (int i=0;i<nicd0;i++)
+  {
+    if (i!=nicd0-1)
+    for (int j=0;j<len;j++)
+      Ut[i*len+j] -= (dot_gd[i] * dgrad_U[j] + dot_dc[i] * dvec_U[j]);
+		
+    for (int k=0;k<i;k++)
+    {
+      double dot2 = 0.;
+      for (int j=0;j<len;j++)
+        dot2 += Ut[i*len+j] * Ut[k*len+j];
+
+      for (int j=0;j<len;j++)
+        Ut[i*len+j] -= dot2 * Ut[k*len+j];
+
+    } // loop k over previously formed vectors
+
+    double norm = 0.;
+    for (int j=0;j<len;j++)
+      norm += Ut[i*len+j] * Ut[i*len+j];
+    norm = sqrt(norm);
+    if (abs(norm)<0.00001) norm = 1;
+    if (abs(norm)<0.00001) printf(" WARNING: small norm: %1.7f \n",norm);
+    for (int j=0;j<len;j++)
+      Ut[i*len+j] = Ut[i*len+j]/norm;
+  }
+	//printf(" Last vector in U is dgrad_U");
+  for (int j=0;j<len;j++)
+    Ut[nicd*len+j] = dgrad_U[j];
+	nicd--;
+//printf(" second to last vector in Ut is dvec_U\n");
+	for (int j=0;j<len;j++)
+		Ut[nicd*len+j] = dvec_U[j];
+	cout << endl;
+#if 0
+  printf(" printing dgrad_U vs. Ut[nicd*len]\n");
+  for (int j=0;j<len;j++)
+    printf(" %1.2f/%1.2f\n",dgrad_U[j],Ut[(nicd+1)*len+j]);
+#endif
+#if 0
+  printf(" printing orthonormalized vectors \n");
+  for (int i=0;i<nicd0;i++)
+  {
+    for (int j=0;j<len;j++)
+      printf(" %1.3f",Ut[i*len+j]);
+    printf("\n");
+  }
+#endif
+	
+	delete [] dot_gd;
+	delete [] dot_dc;
+	return;
+
+}

@@ -96,6 +96,8 @@ int ICoord::alloc(int size){
  coordsts = new double[natoms*3];
  coords0 = new double[natoms*3];
 
+ dgrad = new double[3*natoms]; //for meci
+ dvec = new double[3*natoms]; //for meci
  dgradq = new double[nicd0+50]; //for meci
  dvecq = new double[nicd0+50];
  dgrad_U = new double[3*natoms+50]; //for meci
@@ -2025,7 +2027,7 @@ int ICoord::read_ics(string filename)
 #endif
 
 
-void ICoord::dgrad_to_dgradq(double* dgrad)
+void ICoord::dgrad_to_dgradq()
 {
   int N3 = 3*natoms;
   int len_d = nicd0;
@@ -2062,7 +2064,7 @@ void ICoord::dgrad_to_dgradq(double* dgrad)
 
 	return;
 }
-void ICoord::dvec_to_dvecq(double* dvec)
+void ICoord::dvec_to_dvecq()
 {
   int N3 = 3*natoms;
   int len_d = nicd0;
@@ -2242,41 +2244,101 @@ double ICoord::project_dvecq()
 }
 
 
-void ICoord::constrain_bp()
+
+void ICoord::constrain_ss_bp(double* C) 
 {
-	int len = nbonds+nangles+ntor;
+  int len = nbonds+nangles+ntor;
+	printf(" in opt_constraint_SS\n");
 #if 0
-	for (int i=0;i<len;i++)
-		printf(" %1.2f",dgrad_U[i]);
-	printf("\n");
-	for (int i=0;i<len;i++)
-		printf(" %1.2f",dvec_U[i]);
-	printf("\n");
-#endif 
-#if 0
-	double overlap=0.;
-	for (int i=0;i<len;i++)
-		overlap+=dvec_U[i]*dgrad_U[i];
-	printf(" Overlap between ortho-normalized GD and DC = %1.3f\n",overlap);	
+  printf(" constraint: ");
+  for (int i=0;i<len;i++)
+    printf(" %1.3f",C[i]);
+  printf("\n");
 #endif
-	//printf(" Orthonormalizing coordinates U vs BP\n"); 
-  double* dot_gd = new double[len];
-  for (int i=0;i<len;i++) dot_gd[i] =0.;
-  for (int i=0;i<len;i++) 
-  for (int j=0;j<len;j++)
-    dot_gd[i] += dgrad_U[j]*Ut[i*len+j]; 
-  double* dot_dc = new double[len];
-  for (int i=0;i<len;i++) dot_dc[i] =0.;
-  for (int i=0;i<len;i++) 
-  for (int j=0;j<len;j++)
-    dot_dc[i] += dvec_U[j]*Ut[i*len+j]; 
+
+	nicd--;
+	printf("nicd0=%i, nicd=%i\n",nicd0,nicd);
+	if (nicd != (nicd0-3))
+	{
+		printf(" nicd does not equal nicd0-3\n");
+		exit(-1);
+	}
+	//nicd is nicd0-1-1-1=nicd0-3, 
+	//and therefore the nicd'th element references the constraint in SS
+	//and the nicdm elements represents the 3N-8 SS coordinates
+	int nicdm=nicd0-2;
+  //printf(" nicd,nicdm: %i,%i \n",nicd,nicdm);
+  //take constraint vector, project it out of all Ut in SS
+  //orthonormalize vectors
+  //last vector becomes C (projection onto space)
 	
-  for (int i=0;i<nicd0;i++)
+	//printf(" Orthonormalizing ictan vs SS coordinates\n\n");
+  double norm = 0.;
+  for (int i=0;i<len;i++)
+    norm += C[i]*C[i];
+  norm = sqrt(norm);
+  for (int j=0;j<len;j++)
+    C[j] = C[j]/norm;
+
+  double* dots = new double[len];
+  for (int i=0;i<len;i++) dots[i] =0.;
+
+  double* Cn = new double[len];
+  for (int i=0;i<len;i++) Cn[i] =0.;
+
+  for (int i=0;i<len;i++)
+  for (int j=0;j<len;j++)
+    dots[i] += C[j]*Ut[i*len+j];
+ 
+  for (int i=0;i<nicdm;i++) // subspace projection
+  for (int j=0;j<len;j++)
+    Cn[j] += dots[i]*Ut[i*len+j];
+	
+  norm = 0.;
+  for (int i=0;i<len;i++)
+    norm += Cn[i]*Cn[i];
+  norm = sqrt(norm);
+  //printf(" Cn norm: %1.2f \n",norm);
+  for (int j=0;j<len;j++)
+    Cn[j] = Cn[j]/norm;
+
+	//Save projected ictan before schmidting
+	for (int j=0;j<len;j++)
+		C[j] = Cn[j];
+	
+#if 0
+  norm = 0.;
+  for (int j=0;j<len;j++)
+    norm += C[j] * Cn[j];
+  printf(" C dot Cn: %1.3f \n",norm);
+#endif
+#if 0
+  printf(" Printing Cn: \n");
+  for (int j=0;j<nbonds;j++)
+    printf(" %1.2f",Cn[j]);
+  printf("\n");
+  for (int j=0;j<nangles;j++)
+    printf(" %1.2f",Cn[nbonds+j]);
+  printf("\n");
+  for (int j=0;j<ntor;j++)
+    printf(" %1.2f",Cn[nbonds+nangles+j]);
+  printf("\n");
+#endif
+
+  for (int i=0;i<len;i++) dots[i] =0.;
+  for (int i=0;i<len;i++) 
+  for (int j=0;j<len;j++)
+    dots[i] += Cn[j]*Ut[i*len+j];
+
+//  for (int i=0;i<nicd0;i++)
+//    printf(" dots[%i]: %1.2f \n",i,dots[i]);
+
+  for (int i=0;i<nicdm;i++)
   {
-    if (i!=nicd0-1)
+    if (i!=nicdm-1)
     for (int j=0;j<len;j++)
-      Ut[i*len+j] -= (dot_gd[i] * dgrad_U[j] + dot_dc[i] * dvec_U[j]);
-		
+      Ut[i*len+j] -= dots[i] * Cn[j];
+
     for (int k=0;k<i;k++)
     {
       double dot2 = 0.;
@@ -2285,9 +2347,8 @@ void ICoord::constrain_bp()
 
       for (int j=0;j<len;j++)
         Ut[i*len+j] -= dot2 * Ut[k*len+j];
-
     } // loop k over previously formed vectors
-
+ 
     double norm = 0.;
     for (int j=0;j<len;j++)
       norm += Ut[i*len+j] * Ut[i*len+j];
@@ -2296,19 +2357,13 @@ void ICoord::constrain_bp()
     if (abs(norm)<0.00001) printf(" WARNING: small norm: %1.7f \n",norm);
     for (int j=0;j<len;j++)
       Ut[i*len+j] = Ut[i*len+j]/norm;
-  }
-	//printf(" Last vector in U is dgrad_U");
-  for (int j=0;j<len;j++)
-    Ut[nicd*len+j] = dgrad_U[j];
-	nicd--;
-//printf(" second to last vector in Ut is dvec_U\n");
+  } 
 	for (int j=0;j<len;j++)
-		Ut[nicd*len+j] = dvec_U[j];
-	cout << endl;
+	   Ut[nicd*len+j] = Cn[j];
 #if 0
-  printf(" printing dgrad_U vs. Ut[nicd*len]\n");
-  for (int j=0;j<len;j++)
-    printf(" %1.2f/%1.2f\n",dgrad_U[j],Ut[(nicd+1)*len+j]);
+	 printf(" printing Cn vs. Ut[nicd*len]\n");  
+	for (int j=0;j<len;j++)m  
+  	printf(" %1.2f/%1.2f\n",Cn[j],Ut[nicd*len+j]);
 #endif
 #if 0
   printf(" printing orthonormalized vectors \n");
@@ -2319,9 +2374,64 @@ void ICoord::constrain_bp()
     printf("\n");
   }
 #endif
-	
-	delete [] dot_gd;
-	delete [] dot_dc;
-	return;
 
+  delete [] dots;
+  delete [] Cn;
+
+  return;
 }
+
+double ICoord::form_constraint_space(int run, int node,double* C)
+{
+	printf(" Forming U' space where the last vector in the SS is the constraint, and the last two vectors are BP\n");
+
+	update_ic();
+	bmatp_create();
+	bmatp_to_U();
+	double energy = calc_BP( run, node);
+	dgrad_to_dgradq();
+	dvec_to_dvecq();
+
+#if DG_ROT
+	double norm_dg=dgrot_mag();
+	project_dgradq();
+	project_dvecq();
+#else
+	//need to code dvec rot
+	//project(dvecq,dvecq_U);
+	//norm_dg=project(dgradq,dgradq_U);
+	//printf(" norm_dg = %1.2f",norm_dg); 
+#endif
+	constrain_bp();
+	bmat_create();
+	//print_q();
+
+	constrain_ss_bp(C);
+	bmat_create();
+	
+	return energy;
+}
+
+double ICoord::calc_BP(int run, int node)
+{
+	double energy = calc_dgrad(run, node);
+	calc_dvec(run, node);
+	return energy;
+}
+
+double ICoord::calc_dgrad(int run, int node)
+{
+	printf(" Calculating dgrad\n");
+	double energy=grad1.grads(coords, grad,Ut, 3); 
+	for (int i=0;i<3*natoms;i++)
+  	dgrad[i] = grad1.grada[1][i] - grad1.grada[0][i]; 
+	return energy;
+}
+
+void ICoord::calc_dvec(int run, int node)
+{
+	printf(" Calculating dvec\n");
+	grad1.dvec_calc(coords, dvec,run,node); 
+	return;
+}
+

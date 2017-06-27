@@ -191,6 +191,7 @@ void GString::String_Method_Optimization()
   icoords[0].reset(natoms,anames,anumbers,coords[0]);
   icoords[nnmax-1].reset(natoms,anames,anumbers,coords[nnmax-1]);
 
+	
   ICoord ic1,ic2,ic3; 
   ic1.alloc(natoms);
   ic2.alloc(natoms);
@@ -385,6 +386,8 @@ void GString::String_Method_Optimization()
   }
 #endif
 
+
+
   printf("\n\n ---- Now preparing gradients ---- \n");
   string nstr = StringTools::int2str(runNum,4,"0");
   grad1.init(infile0,natoms,anumbers,anames,icoords[1].coords,runNum,runend,ncpu,1,CHARGE);
@@ -393,7 +396,8 @@ void GString::String_Method_Optimization()
   for (int n=0;n<nnmax0;n++)
     icoords[n].grad_init(infile0,ncpu,runNum,runend+n,0,CHARGE); //level 3 is exact kNNR only, 0 is QM grad always
 #else
-	prepare_molpro();
+		if (!isDE_ESSM)
+			prepare_molpro();
 #endif
 
 #if USE_MOLPRO || QCHEMSF
@@ -415,9 +419,13 @@ void GString::String_Method_Optimization()
 		printf("###############################################################\n");
 		printf("###############################################################\n");
 		printf("###############################################################\n");
-		Conical meci(nnmax0,icoords[0],ncpu, runNum,runend-1,STEP_OPT_ITERS,isMECI); //constructor
+		//Conical meci(icoords[0],ncpu, runNum,runend-1,STEP_OPT_ITERS,isMECI); //constructor
+
+		icoords[0].grad1.seedType=3;
+		icoords[0].grad_init(infile0,ncpu,runNum,0,0,0);
   	printf(" ---- Done preparing gradients ---- \n\n");
-		meci.opt_meci();
+		
+		icoords[0].opt_meci(runNum,runend-1,STEP_OPT_ITERS);
 		printf(" Finished\n");
 		exit(-1);
 	}
@@ -478,10 +486,13 @@ void GString::String_Method_Optimization()
   }
   if (!isRestart)
   {
-    if (!isSSM)
-      starting_string(dq,4);
-    else if (!isRestart)
+    if (isSSM)
       starting_string(dq,3);
+    else if (isDE_ESSM)
+      starting_seam(dq,4);
+		else 
+      starting_string(dq,4);
+
     active[1] = active[nnmax-2] = 1;
     if (isSSM) active[nnmax-2] = -1;
     if (GROWD==1 && !isSSM)
@@ -1213,6 +1224,11 @@ void GString::parameter_init(string infilename)
 				printf("  -using SE-ESSM \n");
 				isSSM = 1; //both are turned on 
 				isSE_ESSM=1;
+			}
+			else if (tok_line[1]=="DE-ESSM")
+			{
+				printf("  -using DE-ESSM \n");
+				isDE_ESSM=1;
 			}
       else
       {
@@ -7783,7 +7799,7 @@ void GString::prepare_molpro()
 	int wstate2 = grad1.wstate2;
 	int wstate = grad1.wstate;
 
-	if (!isMECI)
+	if (!isMECI && !isDE_ESSM)
   for (int n=0;n<nnmax0;n++)
   {
     printf("\n Node %2i \n",n); fflush(stdout);
@@ -7850,10 +7866,9 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
   string strfile = "stringfile.xyz"+nstr;
   print_string(nnR,allcoords,strfileg);
 	printf(" Optimizing to MECI.\n");
-	Conical meci(nnmax0,icoords[nnR-1],ncpu, runNum,nnR-1,100,1); //constructor
-	meci.opt_meci();
-
-	icoords[nnR-1].reset(natoms,anames,anumbers,meci.coords);
+	//Conical meci(icoords[nnR-1],ncpu, runNum,nnR-1,100,1); //constructor
+	//meci.opt_meci();
+	icoords[nnR-1].opt_meci(runNum,nnR-1,100);
   printf(" writing string %s \n",strfile.c_str());
   print_string(nnR,allcoords,strfile);
 	done=1;
@@ -7883,4 +7898,137 @@ double GString::get_sigma(int n,double K)
 	printf(" K= %1.2f, sigma = %1.4f\n",K, sigma);
 
 	return sigma;
+}
+
+
+/*!
+ * 
+ */
+void GString::starting_seam(double* dq,int nnodes)
+{
+#if 0
+	printf(" starting seam\n");
+	cout << endl;
+  int nbonds = newic.nbonds;
+  int nangles = newic.nangles;
+  int ntor = newic.ntor;
+  int size_ic = newic.nbonds+newic.nangles+newic.ntor;
+  int len_d = newic.nicd0;
+  int nstates = icoords[nnR].grad1.nstates;
+  int wstate = icoords[nnR].grad1.wstate;
+  int wstate2 = icoords[nnR].grad1.wstate2;
+  printf(" nstate: %i, wstate: %i, wstate2: %i\n",nstates,wstate,wstate2);
+// Form the initial string
+  int rp = -1;
+  int iR,iP,wR,wP,iN;
+  double* ictan = new double[size_ic];
+  double* ictan0 = new double[size_ic];
+
+	seam[0].conical.calc_BP();
+	seam[nnmax-1].conical.calc_BP();
+
+  for (int n=2;n<nnodes;n++)
+  {
+    rp *= -1;
+    iR = nnR-1;
+    iP = nnmax-nnP;
+    if (rp==1)
+    {
+      wR = nnR; 
+      iN = wR;
+      nnR++;
+      wP = -1;
+      printf(" creating R node: %i    ",wR);
+    }
+    else if (rp==-1)
+    {
+      nnP++;
+      wP = nnmax-nnP; 
+      wR = -1;
+      iN = wP;
+      printf(" creating P node: %i    ",wP);
+    }
+    printf(" iR,iP: %i %i wR,wP: %i %i iN: %i ",iR,iP,wR,wP,iN);
+
+    if (rp==1)
+    {
+      newic.reset(natoms,anames,anumbers,icoords[iR].coords);
+      intic.reset(natoms,anames,anumbers,icoords[iP].coords);
+    }
+    else if (rp==-1)
+    {
+      newic.reset(natoms,anames,anumbers,icoords[iP].coords);
+      intic.reset(natoms,anames,anumbers,icoords[iR].coords);
+    }
+    newic.update_ic();
+    intic.update_ic();
+		tangent_1(ictan);
+
+
+
+#if 1
+    printf(" printing ictan \n");
+    for (int i=0;i<nbonds;i++)
+      printf(" %1.2f",ictan[i]);
+    printf("\n");
+    for (int i=0;i<nangles;i++)
+      printf(" %1.2f",ictan[nbonds+i]);
+    printf("\n");
+    if (ntors>0)
+    for (int i=0;i<ntor;i++)
+      printf(" %1.2f",ictan[nbonds+nangles+i]);
+    printf("\n");
+#endif
+
+    double dqmag = 0.;
+
+    for (int i=0;i<size_ic;i++) ictan0[i] = ictan[i];
+
+			
+    newic.bmatp_create();
+    newic.bmatp_to_U();
+		
+    newic.bmat_create();
+			
+    for (int j=0;j<size_ic-ntor;j++)
+      dqmag += ictan0[j]*newic.Ut[newic.nicd*size_ic+j];
+    for (int j=nbonds+nangles;j<size_ic;j++)
+      dqmag += ictan0[j]*newic.Ut[newic.nicd*size_ic+j]; 
+    printf(" dqmag: %1.2f",dqmag);
+
+    if (nnmax-n!=1)
+      newic.dq0[newic.nicd0-1] = -dqmag/(nnmax-n);
+    else
+      newic.dq0[newic.nicd0-1] = -dqmag/2;
+
+    printf(" dq0[constraint]: %1.2f \n",newic.dq0[newic.nicd0-1]);
+    int success = newic.ic_to_xyz();
+
+    seam[iN].conical.reset(natoms,anames,anumbers,newic.coords);
+    //com_rotate_move(iR,iP,iN,1.0); //operates on iN via newic
+
+		seam[iN].conical.print_xyz();
+		
+    if (!isSSM)
+    {
+      icoords[iN].make_Hint();
+    }
+    else
+    {
+      printf(" copying Hessian from node %i \n",iR);
+      for (int i=0;i<size_ic*size_ic;i++)
+        icoords[iN].Hintp[i] = icoords[iR].Hintp[i];
+      icoords[iN].newHess = 2;
+    }
+
+    V_profile[iN] = 100.;
+
+  } //loop over interpolation
+
+		
+  delete [] ictan;
+  delete [] ictan0;
+	
+#endif
+  return;
 }

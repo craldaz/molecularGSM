@@ -233,12 +233,33 @@ class ICoord {
 	double* dvecq;
 	double* dgrad_U;
 	double* dvec_U;
-	void dgrad_to_dgradq(double* dgrad);
-	void dvec_to_dvecq(double* dvec);
+  double* dgrad; 
+  double* dvec;
+
+	double* dE;
+	int nstates;
+	int wstate;
+	int wstate2;
+
+	double calc_BP(int run, int node);
+	double calc_dgrad(int run, int node);
+	void calc_dvec(int run, int node);
+	void dgrad_to_dgradq();
+	void dvec_to_dvecq();
 	double dgrot_mag();
 	double project_dgradq();
 	double project_dvecq();
-	void constrain_bp();
+	void constrain_bp();   //constrains the BP
+	void constrain_ss_bp(double* C); //constrains SS ictan and BP
+
+	double form_constraint_space(int run, int node, double* C); //forms 3N-9 SS, 1 SS constraint, and BP constraint
+	void opt_meci(int runNum,int runEnd,int STEP_OPT_ITERS);
+
+	double combined_step(string xyzfile_string, int nsteps, int node,int run);
+
+	double form_meci_space(int run, int node);
+
+
 
   int ic_create();
   int ic_create_nobonds();
@@ -267,7 +288,7 @@ class ICoord {
   double opt_a(int nnewb, int* newb, int nnewt, int* newt, string xyzfile_string, int nsteps);
   double opt_b(string xyzfile_string, int nsteps,int penalty,double sigma);
   double opt_c(string xyzfile_string, int nsteps, double* C, double* C0,int penalty,double sigma);
-	double opt_MECI(string xysfile_string,int nsteps,int node, int run, double* grads,double* dvec, double* dgrad);
+	double combined_step(string xysfile_string,int nsteps,int node, int run, double* grads,double* dvec, double* dgrad);
   double opt_r(string xyzfile_string, int nsteps, double* C, double* C0, double* D, int type);
   double opt_eigen_ts(string xyzfile_string, int nsteps, double* C, double* C0);
   void update_ic();

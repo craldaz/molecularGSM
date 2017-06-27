@@ -19,7 +19,6 @@
 #include "stringtools.h"
 #include "pTable.h"
 #include "eckart.h"
-#include "conical.h"
 
 void print_xyz_gen(int natoms, string* anames, double* coords);
 
@@ -110,11 +109,13 @@ class GString {
   ICoord newic_dm;
   ICoord intic_dm;
   ICoord int2ic_dm;
+	
   int ic_reparam_steps;
   void get_eigenv_bofill();
   void get_eigenv_finite(int enode);
   void get_eigenv_finite(int enode, double** ictan);
   void starting_string(double* dq, int nnodes);
+  void starting_seam(double* dq, int nnodes); //calculate seam 
   void starting_string_dm(double* dq);
   int addNode(int n1, int n2, int n3);
   int addCNode(int n1);
