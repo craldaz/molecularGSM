@@ -5995,7 +5995,7 @@ double ICoord::opt_MECI(string xyzfile_string, int nsteps, int node,int run, dou
         	  DMAX = DMAX / 1.5;
 				}
       }
-      else if ((ratio < 0.25 || ratio > 1.5) ) //&& abs(dEpre)>0.05 this included before
+      else if ((ratio < 0.25 || ratio > 1.5) || gradrms>pgradrms*1.1 ) //&& abs(dEpre)>0.05 this included before
       {
         sprintf(sbuff," decreasing DMAX "); printout += sbuff;
         if (smag<DMAX)
