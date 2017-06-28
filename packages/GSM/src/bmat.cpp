@@ -4251,7 +4251,7 @@ void ICoord::print_gradq(){
 void ICoord::print_q(){
 
   printf(" q in delocalized IC:\n");
-  int len_d = nicd;
+  int len_d = nicd0;
   printf(" printing q: \n");
   for (int i=0;i<len_d;i++)
     printf(" %1.2f",q[i]);
@@ -6149,7 +6149,7 @@ void ICoord::constrain_bp()
 		overlap+=dvec_U[i]*dgrad_U[i];
 	printf(" Overlap between ortho-normalized GD and DC = %1.3f\n",overlap);	
 #endif
-	//printf(" Orthonormalizing coordinates U vs BP\n"); 
+	printf(" Orthonormalizing coordinates U vs BP\n"); 
   double* dot_gd = new double[len];
   for (int i=0;i<len;i++) dot_gd[i] =0.;
   for (int i=0;i<len;i++) 
@@ -6200,7 +6200,7 @@ void ICoord::constrain_bp()
   for (int j=0;j<len;j++)
     printf(" %1.2f/%1.2f\n",dgrad_U[j],Ut[(nicd+1)*len+j]);
 #endif
-#if 0
+#if 1
   printf(" printing orthonormalized vectors \n");
   for (int i=0;i<nicd0;i++)
   {
@@ -6214,4 +6214,351 @@ void ICoord::constrain_bp()
 	delete [] dot_dc;
 	return;
 
+}
+
+double ICoord::project_dgradq()
+{
+	//printf(" Projecting\n"); 
+	
+  int len = nbonds+nangles+ntor;
+  nicd = nicd0;
+	//printf(" len=%i, nicd0=%i\n",len,nicd0);
+  nicd--;
+	double norm=0.;
+
+  for (int i=0;i<nicd0;i++)
+    norm += dgradq[i]*dgradq[i];
+
+	 norm=sqrt(norm);
+	//printf("norm %1.4f\n",norm);
+	
+#if 1
+  for (int i=0;i<nicd0;i++)
+    printf(" %12.10f",dgradq[i]);
+  printf("\n");
+#endif
+
+	for (int i=0;i<len;i++)
+		dgrad_U[i]=0.;
+	for (int i=0;i<len;i++)
+		for (int j=0;j<nicd0;j++)
+			dgrad_U[i]+=dgradq[j]*Ut[j*len+i]/norm;//this wasn't being normalized fixed 06/25/2017
+
+#if 0
+	norm=0.;
+	printf("check if dgrad_U is normalized\n");
+	for (int i=0;i<len;i++)
+		norm += dgrad_U[i]*dgrad_U[i];
+	norm=	sqrt(norm);
+	printf("norm: %1.3f\n",norm);
+#endif
+
+#if 1
+	printf(" Normalized dgrad_U vector\n");
+	for (int i=0;i<len;i++)
+		printf("%1.2f ",dgrad_U[i]);
+	printf("\n");
+	
+#endif
+		
+	return norm;
+
+}
+
+double ICoord::project_dvecq()
+{
+	//printf(" Projecting\n"); 
+	
+  int len = nbonds+nangles+ntor;
+  nicd = nicd0;
+	//printf(" len=%i, nicd0=%i\n",len,nicd0);
+  nicd--;
+	double norm=0.;
+
+  for (int i=0;i<nicd0;i++)
+    norm += dvecq[i]*dvecq[i];
+
+	 norm=sqrt(norm);
+	//printf("norm %1.4f\n",norm);
+	
+#if 1
+  for (int i=0;i<nicd0;i++)
+    printf(" %12.10f",dvecq[i]);
+  printf("\n");
+#endif
+
+	for (int i=0;i<len;i++)
+		dvec_U[i]=0.;
+	for (int i=0;i<len;i++)
+		for (int j=0;j<nicd0;j++)
+			dvec_U[i]+=dvecq[j]*Ut[j*len+i]/norm;//this wasn't being normalized fixed 06/25/2017
+
+#if 0
+	norm=0.;
+	printf("check if dvec_U is normalized\n");
+	for (int i=0;i<len;i++)
+		norm += dvec_U[i]*dvec_U[i];
+	norm=	sqrt(norm);
+	printf("norm: %1.3f\n",norm);
+#endif
+
+#if 1
+	printf(" Normalized dvec_U vector\n");
+	for (int i=0;i<len;i++)
+		printf("%1.2f ",dvec_U[i]);
+	printf("\n");
+	
+#endif
+		
+	return norm;
+
+}
+
+
+
+void ICoord::constrain_ss_bp(double* C) 
+{
+  int len = nbonds+nangles+ntor;
+	printf(" in opt_constraint_SS\n");
+#if 0
+  printf(" constraint: ");
+  for (int i=0;i<len;i++)
+    printf(" %1.3f",C[i]);
+  printf("\n");
+#endif
+
+	nicd--;
+	printf("nicd0=%i, nicd=%i\n",nicd0,nicd);
+	if (nicd != (nicd0-3))
+	{
+		printf(" nicd does not equal nicd0-3\n");
+		exit(-1);
+	}
+	//nicd is nicd0-1-1-1=nicd0-3, 
+	//and therefore the nicd'th element references the constraint in SS
+	//and the nicdm elements represents the 3N-8 SS coordinates
+	int nicdm=nicd0-2;
+  //printf(" nicd,nicdm: %i,%i \n",nicd,nicdm);
+  //take constraint vector, project it out of all Ut in SS
+  //orthonormalize vectors
+  //last vector becomes C (projection onto space)
+	
+	//printf(" Orthonormalizing ictan vs SS coordinates\n\n");
+  double norm = 0.;
+  for (int i=0;i<len;i++)
+    norm += C[i]*C[i];
+  norm = sqrt(norm);
+  for (int j=0;j<len;j++)
+    C[j] = C[j]/norm;
+
+  double* dots = new double[len];
+  for (int i=0;i<len;i++) dots[i] =0.;
+
+  double* Cn = new double[len];
+  for (int i=0;i<len;i++) Cn[i] =0.;
+
+  for (int i=0;i<len;i++)
+  for (int j=0;j<len;j++)
+    dots[i] += C[j]*Ut[i*len+j];
+ 
+  for (int i=0;i<nicdm;i++) // subspace projection
+  for (int j=0;j<len;j++)
+    Cn[j] += dots[i]*Ut[i*len+j];
+	
+  norm = 0.;
+  for (int i=0;i<len;i++)
+    norm += Cn[i]*Cn[i];
+  norm = sqrt(norm);
+  //printf(" Cn norm: %1.2f \n",norm);
+  for (int j=0;j<len;j++)
+    Cn[j] = Cn[j]/norm;
+
+	//Save projected ictan before schmidting
+	for (int j=0;j<len;j++)
+		C[j] = Cn[j];
+	
+#if 0
+  norm = 0.;
+  for (int j=0;j<len;j++)
+    norm += C[j] * Cn[j];
+  printf(" C dot Cn: %1.3f \n",norm);
+#endif
+#if 0
+  printf(" Printing Cn: \n");
+  for (int j=0;j<nbonds;j++)
+    printf(" %1.2f",Cn[j]);
+  printf("\n");
+  for (int j=0;j<nangles;j++)
+    printf(" %1.2f",Cn[nbonds+j]);
+  printf("\n");
+  for (int j=0;j<ntor;j++)
+    printf(" %1.2f",Cn[nbonds+nangles+j]);
+  printf("\n");
+#endif
+
+  for (int i=0;i<len;i++) dots[i] =0.;
+  for (int i=0;i<len;i++) 
+  for (int j=0;j<len;j++)
+    dots[i] += Cn[j]*Ut[i*len+j];
+
+//  for (int i=0;i<nicd0;i++)
+//    printf(" dots[%i]: %1.2f \n",i,dots[i]);
+
+  for (int i=0;i<nicdm;i++)
+  {
+    if (i!=nicdm-1)
+    for (int j=0;j<len;j++)
+      Ut[i*len+j] -= dots[i] * Cn[j];
+
+    for (int k=0;k<i;k++)
+    {
+      double dot2 = 0.;
+      for (int j=0;j<len;j++)
+        dot2 += Ut[i*len+j] * Ut[k*len+j];
+
+      for (int j=0;j<len;j++)
+        Ut[i*len+j] -= dot2 * Ut[k*len+j];
+    } // loop k over previously formed vectors
+ 
+    double norm = 0.;
+    for (int j=0;j<len;j++)
+      norm += Ut[i*len+j] * Ut[i*len+j];
+    norm = sqrt(norm);
+    if (abs(norm)<0.00001) norm = 1;
+    if (abs(norm)<0.00001) printf(" WARNING: small norm: %1.7f \n",norm);
+    for (int j=0;j<len;j++)
+      Ut[i*len+j] = Ut[i*len+j]/norm;
+  } 
+	for (int j=0;j<len;j++)
+	   Ut[nicd*len+j] = Cn[j];
+#if 0
+	 printf(" printing Cn vs. Ut[nicd*len]\n");  
+	for (int j=0;j<len;j++)m  
+  	printf(" %1.2f/%1.2f\n",Cn[j],Ut[nicd*len+j]);
+#endif
+#if 0
+  printf(" printing orthonormalized vectors \n");
+  for (int i=0;i<nicd0;i++)
+  {
+    for (int j=0;j<len;j++)
+      printf(" %1.3f",Ut[i*len+j]);
+    printf("\n");
+  }
+#endif
+
+  delete [] dots;
+  delete [] Cn;
+
+  return;
+}
+
+void ICoord::form_constraint_space(double* C)
+{
+	printf(" Forming U' space where the last vector in the SS is the constraint, and the last two vectors are BP\n");
+
+	update_ic();
+	bmatp_create();
+	bmatp_to_U();
+	//double energy = calc_BP( run, node);
+	printf(" Assuming BP already calc'd\n");
+	dgrad_to_dgradq();
+	dvec_to_dvecq();
+
+#if DG_ROT
+	double norm_dg=dgrot_mag();
+	project_dgradq();
+	printf(" nicd=%i\n",nicd);
+	project_dvecq();
+	printf(" nicd=%i\n",nicd);
+#else
+	//need to code dvec rot
+	//project(dvecq,dvecq_U);
+	//norm_dg=project(dgradq,dgradq_U);
+	//printf(" norm_dg = %1.2f",norm_dg); 
+#endif
+	constrain_bp();
+	printf(" nicd=%i\n",nicd);
+	bmat_create();
+	print_q();
+
+	constrain_ss_bp(C);
+	bmat_create();
+	
+	return;
+}
+
+void ICoord::dgrad_to_dgradq()
+{
+  int N3 = 3*natoms;
+  int len_d = nicd0;
+  int len0 = nbonds+nangles+ntor; 
+  for (int i=0;i<len_d;i++) 
+    dgradq[i] = 0.0;
+  
+#if 0
+  printf("\ndgrad\n");
+  for (int i=0;i<N3;i++)
+    printf("%1.3f ",dgrad[i]);
+  printf("\n");
+#endif                                                                                              
+#if 0
+  printf("\nbmatti\n"); 
+  for (int i=0;i<len_d;i++)
+   {
+   printf("\n");
+   for (int j=0;j<N3;j++)
+     printf("%1.3f ",bmatti[i*N3+j]);
+   }
+#endif 
+  for (int i=0;i<len_d;i++)
+  for (int j=0;j<N3;j++)
+    dgradq[i] += bmatti[i*N3+j] * dgrad[j];
+#if 0
+  printf(" \ndgrad in delocalized IC:\n"); 
+  int len = nicd0;
+  for (int i=0;i<len;i++)
+    printf(" %1.4f",dgradq[i]);
+  printf("\n");
+#endif  
+
+
+	return;
+}
+
+void ICoord::dvec_to_dvecq()
+{
+  int N3 = 3*natoms;
+  int len_d = nicd0;
+  int len0 = nbonds+nangles+ntor; 
+  for (int i=0;i<len_d;i++) 
+    dvecq[i] = 0.0;
+  
+#if 0
+  printf("\ndvec\n");
+  for (int i=0;i<N3;i++)
+    printf("%1.3f ",dvec[i]);
+  printf("\n");
+#endif                                                                                              
+#if 0
+  printf("\nbmatti\n"); 
+  for (int i=0;i<len_d;i++)
+   {
+   printf("\n");
+   for (int j=0;j<N3;j++)
+     printf("%1.3f ",bmatti[i*N3+j]);
+   }
+#endif 
+  for (int i=0;i<len_d;i++)
+  for (int j=0;j<N3;j++)
+    dvecq[i] += bmatti[i*N3+j] * dvec[j];
+#if 0
+  printf(" \ndvec in delocalized IC:\n"); 
+  int len = nicd0;
+  for (int i=0;i<len;i++)
+    printf(" %1.4f",dvecq[i]);
+  printf("\n");
+#endif  
+
+
+	return;
 }

@@ -396,8 +396,7 @@ void GString::String_Method_Optimization()
   for (int n=0;n<nnmax0;n++)
     icoords[n].grad_init(infile0,ncpu,runNum,runend+n,0,CHARGE); //level 3 is exact kNNR only, 0 is QM grad always
 #else
-		if (!isDE_ESSM)
-			prepare_molpro();
+		prepare_molpro();
 #endif
 
 #if USE_MOLPRO || QCHEMSF
@@ -527,14 +526,12 @@ void GString::String_Method_Optimization()
       icoords[0].grad1.E[i] = grad1.E[i];
 #endif
   }
-//  else V0 = icoords[0].grad1.E[0];
+
   V_profile[0] = 0.;
   if (!isSSM && !isRestart)
   {
+#if !USE_MOLPRO
     V_profile[nnmax-1] = grad1.grads(coords[nnmax-1], grads[nnmax-1], icoords[0].Ut, 3) - V0;
-#if QCHEMSF || USE_MOLPRO
-    for (int i=0;i<nstates;i++)
-      icoords[nnmax-1].grad1.E[i] = grad1.E[i];
 #endif
   }
 
@@ -552,6 +549,7 @@ void GString::String_Method_Optimization()
       icoords[1].read_hessxyz("scratch/initial"+nstr+".hess",0); 
     else
       icoords[1].make_Hint();
+	
 #if 0
     int len0 = icoords[0].nbonds+icoords[0].nangles+icoords[0].ntor;
     for (int i=0;i<len0*len0;i++)
@@ -7799,7 +7797,7 @@ void GString::prepare_molpro()
 	int wstate2 = grad1.wstate2;
 	int wstate = grad1.wstate;
 
-	if (!isMECI && !isDE_ESSM)
+	if (!isMECI)
   for (int n=0;n<nnmax0;n++)
   {
     printf("\n Node %2i \n",n); fflush(stdout);
@@ -7835,7 +7833,7 @@ void GString::prepare_molpro()
 		if (restart_wfn && n==nnmax-1 && !isRestart && isDE_ESSM) 
 		{
 			icoords[n].grad1.seedType = 3;	
-			V_profile[nnmax0-1] =icoords[nnmax-1].grad1.grads(coords[nnmax-1],grads[nnmax-1],icoords[nnmax-1].Ut,3) -V0;
+			//V_profile[nnmax0-1] =icoords[nnmax-1].grad1.grads(coords[nnmax-1],grads[nnmax-1],icoords[nnmax-1].Ut,3) -V0;
 		}
     if (n==1 && !isRestart) icoords[n].grad1.seedType = -1; //copy from previous node
     if (n==nnmax0-2 && !isRestart) icoords[n].grad1.seedType = -2; //copy from "next" node
@@ -7906,7 +7904,6 @@ double GString::get_sigma(int n,double K)
  */
 void GString::starting_seam(double* dq,int nnodes)
 {
-#if 0
 	printf(" starting seam\n");
 	cout << endl;
   int nbonds = newic.nbonds;
@@ -7924,8 +7921,10 @@ void GString::starting_seam(double* dq,int nnodes)
   double* ictan = new double[size_ic];
   double* ictan0 = new double[size_ic];
 
-	seam[0].conical.calc_BP();
-	seam[nnmax-1].conical.calc_BP();
+	V0 = icoords[0].calc_BP(runNum,0);
+	icoords[0].make_Hint();
+	V_profile[nnmax-1]= icoords[nnmax-1].calc_BP(runNum,nnmax-1) - V0;
+	icoords[nnmax-1].make_Hint();
 
   for (int n=2;n<nnodes;n++)
   {
@@ -7948,22 +7947,23 @@ void GString::starting_seam(double* dq,int nnodes)
       iN = wP;
       printf(" creating P node: %i    ",wP);
     }
-    printf(" iR,iP: %i %i wR,wP: %i %i iN: %i ",iR,iP,wR,wP,iN);
+    printf(" iR,iP: %i %i wR,wP: %i %i iN: %i \n",iR,iP,wR,wP,iN);
 
     if (rp==1)
     {
       newic.reset(natoms,anames,anumbers,icoords[iR].coords);
+			newic.copy_CI(icoords[iR]);
       intic.reset(natoms,anames,anumbers,icoords[iP].coords);
     }
     else if (rp==-1)
     {
       newic.reset(natoms,anames,anumbers,icoords[iP].coords);
+			newic.copy_CI(icoords[iP]);
       intic.reset(natoms,anames,anumbers,icoords[iR].coords);
     }
     newic.update_ic();
     intic.update_ic();
 		tangent_1(ictan);
-
 
 
 #if 1
@@ -7985,9 +7985,9 @@ void GString::starting_seam(double* dq,int nnodes)
     for (int i=0;i<size_ic;i++) ictan0[i] = ictan[i];
 
 			
-    newic.bmatp_create();
+    newic.bmatp_create(); //calc'd in form_constr_space
     newic.bmatp_to_U();
-		
+		newic.form_constraint_space(ictan);
     newic.bmat_create();
 			
     for (int j=0;j<size_ic-ntor;j++)
@@ -7997,23 +7997,23 @@ void GString::starting_seam(double* dq,int nnodes)
     printf(" dqmag: %1.2f",dqmag);
 
     if (nnmax-n!=1)
-      newic.dq0[newic.nicd0-1] = -dqmag/(nnmax-n);
+      newic.dq0[newic.nicd0-3] = -dqmag/(nnmax-n);
     else
-      newic.dq0[newic.nicd0-1] = -dqmag/2;
+      newic.dq0[newic.nicd0-3] = -dqmag/2;
 
-    printf(" dq0[constraint]: %1.2f \n",newic.dq0[newic.nicd0-1]);
+    printf(" dq0[constraint]: %1.2f \n",newic.dq0[newic.nicd0-3]);
     int success = newic.ic_to_xyz();
 
-    seam[iN].conical.reset(natoms,anames,anumbers,newic.coords);
-    //com_rotate_move(iR,iP,iN,1.0); //operates on iN via newic
 
-		seam[iN].conical.print_xyz();
-		
-    if (!isSSM)
-    {
-      icoords[iN].make_Hint();
-    }
-    else
+    icoords[iN].reset(natoms,anames,anumbers,newic.coords);
+    com_rotate_move(iR,iP,iN,1.0); //operates on iN via newic
+		icoords[iN].print_xyz();
+		//make hint
+    //if (!isSSM)
+    //{
+    //  icoords[iN].make_Hint();
+    //}
+    //else
     {
       printf(" copying Hessian from node %i \n",iR);
       for (int i=0;i<size_ic*size_ic;i++)
@@ -8026,9 +8026,10 @@ void GString::starting_seam(double* dq,int nnodes)
   } //loop over interpolation
 
 		
+	printf(" Finished\n");
+	exit(-1);
   delete [] ictan;
   delete [] ictan0;
 	
-#endif
   return;
 }

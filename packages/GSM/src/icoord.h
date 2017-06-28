@@ -252,12 +252,13 @@ class ICoord {
 	void constrain_bp();   //constrains the BP
 	void constrain_ss_bp(double* C); //constrains SS ictan and BP
 
-	double form_constraint_space(int run, int node, double* C); //forms 3N-9 SS, 1 SS constraint, and BP constraint
+	void form_constraint_space(double* C); //forms 3N-9 SS, 1 SS constraint, and BP constraint
 	void opt_meci(int runNum,int runEnd,int STEP_OPT_ITERS);
 
 	double combined_step(string xyzfile_string, int nsteps, int node,int run);
 
 	double form_meci_space(int run, int node);
+	void copy_CI(ICoord conical);
 
 
 
