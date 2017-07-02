@@ -240,22 +240,27 @@ class ICoord {
 	int nstates;
 	int wstate;
 	int wstate2;
+	double norm_dg;
 
 	double calc_BP(int run, int node);
 	double calc_dgrad(int run, int node);
 	void calc_dvec(int run, int node);
 	void dgrad_to_dgradq();
 	void dvec_to_dvecq();
-	double dgrot_mag();
+	void dgrot_mag();
 	double project_dgradq();
 	double project_dvecq();
 	void constrain_bp();   //constrains the BP
 	void constrain_ss_bp(double* C); //constrains SS ictan and BP
 
+	double form_constraint_space(int run, int node, double* C); //forms 3N-9 SS, 1 SS constraint, and BP constraint
 	void form_constraint_space(double* C); //forms 3N-9 SS, 1 SS constraint, and BP constraint
 	void opt_meci(int runNum,int runEnd,int STEP_OPT_ITERS);
+	 
 
 	double combined_step(string xyzfile_string, int nsteps, int node,int run);
+	double constrained_cs(string xyzfile_string, int nsteps, int node,int run,double* ictan);
+	double opt_to_seam(int runNum, int node, int osteps, double* ictan);
 
 	double form_meci_space(int run, int node);
 	void copy_CI(ICoord conical);
@@ -344,6 +349,7 @@ class ICoord {
   void read_hessp(string filename);
   void read_hessxyz(string filename, int write);
 
+	void print_bp();
 };
 
 

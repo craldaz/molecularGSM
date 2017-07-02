@@ -891,8 +891,8 @@ double Gradient::energy_initial(double* coords,int run, int rune,int penalty, do
   for (int i=0;i<nstates;i++)
     E[i] = mp1.getE(i+1) * 627.5;
 
-  for (int i=0;i<nstates;i++)
-    printf(" E[%i]=%1.4f\n",i,E[i]);
+  //for (int i=0;i<nstates;i++)
+  //  printf(" E[%i]=%1.4f\n",i,E[i]);
 
   return energy;
 }

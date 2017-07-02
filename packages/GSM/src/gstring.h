@@ -118,6 +118,7 @@ class GString {
   void starting_seam(double* dq, int nnodes); //calculate seam 
   void starting_string_dm(double* dq);
   int addNode(int n1, int n2, int n3);
+	int add_seam_node(int n1,int n2,int n3);
   int addCNode(int n1);
   void add_last_node(int type);
   void com_rotate_move(int iR, int iP, int iN, double ff);
@@ -125,6 +126,12 @@ class GString {
   void opt_tr();
   void opt_r();
   void opt_steps(double** dqa, double** ictan, int osteps, int oesteps,int penalty,double &K);
+	
+
+	void opt_steps_seam(int osteps,double** ictan);
+	void opt_iters_seam(int max_iter, double& totalgrad, double& gradrms, string strfileg,int osteps, int oesteps,double** dqa, double* dqmaga, double** ictan);
+
+	
   int knnr_vs_opt(int n);
   void ic_reparam_g(double** dqa, double* dqmaga);
   void ic_reparam(double** dqa, double* dqmaga, int type);
@@ -151,6 +158,7 @@ class GString {
   void rotate_structure(double* xyz0, int* a);
 
   void print_em(int nmaxp);
+	void print_dE();
 
  //for prima
   void set_prima(string pstring);

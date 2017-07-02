@@ -220,3 +220,15 @@ void print_triple_xyz_save(string xyzfile_string, int natoms, string* anames, in
   return;
 }
 
+void ICoord::print_bp()
+{
+  printf(" printing dgrad\n");
+  for (int i=0;i<3*natoms;i++)
+    printf("%1.3f\t",dgrad[i]); 
+  printf("\n");
+  printf(" printing dvec\n");
+  for (int i=0;i<3*natoms;i++)
+    printf("%1.3f\t",dvec[i]);  
+  printf("\n");
+	
+}

@@ -5831,26 +5831,13 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
 	bmatp_create();
 	bmatp_to_U();
 	bmat_create();
-	double energy;
-	energy = (grad1.E[1]+grad1.E[0])/2 - V0;
-	//for (int i=0;i<3*natoms;i++)
-	//	grad[i]=grads[i];
-	//print_grad();
+	double energy=0.0;
+	//Form space
+	V0=form_meci_space(run, node);
 	//printf(" Average energy: %1.3f kcal/mol\n",energy);
 	double deltaE;
-	//Form space
-	double norm_dg=0.;
-	dgrad_to_dgradq();
-	dvec_to_dvecq();
-	norm_dg=dgrot_mag();
-	project_dgradq();
-	project_dvecq();
-	constrain_bp();
-	bmat_create();
-	
 	//print_q();
   Hintp_to_Hint();
-
   energyp = energy;
   energyl = energy;
 #if 1
@@ -5867,9 +5854,6 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
     sprintf(sbuff," Opt step: %2i ",n+1); printout += sbuff;
     grad_to_q();
 		//print_gradq();
-		//dgrad and dvec in rep of U'
-
-    
 		sprintf(sbuff," gqc: %4.3f",gradq[nicd0-1]); printout += sbuff;
 
     if (do_bfgs) update_bfgsp(1);
@@ -5910,8 +5894,6 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
       energyl = energy;
       for (int j=0;j<3*natoms;j++) xyzl[j] = coords[j];
     }
-		//print_xyz();
-		//print_q();
     rflag = ic_to_xyz_opt();
 	
     if (nrflag > 4) break;
@@ -5924,7 +5906,7 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
 			bmatp_to_U();
 			dgrad_to_dgradq();
 			dvec_to_dvecq();
-			norm_dg=dgrot_mag();
+			dgrot_mag();
 			project_dgradq();
 			project_dvecq();
 			constrain_bp();
@@ -5941,23 +5923,9 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
 		bmatp_create();
 		bmatp_to_U();
 		bmat_create();
-    energy = grad1.grads(coords, grad, Ut, 1) - V0;
+
+    energy = form_meci_space(run,node) - V0;
 		printf(" Average energy = %1.2f, ",energy);
-		for (int i=0;i<nstates-1;i++)
-			grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
-	  deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
-		printf(" Calculating dgrad ... ");
-		for (int i=0;i<3*natoms;i++)	
-			dgrad[i]= grad1.grada[1][i]- grad1.grada[0][i];
-		printf(" Calculating dvec\n");
-		grad1.dvec_calc(coords,dvec,run,node);
-		dgrad_to_dgradq();
-		dvec_to_dvecq();
-		norm_dg=dgrot_mag();
-		project_dgradq();
-		project_dvecq();
-		constrain_bp();
-	  bmat_create();
 
     sprintf(sbuff," E(M): %1.2f gRMS: %1.4f",energy,gradrms); printout += sbuff;
     sprintf(sbuff," DeltaE: %4.3f",grad1.dE[wstate2-2]); printout += sbuff;
@@ -5975,32 +5943,11 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
       if (energy > 1000.) { gradrms = 1.; break; }
 
 			double correction =gradq[nicd0-1]*dq0[nicd0-1]*627.5;
-			//printf(" Correction is %1.4f\n",correction);
 			dEpre += correction;
       double dE = energy - energyp;
       energyp = energy;
-      //if (abs(dEpre)<0.05) dEpre = sign(dEpre)*0.05; 
       double ratio = dE/dEpre;
-			//printf("dEpre=%1.4f, dE=%1.4f, ratio=%2.4f\n",dEpre,dE,ratio);
       sprintf(sbuff," ratio: %2.3f ",ratio); printout += sbuff;
-#if STEPCONTROLG
-      if (gradrms>pgradrms)
-      {
-        sprintf(sbuff," decreasing DMAX "); printout += sbuff;
-        if (smag<DMAX)
-          DMAX = smag / 1.1;
-        else
-          DMAX = DMAX / 1.2;
-      }
-      if (gradrms<pgradrms/1.25)
-      {
-        sprintf(sbuff," increasing DMAX "); printout += sbuff;
-        DMAX = DMAX * 1.05;
-        if (DMAX > 0.1)
-          DMAX = 0.1;
-      }
-      if (DMAX<DMIN0) DMAX = DMIN0;
-#endif
 #if 1
       //if (dE > 0.001 && !isTSnode) //only apply this after reaching seam
       //{
@@ -6029,24 +5976,6 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
           DMAX = 0.2;
       }
 			
-			//else
-			//{
-      //	if (gradrms>pgradrms)
-      //	{
-      //	  sprintf(sbuff," decreasing DMAX "); printout += sbuff;
-      //	  if (smag<DMAX)
-      //	    DMAX = smag / 1.1;
-      //	  else
-      //	    DMAX = DMAX / 1.2;
-      //	}
-      //	if (gradrms<pgradrms/2) //was 1.25
-      //	{
-      //	  sprintf(sbuff," increasing DMAX "); printout += sbuff;
-      //	  DMAX = DMAX * 1.05;
-      //	  if (DMAX > 0.15)
-      //	    DMAX = 0.15;
-      //	}
-			//}
       if (DMAX<DMIN0) DMAX = DMIN0;
 #endif
     }
@@ -6088,23 +6017,251 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
   return energy;
 }
 
+double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int run,double* ictan)
+{
+	printf(" on node %i\n",node);
+  printout = "";
+  int len0 = nbonds+nangles+ntor;
+  int len = nicd0;
+  int OPTSTEPS = nsteps;
+	printf(" nsteps is %i, OPTTHRESH is %1.4f", OPTSTEPS,OPTTHRESH);
+	int wstate = grad1.wstate;
+	int wstate2 = grad1.wstate2;
+  int nstates = grad1.nstates;
+  printf(" nstate: %i, wstate: %i, wstate2: %i\n",nstates,wstate,wstate2);
+  for (int i=0;i<len;i++)
+    dq0[i] = 0.;
+
+  pgradrms = 10000;
+  double energyp;
+  double energyl;
+  double gradrmsl;
+  double* xyzl = new double[3*natoms];
+  for (int j=0;j<3*natoms;j++) xyzl[j] = coords[j];
+
+  if (SCALEQN>=SCALEQN0) SCALEQN = SCALEQN/1.2;
+  if (SCALEQN<SCALEQN0) SCALEQN = SCALEQN0;
+  if (DMAX<DMIN0) DMAX = DMIN0;
+  ixflag = 0;
+
+  do_bfgs = 0; //resets at each step
+  int rflag = 0; //did backconvert work?
+  int nrflag = 0;
+  int bcp = 0;
+  noptdone = 1;
+
+	update_ic();
+	bmatp_create();
+	bmatp_to_U();
+	bmat_create();
+	double energy = (grad1.E[1]+grad1.E[0])/2 - V0;
+	//Form space
+	form_constraint_space(ictan);
+	//printf(" Average energy: %1.3f kcal/mol\n",energy);
+	double deltaE;
+	//print_q();
+  Hintp_to_Hint();
+  energyp = energy;
+  energyl = energy;
+#if 1
+  ofstream xyzfile;
+  xyzfile.open(xyzfile_string.c_str());
+  xyzfile.setf(ios::fixed);
+  xyzfile.setf(ios::left);
+  xyzfile << setprecision(6);
+#endif
+
+  sprintf(sbuff,"\n"); printout += sbuff;
+  for (int n=0;n<OPTSTEPS;n++)
+  {
+    sprintf(sbuff," Opt step: %2i ",n+1); printout += sbuff;
+    grad_to_q();
+		//print_gradq();
+		sprintf(sbuff," gqc: %4.3f",gradq[nicd0-1]); printout += sbuff;
+
+    if (do_bfgs) update_bfgsp(1);
+    save_hess();
+    do_bfgs = 1;
+
+#if 1
+    xyzfile << " " << natoms << endl;
+    xyzfile << " " << energy << endl;
+    for (int i=0;i<natoms;i++) 
+    {
+      xyzfile << "  " << anames[i];
+      xyzfile << " " << coords[3*i+0] << " " << coords[3*i+1] << " " << coords[3*i+2];
+      xyzfile << endl;
+    }
+#endif
+		printf(" iteration: %i \t ",n);
+		for (int i=0;i<nstates-1;i++)
+		{
+			grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
+			printf("dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
+		}
+		printf("\n");
+		
+		//take the combined step
+	  deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
+  	dq0[nicd0-1] = -deltaE/norm_dg; //not sure
+  	printf(" dq0[constraint]: %1.4f ",dq0[nicd0-1]);
+		if (dq0[nicd0-1] < -0.075)
+			dq0[nicd0-1]=-0.075;
+    update_ic_eigen();
+
+    if (n==0) gradrmsl = gradrms;
+    if ( (gradrms<gradrmsl && energy<energyl) ||
+          energy<energyl-5.)
+    {
+      gradrmsl = gradrms;
+      energyl = energy;
+      for (int j=0;j<3*natoms;j++) xyzl[j] = coords[j];
+    }
+    rflag = ic_to_xyz_opt();
+	
+    if (nrflag > 4) break;
+    if (ixflag>2)
+		{
+      DMAX = DMAX/1.5;
+      //MAXAD = MAXAD/1.1;
+      sprintf(sbuff," bc problem, r Ut "); printout += sbuff;
+			bmatp_create();
+			bmatp_to_U();
+			form_constraint_space(ictan);
+      make_Hint();
+      do_bfgs = 0;
+      ixflag = 0;
+      bcp = 1;
+    }
+    else bcp = 0;
+
+    //print_xyz();
+		//print_q();
+    update_ic();
+		bmatp_create();
+		bmatp_to_U();
+		bmat_create();
+
+    energy = form_constraint_space(run,node,ictan) - V0;
+		printf(" Average energy = %1.2f, ",energy);
+    sprintf(sbuff," E(M): %1.2f gRMS: %1.4f",energy,gradrms); printout += sbuff;
+    sprintf(sbuff," DeltaE: %4.3f",grad1.dE[wstate2-2]); printout += sbuff;
+    if (gradrms<OPTTHRESH && !bcp && deltaE < 0.002 && n>0)  
+    {
+      sprintf(sbuff," * \n"); printout += sbuff;
+			//printf(" finished!\n");
+      break;
+    }
+		
+    if (n<OPTSTEPS-1)
+    {
+      noptdone++;
+
+      if (energy > 1000.) { gradrms = 1.; break; }
+
+			double correction =gradq[nicd0-1]*dq0[nicd0-1]*627.5;
+			dEpre += correction;
+      double dE = energy - energyp;
+      energyp = energy;
+      double ratio = dE/dEpre;
+      sprintf(sbuff," ratio: %2.3f ",ratio); printout += sbuff;
+#if 1
+      //if (dE > 0.001 && !isTSnode) //only apply this after reaching seam
+      //{
+			//	if (grad1.dE[wstate2-2]<1.0)	
+			//	{
+      //  	sprintf(sbuff," dE>0, decreasing DMAX "); printout += sbuff;
+      //  	if (smag<DMAX)
+      //  	  DMAX = smag / 1.5;
+      //  	else
+      //  	  DMAX = DMAX / 1.5;
+			//	}
+      //}
+      if ((ratio < 0.25 || ratio > 1.5) && gradrms>pgradrms*1.35 ) //&& abs(dEpre)>0.05 this included before
+      {
+        sprintf(sbuff," decreasing DMAX "); printout += sbuff;
+        if (smag<DMAX)
+          DMAX = smag / 1.1;
+        else
+          DMAX = DMAX / 1.2;
+      }
+      else if (ratio > 0.75 && ratio < 1.25 && smag>DMAX && gradrms<pgradrms*1.35 )
+      {
+        sprintf(sbuff," increasing DMAX "); printout += sbuff;
+        DMAX = DMAX * 1.1;
+        if (DMAX > 0.2)
+          DMAX = 0.2;
+      }
+			
+      if (DMAX<DMIN0) DMAX = DMIN0;
+#endif
+    }
+    sprintf(sbuff,"\n"); printout += sbuff;
+    pgradrms = gradrms;
+
+  } //loop n over OPTSTEPS
+
+#if 1
+  if ((gradrms>gradrmsl*1.75 && !isTSnode && revertOpt)
+   || (gradrms>gradrmsl*3.0 && revertOpt))
+  {
+    //SCALEQN *= 1.85; //was 1.5
+    if (DMAX>smag)
+      DMAX = smag/1.5;
+    else
+      DMAX = DMAX/1.5;
+
+    sprintf(sbuff,"r"); printout += sbuff;
+    for (int j=0;j<3*natoms;j++)
+      coords[j] = xyzl[j];
+    energy = energyl;
+    gradrms = gradrmsl;
+    for (int j=0;j<nicd0;j++) gradq[j] = 0.0;
+//    make_Hint();
+  }
+  else if (gradrms>gradrmsl*1.5 && !isTSnode)
+  {
+    sprintf(sbuff,"S"); printout += sbuff;
+    //SCALEQN *= 1.35; //was 1.25 
+    if (DMAX>smag)
+      DMAX = smag/1.25;
+    else
+      DMAX = DMAX/1.25;
+  }
+#endif
+
+  delete [] xyzl;
+  return energy;
+}
 void ICoord::opt_meci(int runNum,int runEnd,int STEP_OPT_ITERS)
 {
 	printf(" Optimizing node to MECI using Combined-Step Optimizer\n");
-	double energy = form_meci_space(runNum,runEnd);	
-	printf(" Initial energy is %1.4f\n",energy);
-	V0 = energy;
-   
+	//double energy = form_meci_space(runNum,runEnd);	
+	//printf(" Initial energy is %1.4f\n",energy);
+	//V0 = energy;
 	string runName0 = StringTools::int2str(runNum,4,"0")+"."+StringTools::int2str(runEnd,4,"0");	
-	//use combined step optimizer
 	gradrms = 100.;
 	make_Hint();
-	energy=combined_step("scratch/cfile_"+runName0+".xyz",STEP_OPT_ITERS,runEnd,runNum);
+	double energy=combined_step("scratch/cfile_"+runName0+".xyz",STEP_OPT_ITERS,runEnd,runNum);
   printf(" %s",printout.c_str());
 	
 	printf(" opt_energy is %1.4f\n", V0+energy);
 
 	return;
+}
+
+double ICoord::opt_to_seam(int runNum,int node, int osteps, double* ictan)
+{
+
+	printf(" Optimizing node to MECI using Constrainend Combined-Step Optimizer\n");
+	string runName0 = StringTools::int2str(runNum,4,"0")+"."+StringTools::int2str(node,4,"0");	
+	double energy=constrained_cs("scratch/cfile_"+runName0+".xyz",osteps,node,runNum,ictan);
+  //printf(" %s",printout.c_str());
+	
+	printf(" opt_energy is %1.4f\n", V0+energy);
+	
+	return energy;
+
 }
 
 double ICoord::form_meci_space(int run, int node)
@@ -6116,9 +6273,10 @@ double ICoord::form_meci_space(int run, int node)
 	dvec_to_dvecq();
 
 #if DG_ROT
-	double norm_dg=dgrot_mag();
+	dgrot_mag();
 	project_dgradq();
 	project_dvecq();
+	printf(" norm_dg = %1.2f",norm_dg); 
 #else
 	//need to code dvec rot
 	//project(dvecq,dvecq_U);
@@ -6149,7 +6307,7 @@ void ICoord::constrain_bp()
 		overlap+=dvec_U[i]*dgrad_U[i];
 	printf(" Overlap between ortho-normalized GD and DC = %1.3f\n",overlap);	
 #endif
-	printf(" Orthonormalizing coordinates U vs BP\n"); 
+	//printf(" Orthonormalizing coordinates U vs BP\n"); 
   double* dot_gd = new double[len];
   for (int i=0;i<len;i++) dot_gd[i] =0.;
   for (int i=0;i<len;i++) 
@@ -6194,13 +6352,13 @@ void ICoord::constrain_bp()
 //printf(" second to last vector in Ut is dvec_U\n");
 	for (int j=0;j<len;j++)
 		Ut[nicd*len+j] = dvec_U[j];
-	cout << endl;
+	//cout << endl;
 #if 0
   printf(" printing dgrad_U vs. Ut[nicd*len]\n");
   for (int j=0;j<len;j++)
     printf(" %1.2f/%1.2f\n",dgrad_U[j],Ut[(nicd+1)*len+j]);
 #endif
-#if 1
+#if 0
   printf(" printing orthonormalized vectors \n");
   for (int i=0;i<nicd0;i++)
   {
@@ -6232,7 +6390,7 @@ double ICoord::project_dgradq()
 	 norm=sqrt(norm);
 	//printf("norm %1.4f\n",norm);
 	
-#if 1
+#if 0
   for (int i=0;i<nicd0;i++)
     printf(" %12.10f",dgradq[i]);
   printf("\n");
@@ -6253,7 +6411,7 @@ double ICoord::project_dgradq()
 	printf("norm: %1.3f\n",norm);
 #endif
 
-#if 1
+#if 0
 	printf(" Normalized dgrad_U vector\n");
 	for (int i=0;i<len;i++)
 		printf("%1.2f ",dgrad_U[i]);
@@ -6281,7 +6439,7 @@ double ICoord::project_dvecq()
 	 norm=sqrt(norm);
 	//printf("norm %1.4f\n",norm);
 	
-#if 1
+#if 0
   for (int i=0;i<nicd0;i++)
     printf(" %12.10f",dvecq[i]);
   printf("\n");
@@ -6302,7 +6460,7 @@ double ICoord::project_dvecq()
 	printf("norm: %1.3f\n",norm);
 #endif
 
-#if 1
+#if 0
 	printf(" Normalized dvec_U vector\n");
 	for (int i=0;i<len;i++)
 		printf("%1.2f ",dvec_U[i]);
@@ -6319,7 +6477,7 @@ double ICoord::project_dvecq()
 void ICoord::constrain_ss_bp(double* C) 
 {
   int len = nbonds+nangles+ntor;
-	printf(" in opt_constraint_SS\n");
+	//printf(" in constraint_ss\n");
 #if 0
   printf(" constraint: ");
   for (int i=0;i<len;i++)
@@ -6328,7 +6486,7 @@ void ICoord::constrain_ss_bp(double* C)
 #endif
 
 	nicd--;
-	printf("nicd0=%i, nicd=%i\n",nicd0,nicd);
+	//printf(" nicd0=%i, nicd=%i\n",nicd0,nicd);
 	if (nicd != (nicd0-3))
 	{
 		printf(" nicd does not equal nicd0-3\n");
@@ -6361,7 +6519,7 @@ void ICoord::constrain_ss_bp(double* C)
   for (int j=0;j<len;j++)
     dots[i] += C[j]*Ut[i*len+j];
  
-  for (int i=0;i<nicdm;i++) // subspace projection
+  for (int i=0;i<nicd0;i++) //subspace projection should this be nicdm?6/30/17
   for (int j=0;j<len;j++)
     Cn[j] += dots[i]*Ut[i*len+j];
 	
@@ -6452,24 +6610,23 @@ void ICoord::constrain_ss_bp(double* C)
   return;
 }
 
-void ICoord::form_constraint_space(double* C)
+double ICoord::form_constraint_space(int run, int node, double* C)
 {
-	printf(" Forming U' space where the last vector in the SS is the constraint, and the last two vectors are BP\n");
+	//printf(" Forming U' space where the last vector in the SS is the constraint, and the last two vectors are BP\n");
 
 	update_ic();
 	bmatp_create();
 	bmatp_to_U();
-	//double energy = calc_BP( run, node);
-	printf(" Assuming BP already calc'd\n");
+	double energy = calc_BP( run, node);
 	dgrad_to_dgradq();
 	dvec_to_dvecq();
 
 #if DG_ROT
-	double norm_dg=dgrot_mag();
+	dgrot_mag();
 	project_dgradq();
-	printf(" nicd=%i\n",nicd);
+	//printf(" nicd=%i\n",nicd);
 	project_dvecq();
-	printf(" nicd=%i\n",nicd);
+	//printf(" nicd=%i\n",nicd);
 #else
 	//need to code dvec rot
 	//project(dvecq,dvecq_U);
@@ -6477,10 +6634,44 @@ void ICoord::form_constraint_space(double* C)
 	//printf(" norm_dg = %1.2f",norm_dg); 
 #endif
 	constrain_bp();
-	printf(" nicd=%i\n",nicd);
+	//printf(" nicd=%i\n",nicd);
 	bmat_create();
-	print_q();
+	//print_q();
 
+	constrain_ss_bp(C);
+	bmat_create();
+	
+	return energy;
+}
+
+void ICoord::form_constraint_space(double* C)
+{
+	//printf(" Forming U' space where the last vector in the SS is the constraint, and the last two vectors are BP\n");
+
+	update_ic();
+	bmatp_create();
+	bmatp_to_U();
+	//printf(" Assuming BP already calc'd\n");
+	//double energy = calc_BP( run, node);
+	dgrad_to_dgradq();
+	dvec_to_dvecq();
+
+#if DG_ROT
+	dgrot_mag();
+	project_dgradq();
+	//printf(" nicd=%i\n",nicd);
+	project_dvecq();
+	//printf(" nicd=%i\n",nicd);
+#else
+	//need to code dvec rot
+	//project(dvecq,dvecq_U);
+	//norm_dg=project(dgradq,dgradq_U);
+	//printf(" norm_dg = %1.2f",norm_dg); 
+#endif
+	constrain_bp();
+	//printf(" nicd=%i\n",nicd);
+	bmat_create();
+	//print_q();
 	constrain_ss_bp(C);
 	bmat_create();
 	

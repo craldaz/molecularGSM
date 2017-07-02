@@ -2029,7 +2029,7 @@ int ICoord::read_ics(string filename)
 
 
 
-double ICoord::dgrot_mag()
+void ICoord::dgrot_mag()
 {
 	//rotates the difference gradient to be orthogonal to the derivative coupling 
 	//printf(" Orthogonalize the dgrad wrt dvec\n");
@@ -2061,14 +2061,13 @@ double ICoord::dgrot_mag()
 		overlap+=dgradq[i]*dvecq[i];
 	//printf(" overlap after = %1.3f,",overlap);
 
-	double norm_dg=0.;
 	for (int i=0;i<len;i++)
 		norm_dg+=dgradq[i]*dgradq[i];
 	norm_dg=sqrt(norm_dg);
 	//printf(" norm x1 after = %1.3f\n",norm_dg);
 	//cout << endl;
 	
-	return norm_dg;
+	return;
 }
 
 
@@ -2076,6 +2075,9 @@ double ICoord::calc_BP(int run, int node)
 {
 	double energy = calc_dgrad(run, node);
 	calc_dvec(run, node);
+	for (int i=0;i<nstates-1;i++)
+		grad1.dE[i]=grad1.E[i+1]-grad1.E[i];
+
 	return energy;
 }
 
