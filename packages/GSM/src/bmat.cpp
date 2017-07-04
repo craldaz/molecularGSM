@@ -6054,9 +6054,10 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
 	bmatp_create();
 	bmatp_to_U();
 	bmat_create();
-	double energy = (grad1.E[1]+grad1.E[0])/2 - V0;
+	//double energy = (grad1.E[1]+grad1.E[0])/2 - V0;
 	//Form space
-	form_constraint_space(ictan);
+	//form_constraint_space(ictan);
+	double energy = form_constraint_space(run,node,ictan)-V0;
 	//printf(" Average energy: %1.3f kcal/mol\n",energy);
 	double deltaE;
 	//print_q();
@@ -6077,7 +6078,7 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
     sprintf(sbuff," Opt step: %2i ",n+1); printout += sbuff;
     grad_to_q();
 		//print_gradq();
-		sprintf(sbuff," gqc: %4.3f",gradq[nicd0-1]); printout += sbuff;
+		sprintf(sbuff," gqc: %4.3f",gradq[nicd0-3]); printout += sbuff;
 
     if (do_bfgs) update_bfgsp(1);
     save_hess();
@@ -6146,7 +6147,7 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
 		printf(" Average energy = %1.2f, ",energy);
     sprintf(sbuff," E(M): %1.2f gRMS: %1.4f",energy,gradrms); printout += sbuff;
     sprintf(sbuff," DeltaE: %4.3f",grad1.dE[wstate2-2]); printout += sbuff;
-    if (gradrms<OPTTHRESH && !bcp && deltaE < 0.002 && n>0)  
+    if ((gradrms<(OPTTHRESH/5.) && !bcp && deltaE < 0.008) || (gradrms<OPTTHRESH && deltaE<0.0001 && !bcp))  
     {
       sprintf(sbuff," * \n"); printout += sbuff;
 			//printf(" finished!\n");
@@ -6321,7 +6322,7 @@ void ICoord::constrain_bp()
 	
   for (int i=0;i<nicd0;i++)
   {
-    if (i!=nicd0-1)
+    if (i!=nicd0-1 || i!=nicd0-2) //fix 7/3/2017
     for (int j=0;j<len;j++)
       Ut[i*len+j] -= (dot_gd[i] * dgrad_U[j] + dot_dc[i] * dvec_U[j]);
 		
@@ -6562,17 +6563,17 @@ void ICoord::constrain_ss_bp(double* C)
 //  for (int i=0;i<nicd0;i++)
 //    printf(" dots[%i]: %1.2f \n",i,dots[i]);
 
-  for (int i=0;i<nicdm;i++)
+  for (int i=0;i<nicd0;i++)//was nicdm
   {
-    if (i!=nicdm-1)
+    if (i!=nicdm-1) 
     for (int j=0;j<len;j++)
-      Ut[i*len+j] -= dots[i] * Cn[j];
+      Ut[i*len+j] -= dots[i] * Cn[j];  //remove C from all U
 
     for (int k=0;k<i;k++)
     {
       double dot2 = 0.;
       for (int j=0;j<len;j++)
-        dot2 += Ut[i*len+j] * Ut[k*len+j];
+        dot2 += Ut[i*len+j] * Ut[k*len+j]; //orthonormalize U wrt U
 
       for (int j=0;j<len;j++)
         Ut[i*len+j] -= dot2 * Ut[k*len+j];
@@ -6633,14 +6634,19 @@ double ICoord::form_constraint_space(int run, int node, double* C)
 	//norm_dg=project(dgradq,dgradq_U);
 	//printf(" norm_dg = %1.2f",norm_dg); 
 #endif
+
+#if 1
+	constrain_ss(C);
+#else
 	constrain_bp();
 	//printf(" nicd=%i\n",nicd);
 	bmat_create();
 	//print_q();
-
 	constrain_ss_bp(C);
+#endif
 	bmat_create();
-	
+
+
 	return energy;
 }
 
@@ -6668,11 +6674,16 @@ void ICoord::form_constraint_space(double* C)
 	//norm_dg=project(dgradq,dgradq_U);
 	//printf(" norm_dg = %1.2f",norm_dg); 
 #endif
+
+#if 1
+	constrain_ss(C);
+#else
 	constrain_bp();
 	//printf(" nicd=%i\n",nicd);
 	bmat_create();
 	//print_q();
 	constrain_ss_bp(C);
+#endif
 	bmat_create();
 	
 	return;
@@ -6753,3 +6764,201 @@ void ICoord::dvec_to_dvecq()
 
 	return;
 }
+
+
+void ICoord::constrain_ss(double* C)
+{
+	int len = nbonds+nangles+ntor;
+#if 0
+	for (int i=0;i<len;i++)
+		printf(" %1.2f",dgrad_U[i]);
+	printf("\n");
+	for (int i=0;i<len;i++)
+		printf(" %1.2f",dvec_U[i]);
+	printf("\n");
+#endif 
+#if 0
+	double overlap=0.;
+	for (int i=0;i<len;i++)
+		overlap+=dvec_U[i]*dgrad_U[i];
+	printf(" Overlap between ortho-normalized GD and DC = %1.3f\n",overlap);	
+#endif
+
+	nicd-=2;
+	//printf(" nicd0=%i, nicd=%i\n",nicd0,nicd);
+	if (nicd != (nicd0-3))
+	{
+		printf(" nicd does not equal nicd0-3\n");
+		exit(-1);
+	}
+
+	//printf(" Orthonormalizing coordinates U vs BP and C\n"); 
+  double norm = 0.;
+  for (int i=0;i<len;i++)
+    norm += C[i]*C[i];
+  norm = sqrt(norm);
+  for (int j=0;j<len;j++)
+    C[j] = C[j]/norm;
+  double* dots = new double[len];
+  for (int i=0;i<len;i++) dots[i] =0.;
+
+  double* Cn = new double[len];
+  for (int i=0;i<len;i++) Cn[i] =0.;
+
+  for (int i=0;i<len;i++)
+  for (int j=0;j<len;j++)
+    dots[i] += C[j]*Ut[i*len+j];
+ 
+  for (int i=0;i<nicd0;i++) //subspace projection should this be nicdm?6/30/17
+  for (int j=0;j<len;j++)
+    Cn[j] += dots[i]*Ut[i*len+j];
+
+  norm = 0.;
+  for (int i=0;i<len;i++)
+    norm += Cn[i]*Cn[i];
+  norm = sqrt(norm);
+  //printf(" Cn norm: %1.2f \n",norm);
+  for (int j=0;j<len;j++)
+    Cn[j] = Cn[j]/norm;
+	bp_rot(Cn);
+	
+  double* dot_gd = new double[len];
+  for (int i=0;i<len;i++) dot_gd[i] =0.;
+  for (int i=0;i<len;i++) 
+  for (int j=0;j<len;j++)
+    dot_gd[i] += dgrad_U[j]*Ut[i*len+j]; 
+  double* dot_dc = new double[len];
+  for (int i=0;i<len;i++) dot_dc[i] =0.;
+  for (int i=0;i<len;i++) 
+  for (int j=0;j<len;j++)
+    dot_dc[i] += dvec_U[j]*Ut[i*len+j]; 
+	
+  for (int i=0;i<nicd0;i++)
+  {
+    if (i!=nicd0-1 || i!=nicd0-2 || i!=nicd0-3) 
+    for (int j=0;j<len;j++)
+      Ut[i*len+j] -= (dot_gd[i] * dgrad_U[j] + dot_dc[i] * dvec_U[j] + dots[i]*Cn[j]);
+		
+    for (int k=0;k<i;k++)
+    {
+      double dot2 = 0.;
+      for (int j=0;j<len;j++)
+        dot2 += Ut[i*len+j] * Ut[k*len+j];
+
+      for (int j=0;j<len;j++)
+        Ut[i*len+j] -= dot2 * Ut[k*len+j];
+
+    } // loop k over previously formed vectors
+
+    double norm = 0.;
+    for (int j=0;j<len;j++)
+      norm += Ut[i*len+j] * Ut[i*len+j];
+    norm = sqrt(norm);
+    if (abs(norm)<0.00001) norm = 1;
+    if (abs(norm)<0.00001) printf(" WARNING: small norm: %1.7f \n",norm);
+    for (int j=0;j<len;j++)
+      Ut[i*len+j] = Ut[i*len+j]/norm;
+  }
+	//printf(" Last vector in U is dgrad_U");
+  for (int j=0;j<len;j++)
+    Ut[(nicd0-1)*len+j] = dgrad_U[j];
+	//printf(" second to last vector in Ut is dvec_U\n");
+	for (int j=0;j<len;j++)
+		Ut[(nicd0-2)*len+j] = dvec_U[j];
+	//printf(" third to last vector in Ut is C\n");
+	for (int j=0;j<len;j++)
+		Ut[(nicd0-3)*len+j] = Cn[j];
+	
+	//cout << endl;
+#if 0
+  printf(" printing dgrad_U vs. Ut[nicd*len]\n");
+  for (int j=0;j<len;j++)
+    printf(" %1.2f/%1.2f\n",dgrad_U[j],Ut[(nicd+1)*len+j]);
+#endif
+#if 0
+  printf(" printing Cn vs. Ut[nicd0-3]\n");
+  for (int j=0;j<len;j++)
+    printf(" %1.2f/%1.2f\n",Cn[j],Ut[(nicd0-3)*len+j]);
+#endif
+#if 0
+  printf(" printing orthonormalized vectors \n");
+  for (int i=0;i<nicd0;i++)
+  {
+    for (int j=0;j<len;j++)
+      printf(" %1.3f",Ut[i*len+j]);
+    printf("\n");
+  }
+#endif
+	
+	delete [] dot_gd;
+	delete [] dot_dc;
+	return;
+
+}
+
+void ICoord::bp_rot(double* C)
+{
+	//rotates the bp to be orthogonal to the tangent
+	//printf(" Orthogonalize the dgrad wrt dvec\n");
+	int len=nbonds+nangles+ntor;
+#if 0
+	printf(" dgrad_U\n");
+	for (int i=0;i<len;i++)
+		printf(" %1.2f",dgrad_U[i]);
+	printf(" \ndvec_U\n");
+	for (int i=0;i<len;i++)
+		printf(" %1.2f",dvec_U[i]);
+#endif
+	double dot_dg=0.;
+	for (int i=0;i<len;i++)
+		dot_dg+=dgrad_U[i]*C[i];
+	
+	printf(" Overlap of tan with dgrad =%1.4f\n",dot_dg);
+	double dot_dv=0.;
+	for (int i=0;i<len;i++)
+		 dot_dv+=dvec_U[i]*C[i];
+	printf(" Overlap of tan with dvec =%1.4f\n",dot_dv);
+
+	double norm=0.;
+	for (int i=0;i<len;i++)
+		norm+=C[i]*C[i];
+	//printf(" dot(C,C)  = %1.2f,",norm);
+
+	//printf(" Schmidt orthogonalize BP wrt C\n");
+	for (int i=0;i<len;i++)
+		dgrad_U[i]=dgrad_U[i] - dot_dg*C[i]/norm;
+	for (int i=0;i<len;i++)
+		dvec_U[i]=dvec_U[i] - dot_dv*C[i]/norm;
+	
+	double overlap=0.;
+	for (int i=0;i<len;i++)
+		overlap+=dgrad_U[i]*dvec_U[i];
+	//printf(" overlap = %1.3f,",overlap);
+	double overlap2=0.;
+	for (int i=0;i<len;i++)
+		overlap2+=dgrad_U[i]*dgrad_U[i];
+	for (int i=0;i<len;i++)
+		dvec_U[i]=dvec_U[i] - overlap*dgrad_U[i]/overlap2;
+	overlap=0.;
+	for (int i=0;i<len;i++)
+		overlap+=dgrad_U[i]*dvec_U[i];
+	//printf(" overlap after = %1.3f,",overlap);
+
+	double norm_dg=0.;
+	for (int i=0;i<len;i++)
+		norm_dg+=dgrad_U[i]*dgrad_U[i];
+	norm_dg=sqrt(norm_dg);
+	double norm_dv=0.;
+	for (int i=0;i<len;i++)
+		norm_dv+=dvec_U[i]*dvec_U[i];
+	norm_dv=sqrt(norm_dv);
+	
+	for (int i=0;i<len;i++)
+	{
+		dgrad_U[i]=dgrad_U[i]/norm_dg;
+		dvec_U[i]=dvec_U[i]/norm_dv;
+	}
+
+	return;
+}
+

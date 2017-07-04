@@ -251,6 +251,9 @@ class ICoord {
 	double project_dgradq();
 	double project_dvecq();
 	void constrain_bp();   //constrains the BP
+	void constrain_ss(double* C);
+	void bp_rot(double* C);	
+
 	void constrain_ss_bp(double* C); //constrains SS ictan and BP
 
 	double form_constraint_space(int run, int node, double* C); //forms 3N-9 SS, 1 SS constraint, and BP constraint
