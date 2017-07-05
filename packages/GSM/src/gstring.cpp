@@ -3983,10 +3983,16 @@ void GString::ic_reparam(double** dqa, double* dqmaga, int rtype)
   printf("\n");
 #endif
 #if 1
-			for (int i=0;i<nstates-1;i++)
+			for (int n=0;n<nnmax;n++)
 			{
-				icoords[n].grad1.dE[i] = icoords[n].grad1.E[i+1] - icoords[n].grad1.E[i];
-				printf(" dE[%i][%i]: %5.4f\t",n,i,icoords[n].grad1.dE[i]); 
+  			if (active[n]>-1 || active[n]==-2)
+				{
+					for (int i=0;i<nstates-1;i++)
+					{
+						icoords[n].grad1.dE[i] = icoords[n].grad1.E[i+1] - icoords[n].grad1.E[i];
+						printf(" dE[%i][%i]: %5.4f\t",n,i,icoords[n].grad1.dE[i]); 
+					}
+				}
 			}
 #endif
   int failed = check_array(nnmax,dqmaga);

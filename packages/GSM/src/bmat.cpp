@@ -6147,7 +6147,7 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
 		printf(" Average energy = %1.2f, ",energy);
     sprintf(sbuff," E(M): %1.2f gRMS: %1.4f",energy,gradrms); printout += sbuff;
     sprintf(sbuff," DeltaE: %4.3f",grad1.dE[wstate2-2]); printout += sbuff;
-    if ((gradrms<(OPTTHRESH/5.) && !bcp && deltaE < 0.008) || (gradrms<OPTTHRESH && deltaE<0.0001 && !bcp))  
+    if ((gradrms<(OPTTHRESH/5.) && !bcp && deltaE < 0.008) || (gradrms<OPTTHRESH && deltaE<0.001 && !bcp))  
     {
       sprintf(sbuff," * \n"); printout += sbuff;
 			//printf(" finished!\n");
