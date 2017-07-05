@@ -6832,7 +6832,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 		{
       if (oi>0 && nn < nnmax)
       {
-        add_seam_node(nnmax-nnP,nnmax-nnP-1,nnR-1);
+        addednode = add_seam_node(nnmax-nnP,nnmax-nnP-1,nnR-1);
         nnP++;
 			}
 		}
@@ -6877,12 +6877,13 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 			else if (isDE_ESSM)
 			{
 				get_tangents_1g(dqa,dqmaga,ictan);
-				for (int n=0;n<nnmax;n++)
-				{
-					active[n]=-2;
-					if (icoords[n].grad1.dE[wstate2-2] >1.0 || icoords[n].gradrms> gaddmax)
-						active[n]=1;
-				}
+				//for (int n=0;n<nnmax;n++)
+				//{
+				////	active[n]=-2;
+				////	if (icoords[n].grad1.dE[wstate2-2] >1.0 || icoords[n].gradrms> gaddmax)
+				//		active[n]=1;
+				// 				
+				//}
 				opt_steps_seam(osteps,ictan);
 				for (int n=0;n<nnmax;n++)
 				{
@@ -6900,15 +6901,16 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       	print_string(nnmax,allcoords,strfileg+endg);
 				for (int n=0;n<nnmax;n++)
 				{
-					if (icoords[n].grad1.dE[wstate2-2] >1.0 || totalgrad>0.05)
+					if (icoords[n].grad1.dE[wstate2-2] >1.0 || totalgrad>(gaddmax*nnmax))
 						break;
 					if (n==nnmax-1)
 					{
 						printf(" String done growing\n");	
-						exit(1);
+						return;
 					}
 				}
-    	  ic_reparam_g(dqa,dqmaga); //works for DE_ESSM too
+				//if (!addedNode)
+    	  //	ic_reparam_g(dqa,dqmaga); //works for DE_ESSM too
 			}
       else if (!isSSM)
       {
@@ -8368,7 +8370,7 @@ void GString::opt_iters_seam(int max_iter, double& totalgrad, double& gradrms, s
 		for (int n=1;n<nnmax;n++)
 		{
 			printf(" node %i\t",n);
-			if (icoords[n].grad1.dE[wstate2-2]>1.0 || totalgrad>0.05)
+			if (icoords[n].grad1.dE[wstate2-2]>1.0 || totalgrad>(gaddmax*nnmax))
 				break;
 			if (n==nnmax-1)
 			{
