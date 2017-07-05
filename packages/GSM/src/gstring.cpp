@@ -2258,8 +2258,8 @@ int GString::addNode(int n1, int n2, int n3)
     newic.bmat_create();
     if (nnmax-nn!=1)
       newic.dq0[newic.nicd0-1] = -dqmag/(nnmax-nn);
-    //else //why is this here? 7/5/2017
-    //  newic.dq0[newic.nicd0-1] = -dqmag/2;
+    else 
+      newic.dq0[newic.nicd0-1] = -dqmag/2;
     if (isSSM)
       newic.dq0[newic.nicd0-1] = -dqmag; //CPMZ check
 
@@ -8269,8 +8269,8 @@ int GString::add_seam_node(int n1,int n2,int n3)
 
     if (nnmax-nn!=1)
       newic.dq0[newic.nicd0-3] = -dqmag/(nnmax-nn);
-    else
-      newic.dq0[newic.nicd0-3] = -dqmag/2;
+    //else //why is this here? 7/5/2017
+    //  newic.dq0[newic.nicd0-3] = -dqmag/2;
 
     printf(" dq0[constraint]: %1.2f \n",newic.dq0[newic.nicd0-3]);
     int success = newic.ic_to_xyz();
