@@ -2258,8 +2258,8 @@ int GString::addNode(int n1, int n2, int n3)
     newic.bmat_create();
     if (nnmax-nn!=1)
       newic.dq0[newic.nicd0-1] = -dqmag/(nnmax-nn);
-    else
-      newic.dq0[newic.nicd0-1] = -dqmag/2;
+    //else //why is this here? 7/5/2017
+    //  newic.dq0[newic.nicd0-1] = -dqmag/2;
     if (isSSM)
       newic.dq0[newic.nicd0-1] = -dqmag; //CPMZ check
 
@@ -6900,7 +6900,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       	print_string(nnmax,allcoords,strfileg+endg);
 				for (int n=0;n<nnmax;n++)
 				{
-					if (icoords[n].grad1.dE[wstate2-2] >2.0 || totalgrad>0.05)
+					if (icoords[n].grad1.dE[wstate2-2] >1.0 || totalgrad>0.05)
 						break;
 					if (n==nnmax-1)
 					{
