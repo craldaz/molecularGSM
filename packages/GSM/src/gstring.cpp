@@ -6819,7 +6819,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       set_fsm_active(nnR,nnR);
 
 		//DE-ESSM add node 
-		if (isDE_ESSM && icoords[nnR-1].grad1.dE[wstate2-2]<5.0 && icoords[nnR-1].gradrms<gaddmax )
+		if (isDE_ESSM && icoords[nnR-1].grad1.dE[wstate2-2]<1.0 && icoords[nnR-1].gradrms<gaddmax )
 		{
       if (oi>0 && nn < nnmax)
       {
@@ -6828,7 +6828,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 			}
 		}
 		
-		if (isDE_ESSM && icoords[nnmax-nnP].grad1.dE[wstate2-2]<5.0 &&icoords[nnmax-nnP].gradrms<gaddmax)
+		if (isDE_ESSM && icoords[nnmax-nnP].grad1.dE[wstate2-2]<1.0 &&icoords[nnmax-nnP].gradrms<gaddmax)
 		{
       if (oi>0 && nn < nnmax)
       {
@@ -6836,8 +6836,8 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
         nnP++;
 			}
 		}
-		//if (oi>0 &&isDE_ESSM)
-    //  set_fsm_active(nnR-1,nnmax-nnP);
+		if (oi>0 &&isDE_ESSM)
+      set_fsm_active(nnR-1,nnmax-nnP);
 
     if((icoords[nnR-1].gradrms<gaddmax && GROWD!=2 && !isDE_ESSM) || isFSM || isSSM )
     {
@@ -6877,12 +6877,12 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 			else if (isDE_ESSM)
 			{
 				get_tangents_1g(dqa,dqmaga,ictan);
-				//for (int n=0;n<nnmax;n++)
-				//{
-				//	active[n]=-2;
-				//	if (icoords[n].grad1.dE[wstate2-2] >1.0 || icoords[n].gradrms> gaddmax)
-				//		active[n]=1;
-				//}
+				for (int n=0;n<nnmax;n++)
+				{
+					active[n]=-2;
+					if (icoords[n].grad1.dE[wstate2-2] >1.0 || icoords[n].gradrms> gaddmax)
+						active[n]=1;
+				}
 				opt_steps_seam(osteps,ictan);
 				for (int n=0;n<nnmax;n++)
 				{
@@ -6920,9 +6920,9 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 		{
     	if (!isFSM && !isSSM) 
 			{
-				//if (isDE_ESSM) //&& addednode
-				//	printf(" skip param\n");
-				//else
+				if (isDE_ESSM) //&& addednode
+					printf(" skip param\n");
+				else
     	  	ic_reparam_g(dqa,dqmaga); //works for DE_ESSM too
 			}
     	get_tangents_1g(dqa,dqmaga,ictan); //works for DE_ESSM too
