@@ -6828,7 +6828,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 			}
 		}
 		
-		if (isDE_ESSM && icoords[nnmax-nnP].grad1.dE[wstate2-2]<5.0 &&icoords[nnmax-nnP-1].gradrms<gaddmax)
+		if (isDE_ESSM && icoords[nnmax-nnP].grad1.dE[wstate2-2]<5.0 &&icoords[nnmax-nnP].gradrms<gaddmax)
 		{
       if (oi>0 && nn < nnmax)
       {
