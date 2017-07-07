@@ -1694,6 +1694,7 @@ void ICoord::opt_constraint(double* C)
 {
   int len = nbonds+nangles+ntor;
 
+	//printf(" In opt_constraint\n");
 #if 0
   printf(" constraint: ");
   for (int i=0;i<len;i++)
@@ -6302,7 +6303,7 @@ void ICoord::constrain_bp()
 		printf(" %1.2f",dvec_U[i]);
 	printf("\n");
 #endif 
-#if 0
+#if 1
 	double overlap=0.;
 	for (int i=0;i<len;i++)
 		overlap+=dvec_U[i]*dgrad_U[i];
@@ -6322,7 +6323,7 @@ void ICoord::constrain_bp()
 	
   for (int i=0;i<nicd0;i++)
   {
-    if (i!=nicd0-1 || i!=nicd0-2) //fix 7/3/2017
+    if (i!=nicd0-1 || i!=nicd0-2 ) //fix 7/3/2017
     for (int j=0;j<len;j++)
       Ut[i*len+j] -= (dot_gd[i] * dgrad_U[j] + dot_dc[i] * dvec_U[j]);
 		
@@ -6383,14 +6384,7 @@ double ICoord::project_dgradq()
   nicd = nicd0;
 	//printf(" len=%i, nicd0=%i\n",len,nicd0);
   nicd--;
-	double norm=0.;
 
-  for (int i=0;i<nicd0;i++)
-    norm += dgradq[i]*dgradq[i];
-
-	 norm=sqrt(norm);
-	//printf("norm %1.4f\n",norm);
-	
 #if 0
   for (int i=0;i<nicd0;i++)
     printf(" %12.10f",dgradq[i]);
@@ -6401,8 +6395,13 @@ double ICoord::project_dgradq()
 		dgrad_U[i]=0.;
 	for (int i=0;i<len;i++)
 		for (int j=0;j<nicd0;j++)
-			dgrad_U[i]+=dgradq[j]*Ut[j*len+i]/norm;//this wasn't being normalized fixed 06/25/2017
+			dgrad_U[i]+=dgradq[j]*Ut[j*len+i]/norm_dg;
 
+	double norm=0.;
+	for (int i=0;i<len;i++)
+		norm+=dgrad_U[i]*dgrad_U[i];
+	 norm=sqrt(norm);
+	
 #if 0
 	norm=0.;
 	printf("check if dgrad_U is normalized\n");
@@ -6944,10 +6943,10 @@ void ICoord::bp_rot(double* C)
 		overlap+=dgrad_U[i]*dvec_U[i];
 	//printf(" overlap after = %1.3f,",overlap);
 
-	double norm_dg=0.;
+	double norm_dg1=0.;
 	for (int i=0;i<len;i++)
-		norm_dg+=dgrad_U[i]*dgrad_U[i];
-	norm_dg=sqrt(norm_dg);
+		norm_dg1+=dgrad_U[i]*dgrad_U[i];
+	norm_dg1=sqrt(norm_dg1);
 	double norm_dv=0.;
 	for (int i=0;i<len;i++)
 		norm_dv+=dvec_U[i]*dvec_U[i];
@@ -6955,10 +6954,51 @@ void ICoord::bp_rot(double* C)
 	
 	for (int i=0;i<len;i++)
 	{
-		dgrad_U[i]=dgrad_U[i]/norm_dg;
+		dgrad_U[i]=dgrad_U[i]/norm_dg1;
 		dvec_U[i]=dvec_U[i]/norm_dv;
 	}
 
 	return;
 }
 
+void ICoord::dgrot_mag()
+{
+	//rotates the difference gradient to be orthogonal to the derivative coupling 
+	//printf(" Orthogonalize the dgrad wrt dvec\n");
+	int len=nicd0;
+#if 0
+	printf(" dgradq\n");
+	for (int i=0;i<len;i++)
+		printf(" %1.2f",dgradq[i]);
+	printf(" \ndvecq\n");
+	for (int i=0;i<len;i++)
+		printf(" %1.2f",dvecq[i]);
+#endif
+	double overlap2=0.;
+	for (int i=0;i<len;i++)
+		overlap2+=dvecq[i]*dvecq[i];
+	//printf(" dot(dvec,dvec)  = %1.2f,",overlap2);
+	
+	double overlap=0.;
+	for (int i=0;i<len;i++)
+		overlap+=dgradq[i]*dvecq[i];
+
+	printf(" overlap(x1,x2) = %1.3f, Schmidt orthogonolize",overlap);
+
+	//printf(" Schmidt orthogonalize x1 wrt x2\n");
+	for (int i=0;i<len;i++)
+		dgradq[i]=dgradq[i] - overlap*dvecq[i]/overlap2;
+	overlap=0.;
+	for (int i=0;i<len;i++)
+		overlap+=dgradq[i]*dvecq[i];
+	//printf(" overlap after = %1.3f,",overlap);
+
+	norm_dg=0.;
+	for (int i=0;i<len;i++)
+		norm_dg+=dgradq[i]*dgradq[i];
+	norm_dg=sqrt(norm_dg);
+	printf(" norm x1 after = %1.3f\n",norm_dg);
+	cout << endl;
+	
+	return;
+}

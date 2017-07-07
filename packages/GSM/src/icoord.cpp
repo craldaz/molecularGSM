@@ -2029,46 +2029,6 @@ int ICoord::read_ics(string filename)
 
 
 
-void ICoord::dgrot_mag()
-{
-	//rotates the difference gradient to be orthogonal to the derivative coupling 
-	//printf(" Orthogonalize the dgrad wrt dvec\n");
-	int len=nicd0;
-#if 0
-	printf(" dgradq\n");
-	for (int i=0;i<len;i++)
-		printf(" %1.2f",dgradq[i]);
-	printf(" \ndvecq\n");
-	for (int i=0;i<len;i++)
-		printf(" %1.2f",dvecq[i]);
-#endif
-	double overlap2=0.;
-	for (int i=0;i<len;i++)
-		overlap2+=dvecq[i]*dvecq[i];
-	//printf(" dot(dvec,dvec)  = %1.2f,",overlap2);
-	
-	double overlap=0.;
-	for (int i=0;i<len;i++)
-		overlap+=dgradq[i]*dvecq[i];
-
-	//printf(" overlap(x1,x2) = %1.3f, Schmidt orthogonolize",overlap);
-
-	//printf(" Schmidt orthogonalize x1 wrt x2\n");
-	for (int i=0;i<len;i++)
-		dgradq[i]=dgradq[i] - overlap*dvecq[i]/overlap2;
-	overlap=0.;
-	for (int i=0;i<len;i++)
-		overlap+=dgradq[i]*dvecq[i];
-	//printf(" overlap after = %1.3f,",overlap);
-
-	for (int i=0;i<len;i++)
-		norm_dg+=dgradq[i]*dgradq[i];
-	norm_dg=sqrt(norm_dg);
-	//printf(" norm x1 after = %1.3f\n",norm_dg);
-	//cout << endl;
-	
-	return;
-}
 
 
 double ICoord::calc_BP(int run, int node)

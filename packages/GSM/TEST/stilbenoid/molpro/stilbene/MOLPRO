@@ -1,0 +1,6 @@
+nstates:  2	 ! state averaging
+wstate:   1 2	 ! now used as the initial state  
+nclosed: 47 
+nocc:    49  ! for casscf(2,2)
+nelec:   96
+basis: 6-31G
