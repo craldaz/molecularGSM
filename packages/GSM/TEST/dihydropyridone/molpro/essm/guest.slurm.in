@@ -10,7 +10,7 @@
 if [ -f /etc/bashrc ]; then
         . /etc/bashrc
 fi
-if [ -z "${SLURM_ARRAY_TASK_ID}" ]; then
+if [ -z "$SLURM_ARRAY_TASK_ID" ]; then
 	export OUTPUT_ID="$SLURM_JOB_NAME/$SLURM_ARRAY_JOB_ID.$SLURM_ARRAY_TASK_ID"
 else
 	export OUTPUT_ID="$SLURM_JOB_NAME/$SLURM_JOB_ID"
@@ -18,5 +18,5 @@ fi
 
 #run job
 ID=`printf "%0*d\n" 4 $SLURM_ARRAY_TASK_ID`
-${PROJECT_BINARY_DIR}/packages/GSM/src/gsm.molpro.exe $ID 1 > output_${ID}
+${PROJECT_BINARY_DIR}/packages/GSM/src/gsm.molpro.exe $ID 1 > output_$ID
 exit

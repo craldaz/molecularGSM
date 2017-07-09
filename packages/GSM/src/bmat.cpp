@@ -62,7 +62,7 @@ int ICoord::bmat_alloc() {
   useExactH = 0;
  
   MAXAD = 0.075; //max along one coordinate (was using 0.1)
-  DMAX = 0.1; //max of step magnitude (was using 0.125)
+  DMAX = 0.15; //max of step magnitude (was using 0.125)
   DMIN0 = DMAX/10.; //was 5.
 #if USE_PRIMA
   DMAX = 0.025;
@@ -1114,7 +1114,7 @@ void ICoord::update_bfgs()
   double dxtdg = 0.;
   double dgGdg = 0.;
 
-//  printf(" in update_bfgs, nicd, nicd0: %i %i \n",nicd,nicd0);
+  //printf(" in update_bfgs, nicd, nicd0: %i %i \n",nicd,nicd0);
 
   //dx[len0-1] = 0.;
   //dg[len0-1] = 0.;
@@ -1244,7 +1244,7 @@ void ICoord::update_bfgsp(int makeHint)
   double dxHdx = 0.;
 
 
-  //printf(" in update_bfgsp, nicd, nicd0: %i %i \n",nicd,nicd0);
+  printf(" in update_bfgsp, nicd, nicd0: %i %i \n",nicd,nicd0);
 
 
 //  printf(" WARNING: constraining dqprim! \n");
@@ -1662,6 +1662,7 @@ void ICoord::make_Hint()
   }
 #endif
 
+	//printf(" optCG=%i\n",optCG);
 #if 1
   if (!optCG || isTSnode)
   {
@@ -5855,7 +5856,7 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
     sprintf(sbuff," Opt step: %2i ",n+1); printout += sbuff;
     grad_to_q();
 		//print_gradq();
-		sprintf(sbuff," gqc: %4.3f",gradq[nicd0-1]); printout += sbuff;
+		//sprintf(sbuff," gqc: %4.3f",gradq[nicd0-1]); printout += sbuff;
 
     if (do_bfgs) update_bfgsp(1);
     save_hess();
@@ -5924,12 +5925,12 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
 		bmatp_create();
 		bmatp_to_U();
 		bmat_create();
-
     energy = form_meci_space(run,node) - V0;
 		printf(" Average energy = %1.2f, ",energy);
 
     sprintf(sbuff," E(M): %1.2f gRMS: %1.4f",energy,gradrms); printout += sbuff;
     sprintf(sbuff," DeltaE: %4.3f",grad1.dE[wstate2-2]); printout += sbuff;
+
     if (gradrms<OPTTHRESH && !bcp && deltaE < 0.001)  
     {
       sprintf(sbuff," * \n"); printout += sbuff;
@@ -6303,21 +6304,22 @@ void ICoord::constrain_bp()
 		printf(" %1.2f",dvec_U[i]);
 	printf("\n");
 #endif 
-#if 1
+#if 0
 	double overlap=0.;
 	for (int i=0;i<len;i++)
 		overlap+=dvec_U[i]*dgrad_U[i];
 	printf(" Overlap between ortho-normalized GD and DC = %1.3f\n",overlap);	
 #endif
 	//printf(" Orthonormalizing coordinates U vs BP\n"); 
-  double* dot_gd = new double[len];
-  for (int i=0;i<len;i++) dot_gd[i] =0.;
-  for (int i=0;i<len;i++) 
+  double* dot_gd = new double[nicd0];
+  for (int i=0;i<nicd0;i++) dot_gd[i] =0.;
+  for (int i=0;i<nicd0;i++) //change from len to nicd 7/8/2017
   for (int j=0;j<len;j++)
     dot_gd[i] += dgrad_U[j]*Ut[i*len+j]; 
-  double* dot_dc = new double[len];
-  for (int i=0;i<len;i++) dot_dc[i] =0.;
-  for (int i=0;i<len;i++) 
+
+  double* dot_dc = new double[nicd0];
+  for (int i=0;i<nicd0;i++) dot_dc[i] =0.;
+  for (int i=0;i<nicd0;i++) 
   for (int j=0;j<len;j++)
     dot_dc[i] += dvec_U[j]*Ut[i*len+j]; 
 	
@@ -6368,6 +6370,18 @@ void ICoord::constrain_bp()
       printf(" %1.3f",Ut[i*len+j]);
     printf("\n");
   }
+#endif
+#if 0
+	printf("check if Ut is normalized\n");
+  for (int i=0;i<nicd0;i++)
+	{
+		double norm=0.;
+		for (int j=0;j<len;j++)
+      norm += Ut[i*len+j] * Ut[i*len+j];
+		norm=	sqrt(norm);
+		printf("norm: %1.3f\n",norm);
+	}
+
 #endif
 	
 	delete [] dot_gd;
@@ -6983,7 +6997,7 @@ void ICoord::dgrot_mag()
 	for (int i=0;i<len;i++)
 		overlap+=dgradq[i]*dvecq[i];
 
-	printf(" overlap(x1,x2) = %1.3f, Schmidt orthogonolize",overlap);
+	printf(" overlap(x1,x2) = %1.3f, Schmidt orthogonolize",overlap/overlap2);
 
 	//printf(" Schmidt orthogonalize x1 wrt x2\n");
 	for (int i=0;i<len;i++)
@@ -6997,8 +7011,8 @@ void ICoord::dgrot_mag()
 	for (int i=0;i<len;i++)
 		norm_dg+=dgradq[i]*dgradq[i];
 	norm_dg=sqrt(norm_dg);
-	printf(" norm x1 after = %1.3f\n",norm_dg);
-	cout << endl;
+	//printf(" norm x1 after = %1.3f\n",norm_dg);
+	//cout << endl;
 	
 	return;
 }

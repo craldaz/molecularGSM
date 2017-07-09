@@ -174,6 +174,8 @@ void GString::String_Method_Optimization()
   printf(" END NOTICES \n\n");
 
 
+  printf("Version: %s \n\n",g_GIT_SHA1);
+
   for (int i=0;i<nnmax;i++)
     active[i] = -1;
   active[0] = 0;
@@ -421,6 +423,7 @@ void GString::String_Method_Optimization()
 		//Conical meci(icoords[0],ncpu, runNum,runend-1,STEP_OPT_ITERS,isMECI); //constructor
 
 		icoords[0].grad1.seedType=3;
+		icoords[0].optCG=0;
 		icoords[0].grad_init(infile0,ncpu,runNum,0,0,0);
   	printf(" ---- Done preparing gradients ---- \n\n");
 		icoords[0].make_Hint();
@@ -3223,8 +3226,11 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,in
       if (!(find && n==TSnode))
       {
 #if !HESS_TANG 
+				printf(" Hi\n");
        	icoords[n].opt_constraint(ictan[n]); //|| USE_MOLPRO || QCHEMSF
 #endif
+				//printf(" Hi2\n");
+       	icoords[n].opt_constraint(ictan[n]); //|| USE_MOLPRO || QCHEMSF
         if (growing) icoords[n].stage1opt = 1;
         else icoords[n].stage1opt = 0;
 
