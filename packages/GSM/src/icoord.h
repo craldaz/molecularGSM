@@ -200,6 +200,8 @@ class ICoord {
   double* pgradq;
   double* gradqprim;
   double* pgradqprim;
+  double* dgradqprim;
+  double* pdgradqprim;
   double* dq0;
   double* dqm1;
   double* dqprim;
@@ -248,6 +250,7 @@ class ICoord {
 	void dgrad_to_dgradq();
 	void dvec_to_dvecq();
 	void dgrot_mag();
+	void schmidt_gradq();
 	double project_dgradq();
 	double project_dvecq();
 	void constrain_bp();   //constrains the BP

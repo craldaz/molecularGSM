@@ -3204,7 +3204,8 @@ void ICoord::save_hess()
   return;
 }
 
-int ICoord::grad_to_q() {
+int ICoord::grad_to_q()
+{
 
 #if USE_NOTBONDS
     force_notbonds();
@@ -3250,7 +3251,7 @@ int ICoord::grad_to_q() {
   for (int i=0;i<len0;i++) pgradqprim[i] = gradqprim[i];
   for (int i=0;i<len0;i++) gradqprim[i] = 0.;
   for (int i=0;i<len0;i++)
-  for (int j=0;j<len_d;j++)
+  for (int j=0;j<len_d;j++) 
     gradqprim[i] += Ut[j*len0+i]*gradq[j];
 #endif
 
@@ -5850,11 +5851,18 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
   xyzfile.setf(ios::left);
   xyzfile << setprecision(6);
 #endif
+	for (int i=0;i<nstates-1;i++)
+	{
+		grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
+		printf(" dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
+	}
+	printf("\n");
+	deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
 
   sprintf(sbuff,"\n"); printout += sbuff;
   for (int n=0;n<OPTSTEPS;n++)
   {
-		deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
+
     sprintf(sbuff," Opt step: %2i ",n+1); printout += sbuff;
     sprintf(sbuff," E(M): %1.2f gRMS: %1.4f",energy,gradrms); printout += sbuff;
     sprintf(sbuff," DeltaE: %4.3f",grad1.dE[wstate2-2]); printout += sbuff;
@@ -5874,12 +5882,6 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
     }
 #endif
 		printf(" iteration: %i \t ",n);
-		for (int i=0;i<nstates-1;i++)
-		{
-			grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
-			printf("dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
-		}
-		printf("\n");
 		
 		//take the combined step
 	  deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
@@ -5919,6 +5921,22 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
       bcp = 1;
     }
     else bcp = 0;
+
+    //print_xyz();
+		//print_q();
+    update_ic();
+		bmatp_create();
+		bmatp_to_U();
+		bmat_create();
+    energy = form_meci_space(run,node) - V0;
+		printf(" Average energy = %1.2f, ",energy);
+		grad_to_q();
+		for (int i=0;i<nstates-1;i++)
+		{
+			grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
+			printf(" dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
+		}
+		deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
 
 		
     if (n<OPTSTEPS-1)
@@ -5964,15 +5982,6 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
       if (DMAX<DMIN0) DMAX = DMIN0;
 #endif
     }
-    //print_xyz();
-		//print_q();
-    update_ic();
-		bmatp_create();
-		bmatp_to_U();
-		bmat_create();
-    energy = form_meci_space(run,node) - V0;
-		printf(" Average energy = %1.2f, ",energy);
-		grad_to_q();
 
     if (gradrms<OPTTHRESH && !bcp && deltaE < 0.001)  
     {
