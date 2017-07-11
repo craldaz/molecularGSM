@@ -5838,6 +5838,7 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
 	V0=form_meci_space(run, node);
 	//printf(" Average energy: %1.3f kcal/mol\n",energy);
 	double deltaE;
+  grad_to_q();
 	//print_q();
   Hintp_to_Hint();
   energyp = energy;
@@ -5853,10 +5854,10 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
   sprintf(sbuff,"\n"); printout += sbuff;
   for (int n=0;n<OPTSTEPS;n++)
   {
+		deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
     sprintf(sbuff," Opt step: %2i ",n+1); printout += sbuff;
-    grad_to_q();
-		//print_gradq();
-		//sprintf(sbuff," gqc: %4.3f",gradq[nicd0-1]); printout += sbuff;
+    sprintf(sbuff," E(M): %1.2f gRMS: %1.4f",energy,gradrms); printout += sbuff;
+    sprintf(sbuff," DeltaE: %4.3f",grad1.dE[wstate2-2]); printout += sbuff;
 
     if (do_bfgs) update_bfgsp(1);
     save_hess();
@@ -5919,24 +5920,6 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
     }
     else bcp = 0;
 
-    //print_xyz();
-		//print_q();
-    update_ic();
-		bmatp_create();
-		bmatp_to_U();
-		bmat_create();
-    energy = form_meci_space(run,node) - V0;
-		printf(" Average energy = %1.2f, ",energy);
-
-    sprintf(sbuff," E(M): %1.2f gRMS: %1.4f",energy,gradrms); printout += sbuff;
-    sprintf(sbuff," DeltaE: %4.3f",grad1.dE[wstate2-2]); printout += sbuff;
-
-    if (gradrms<OPTTHRESH && !bcp && deltaE < 0.001)  
-    {
-      sprintf(sbuff," * \n"); printout += sbuff;
-			//printf(" finished!\n");
-      break;
-    }
 		
     if (n<OPTSTEPS-1)
     {
@@ -5980,6 +5963,22 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
 			
       if (DMAX<DMIN0) DMAX = DMIN0;
 #endif
+    }
+    //print_xyz();
+		//print_q();
+    update_ic();
+		bmatp_create();
+		bmatp_to_U();
+		bmat_create();
+    energy = form_meci_space(run,node) - V0;
+		printf(" Average energy = %1.2f, ",energy);
+		grad_to_q();
+
+    if (gradrms<OPTTHRESH && !bcp && deltaE < 0.001)  
+    {
+      sprintf(sbuff," * \n"); printout += sbuff;
+			//printf(" finished!\n");
+      break;
     }
     sprintf(sbuff,"\n"); printout += sbuff;
     pgradrms = gradrms;

@@ -1785,9 +1785,9 @@ double GString::tangent_1b(double* ictan)
       exit(1);
     }
     double d0 = (newic.getR(b1) + newic.getR(b2));  //was *2
-		//newic.make_frags(); //doesnt work ?
+		printf(" nfrags=%i\n",newic.nfrags);
 		//if (newic.nfrags==1)
-		//	d0 = d0/1.5;
+			d0 = d0/1.5;
 
     if (newic.distance(b1,b2)<d0)
     {
