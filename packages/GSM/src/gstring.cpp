@@ -8033,18 +8033,20 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
   string nstr = StringTools::int2str(runNum,4,"0");
   string runName0 = StringTools::int2str(runNum,4,"0");
 
-	printf(" Optimizing on penalty function on node %i",nnR-1);
-  icoords[nnR-1].OPTTHRESH =CONV_TOL;
-  double sigma=	get_sigma(nnR-1,K);
-	icoords[nnR-1].opt_b("scratch/xyzfile_"+runName0+".xyz",osteps,1,sigma);
-  printf(" %s \n",icoords[nnR-1].printout.c_str()); 
-
+	if (icoords[nnR-1].grad1.dE[wstate2-2]>5.0)
+	{
+		printf(" Optimizing on penalty function on node %i",nnR-1);
+  	icoords[nnR-1].OPTTHRESH =CONV_TOL;
+  	double sigma=	get_sigma(nnR-1,K);
+		icoords[nnR-1].opt_b("scratch/xyzfile_"+runName0+".xyz",osteps,1,sigma);
+  	printf(" %s \n",icoords[nnR-1].printout.c_str()); 
+	}
   string strfileg = "stringfile.xyz"+nstr+"g";
   printf(" writing grown string %s \n",strfileg.c_str());
   string strfile = "stringfile.xyz"+nstr;
   print_string(nnR,allcoords,strfileg);
 	printf(" Optimizing to MECI.\n");
-	//icoords[nnR-1].DMAX=0.1;
+	icoords[nnR-1].DMAX=0.1;
 	icoords[nnR-1].opt_meci(runNum,nnR-1,100);
   printf(" writing string %s \n",strfile.c_str());
   print_string(nnR,allcoords,strfile);

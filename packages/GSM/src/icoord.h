@@ -113,6 +113,7 @@ class ICoord {
   //void update_ic_cg();
   void update_ic_qn();
   void update_ic_eigen();
+  void update_ic_eigenBP();
   void update_ic_eigen_h(double* C, double* D);
   void update_ic_eigen_ts(double* C);
   void walk_up();
@@ -172,6 +173,7 @@ class ICoord {
   double path_overlap_e_g;
   void update_bfgs();
   void update_bfgsp(int makeHint);
+  void update_bfgspBP(int makeHint);
   void update_bofill();
   void save_hess();
 
@@ -203,11 +205,15 @@ class ICoord {
   double* dgradqprim;
   double* pdgradqprim;
   double* dq0;
+  double* dq0BP;
   double* dqm1;
   double* dqprim;
   double* Hint;
   double* Hintp;
   double* Hinv;
+  double* HintBP;
+  double* HintpBP;
+  double* HinvBP;
   double* q;
   int useExactH;
   int isOpt;
@@ -215,7 +221,9 @@ class ICoord {
   double pgradrms;
   double gradrms;
   void make_Hint();
+  void make_HintBP();
   void Hintp_to_Hint();
+  void HintpBP_to_HintBP();
   int davidson_H(int neigen);
   int isDavid;
 
