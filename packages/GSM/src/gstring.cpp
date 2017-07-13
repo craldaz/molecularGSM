@@ -581,7 +581,7 @@ void GString::String_Method_Optimization()
   newic.optCG = 0;
   for (int i=0;i<nnmax;i++) icoords[i].optCG = 0;
 
-  string strfileg = "scratch/stringfile.xyz"+nstr+"g";
+  string strfileg = "stringfile.xyz"+nstr+"g";
 
   oi = 0; //now class variable
   int osteps = 2;
@@ -6872,6 +6872,17 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
         if (addednode) nnR++;
 				else if (isSE_ESSM) //finish because driving is done
 				{
+					
+      		for (int n=0;n<nnR;n++)
+      		{
+      		  printf("node: %i\n",n);
+      		  for (int i=0;i<nstates-1;i++)
+      		  {
+      		    icoords[n].grad1.dE[i] = icoords[n].grad1.E[i+1] - icoords[n].grad1.E[i];
+      		    printf(" dE[%i]:  %5.4f\t ",i,icoords[n].grad1.dE[i]);
+      		  }
+      		  cout <<endl;
+      		}
     			check_essm_done(osteps,oesteps,dqa,runNum,K);
     		  printf(" Finished\n");
     		  exit(1);
@@ -8032,6 +8043,22 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
   double E0 = icoords[0].grad1.E[1];
   string nstr = StringTools::int2str(runNum,4,"0");
   string runName0 = StringTools::int2str(runNum,4,"0");
+
+  //newic.reset(natoms,anames,anumbers,icoords[0].coords);
+  //intic.reset(natoms,anames,anumbers,icoords[nnR-1].coords);
+  //newic.ic_create();
+  //intic.ic_create();
+  //newic.union_ic(newic,intic);  
+	//icoords[nnR-1].copy_ic(newic);
+  //icoords[nnR-1].bmatp_create();
+  //icoords[nnR-1].bmatp_to_U();
+  //icoords[nnR-1].bmat_create();
+
+	if (icoords[nnR-1].grad1.dE[wstate2-2]>10.0)
+	{
+		K+=1;
+		osteps=30;
+	}
 
 	if (icoords[nnR-1].grad1.dE[wstate2-2]>5.0)
 	{
