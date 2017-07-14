@@ -5943,7 +5943,7 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
     {
       noptdone++;
 
-      if (energy > 1000.) { gradrms = 1.; break; }
+      if (energy > 3000.) { gradrms = 1.; break; }
 
 			double correction =gradq[nicd0-1]*dq0[nicd0-1]*627.5;
 			dEpre += correction;
@@ -5994,7 +5994,7 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
 
   } //loop n over OPTSTEPS
 
-#if 1
+#if 0
   if ((gradrms>gradrmsl*1.75 && !isTSnode && revertOpt)
    || (gradrms>gradrmsl*3.0 && revertOpt))
   {
