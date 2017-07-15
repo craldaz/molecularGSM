@@ -170,6 +170,7 @@ int Gradient::external_grad(double* coords, double* grad)
 //  printf(" gqce"); fflush(stdout);
 #elif QCHEMSF
 
+	wstate2=nstates;
 	if (wstate<0)
 	{
 		printf("wstate must be greater than 1!\n"); 

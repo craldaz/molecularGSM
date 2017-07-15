@@ -45,7 +45,7 @@ void QChemSF::init(string infilename, int natoms0, int* anumbers0, string* aname
   runend = rune;
   string nstr = StringTools::int2str(run,4,"0");
 
-  //cout << "  -Initializing QCHEM info ..." << endl;
+  cout << "  -Initializing QCHEM info ..." << endl;
   //cout << "  -opening inpfile to read qchem parameters" << endl;
   ifstream infile;
   infile.open(infilename.c_str());
@@ -132,6 +132,7 @@ void QChemSF::init(string infilename, int natoms0, int* anumbers0, string* aname
 #endif
   string qcPaths(qcPath);
 
+	printf(" %s\n",qcPaths.c_str());
   fileloc = qcPaths+"/";
 //  fileloc = "scratch/";
   nstr=StringTools::int2str(run,4,"0");
@@ -159,6 +160,7 @@ double QChemSF::calc_grads(double* coords)
 {
   //printf(" qcg"); fflush(stdout);
 
+	printf(" calculating\n");
   int badgeom = check_array(3*natoms,coords);
   if (badgeom)
   {

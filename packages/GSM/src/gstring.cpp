@@ -394,11 +394,11 @@ void GString::String_Method_Optimization()
   string nstr = StringTools::int2str(runNum,4,"0");
   grad1.init(infile0,natoms,anumbers,anames,icoords[1].coords,runNum,runend,ncpu,1,CHARGE);
   newic.grad_init(infile0,ncpu,runNum,runend-1,0,CHARGE);
-#if !USE_MOLPRO
+#if USE_MOLPRO
+		prepare_molpro();
+#else
   for (int n=0;n<nnmax0;n++)
     icoords[n].grad_init(infile0,ncpu,runNum,runend+n,0,CHARGE); //level 3 is exact kNNR only, 0 is QM grad always
-#else
-		prepare_molpro();
 #endif
 
 #if USE_MOLPRO || QCHEMSF

@@ -60,6 +60,19 @@ int ICoord::bmat_alloc() {
   OPTTHRESH = 0.0005;
   revertOpt = 1;
   useExactH = 0;
+
+  dgrad = new double[size_ic+100];
+  for (int i=0;i<size_ic+100;i++) dgrad[i]=0.;
+  dvec = new double[size_ic+100];
+  for (int i=0;i<size_ic+100;i++) dvec[i]=0.;
+  dgradq = new double[size_ic+100];
+  for (int i=0;i<size_ic+100;i++) dgradq[i]=0.;
+  dvecq = new double[size_ic+100];
+  for (int i=0;i<size_ic+100;i++) dvecq[i]=0.;
+  dgrad_U = new double[size_ic+100];
+  for (int i=0;i<size_ic+100;i++) dgrad_U[i]=0.;
+  dvec_U = new double[size_ic+100];
+  for (int i=0;i<size_ic+100;i++) dvec_U[i]=0.;
  
   MAXAD = 0.075; //max along one coordinate (was using 0.1)
   DMAX = 0.10; //max of step magnitude (was using 0.125)
