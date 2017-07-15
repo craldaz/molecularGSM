@@ -4498,9 +4498,9 @@ int ICoord::ic_to_xyz_opt() {
       printf(" %1.4f",qn[i]);
     printf("\n");
 #endif
-#if 0
+#if 1
   printf(" dq at start: \n");
-  for (int i=0;i<len;i++)
+  for (int i=0;i<nicd0;i++)
     printf(" %1.4f",dq[i]);
   printf("\n");
 #endif
