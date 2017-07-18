@@ -170,7 +170,6 @@ int Gradient::external_grad(double* coords, double* grad)
 //  printf(" gqce"); fflush(stdout);
 #elif QCHEMSF
 
-	wstate2=nstates;
 	if (wstate<0)
 	{
 		printf("wstate must be greater than 1!\n"); 
@@ -179,15 +178,14 @@ int Gradient::external_grad(double* coords, double* grad)
 	else
 	{
   	qchemsf1.calc_grads(coords);
-  	energy = qchemsf1.getE(0);
+  	energy = qchemsf1.getE(wstate-1);
   	if (V0==0.) V0 = energy;
-  	qchemsf1.getGrad(0,grada[0]);
+  	qchemsf1.getGrad(wstate,grada[0]);
   	for (int i=0;i<N3;i++)
   	  grad[i] = grada[0][i];
 	}
-	if (wstate2>0)
+	if (wstate2>0) //NEED TO FIX 7/16/2017
    {
-		printf("wstate2>0\n");
     energy += qchemsf1.getE(wstate2);
     qchemsf1.getGrad(1,grada[1]);
     if (wstate3==0)
@@ -207,7 +205,10 @@ int Gradient::external_grad(double* coords, double* grad)
   }
   for (int i=0;i<nstates;i++)
     E[i] = qchemsf1.getE(i);
-
+	
+	for (int i=0;i<nstates;i++)
+		printf(" E[%i]=%1.4f\n",i,E[i]);
+	
 #elif USE_MOLPRO
   mp1.reset(coords);
 	//cout << " seedType is "<< seedType << endl;
@@ -371,6 +372,9 @@ void Gradient::write_xyz_grad(double* coords, double* grad, string filename)
 int Gradient::read_nstates()
 {
   string filename = "NSTATES";
+  wstate = 1; //default 
+  wstate2 = 0;
+  wstate3 = 0;
 
   ifstream infile;
   infile.open(filename.c_str());
@@ -382,8 +386,24 @@ int Gradient::read_nstates()
 
   string line;
   int nstates0 = 0;
-  bool success = getline(infile, line);
-  nstates0 = atoi(line.c_str());
+  bool success =true; 
+  int nf = 0;
+	
+  while (!infile.eof())
+  {
+		success=getline(infile, line);
+    vector<string> tok_line = StringTools::tokenize(line, " ");
+    if (nf==0)
+      nstates0 = atoi(tok_line[1].c_str());
+    else if (nf==1)
+    {
+      wstate = atoi(tok_line[1].c_str());
+      if (tok_line.size()>2) wstate2 = atoi(tok_line[2].c_str());
+      if (tok_line.size()>3) wstate3 = atoi(tok_line[3].c_str());
+      printf("  wstate: %i %i %i \n",wstate,wstate2,wstate3);
+    }
+    nf++;
+	}
 
   infile.close();
 

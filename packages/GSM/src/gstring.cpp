@@ -8074,7 +8074,7 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
   print_string(nnR,allcoords,strfileg);
 	printf(" Optimizing to MECI.\n");
 	//icoords[nnR-1].DMAX=0.1;
-	icoords[nnR-1].make_Hint();
+	//icoords[nnR-1].make_Hint();
 	icoords[nnR-1].opt_meci(runNum,nnR-1,100);
   printf(" writing string %s \n",strfile.c_str());
   print_string(nnR,allcoords,strfile);

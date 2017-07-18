@@ -160,7 +160,6 @@ double QChemSF::calc_grads(double* coords)
 {
   //printf(" qcg"); fflush(stdout);
 
-	printf(" calculating\n");
   int badgeom = check_array(3*natoms,coords);
   if (badgeom)
   {
@@ -258,8 +257,8 @@ double QChemSF::calc_grads(double* coords)
     if (line.find(test2)!=string::npos)
     {
       printf("  need to increase CIS_N_ROOTS \n");
-      exit(1);
-     // cout << " skipping node for now " << endl;
+      //exit(1);
+      cout << " skipping node for now " << endl;
       getgrad = 0;
       V = 999;
       break;
@@ -300,7 +299,7 @@ double QChemSF::get_energy()
     }
     if (line.find("State Energy is")!=string::npos)
     {
-      //cout << "  DFT out: " << line << endl;
+      cout << "  DFT State Energy is: " << line << endl;
       tok_line = StringTools::tokenize(line, " \t");
       E[nf] = atof(tok_line[5].c_str());
       nf++;
@@ -326,9 +325,10 @@ double QChemSF::getE(int ws)
 void QChemSF::getGrad(int ws, double* grads)
 {
   double*    gradn = grad1;
-  if (ws==1) gradn = grad2;
-  if (ws==2) gradn = grad3;
-  if (ws==3) gradn = grad4;
+  if (ws==1) gradn = grad1;
+  if (ws==2) gradn = grad2;
+  if (ws==3) gradn = grad3;
+  if (ws==4) gradn = grad4;
   for (int i=0;i<3*natoms;i++)
     grads[i] = gradn[i];
 
