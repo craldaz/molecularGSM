@@ -186,8 +186,8 @@ int Gradient::external_grad(double* coords, double* grad)
 	}
 	if (wstate2>0) //NEED TO FIX 7/16/2017
    {
-    energy += qchemsf1.getE(wstate2);
-    qchemsf1.getGrad(1,grada[1]);
+    energy += qchemsf1.getE(wstate2-1);
+    qchemsf1.getGrad(wstate2,grada[1]);
     if (wstate3==0)
     	{
 				energy /= 2;
@@ -928,6 +928,13 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
   if (do_exact)
   {
     printf(" eg"); fflush(stdout);
+		if (wstate2<2)
+		{
+			printf(" Need to have more than 2 states\n");
+			exit(-1);
+		}		
+
+#if USE_MOLPRO
   	mp1.reset(coords);
 
   	if (gradcalls==0 && seedType<1)
@@ -965,14 +972,12 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
 					exit(-1);
 				}
 		}
+#else
+  	qchemsf1.calc_grads(coords);
+#endif
 
-		if (wstate2<2)
-		{
-			printf(" Need to have more than 2 states\n");
-			exit(-1);
-		}		
-
- #if 1
+ #if USE_MOLPRO
+  	//energy= mp1.getE(wstate2) * 627.5;
   	energy = mp1.getE(wstate) * 627.5;
   	energy+= mp1.getE(wstate2) * 627.5; // try with this off
 		energy /= 2.0;
@@ -982,10 +987,6 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
 		double deltaE = mp1.getE(wstate2)*627.5 - mp1.getE(wstate)*627.5;
 		double G = pow(deltaE,2)/(deltaE+alpha);	
 		energy += sigma*G;
-#else
-  	energy= mp1.getE(wstate2) * 627.5;
-#endif
-
   	error = mp1.getGrad(grada[0],wstate);
 		if (error==1)
 		{
@@ -1003,6 +1004,23 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
   	  grada[0][i] *= ANGtoBOHR;
   	for (int i=0;i<N3;i++)
   	  grada[1][i] *= ANGtoBOHR;
+  	for (int i=0;i<nstates;i++)
+  	  E[i] = mp1.getE(i+1) * 627.5;
+#else
+		energy = qchemsf1.getE(wstate-1);
+		energy+= qchemsf1.getE(wstate2-1);
+		energy /= 2.0;
+  	qchemsf1.getGrad(wstate,grada[0]);
+    qchemsf1.getGrad(wstate2,grada[1]);
+    //for (int i=0;i<N3;i++) 
+    //	grad[i] = (grada[0][i] + grada[1][i])/2.;
+		double alpha = 0.02*627.5; //kcal/mol
+		double deltaE = qchemsf1.getE(wstate2-1)- qchemsf1.getE(wstate-1);
+		double G = pow(deltaE,2)/(deltaE+alpha);	
+		energy += sigma*G;
+  	for (int i=0;i<nstates;i++)
+  	  E[i] = qchemsf1.getE(i);
+#endif
 
 #if 1
   	for (int i=0;i<N3;i++) 
@@ -1016,8 +1034,7 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
   	  grad[i] = grada[1][i];
 #endif
 		
-  	for (int i=0;i<nstates;i++)
-  	  E[i] = mp1.getE(i+1) * 627.5;
+
 
   	  xyz_grad = 1;
   }
