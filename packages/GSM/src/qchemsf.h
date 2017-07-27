@@ -45,6 +45,7 @@ class QChemSF {
    double* grad3;
    double* grad4;
    double* E;
+	 int * cis_state;
 
    double read_output(string filename);
    double read_grad(string filename);
@@ -58,8 +59,10 @@ class QChemSF {
 
    int read_hess(double* hess);
    double calc_grads(double* coords);
+   void calc_dvec(double* coords);
    double getE(int ws);
    void getGrad(int ws, double* grad);
+	 void get_dvec(double* dvec);
    void alloc(int natoms);
    void init(string infilename, int natoms, int* anumbers, string* anames, int run, int rune);
    void freemem();

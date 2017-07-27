@@ -184,7 +184,7 @@ int Gradient::external_grad(double* coords, double* grad)
   	for (int i=0;i<N3;i++)
   	  grad[i] = grada[0][i];
 	}
-	if (wstate2>0) //NEED TO FIX 7/16/2017
+	if (wstate2>0) 
    {
     energy += qchemsf1.getE(wstate2-1);
     qchemsf1.getGrad(wstate2,grada[1]);
@@ -833,15 +833,14 @@ int Gradient::dvec_calc(double* coords, double* dvec,int run,int rune)
 				}
 			}
 	}
-#endif 
-
-#else
-	printf(" not yet implemented \n");
-	return 1;
-#endif
-
 	for (int i=0;i<N3;i++)
     dvec[i] *= ANGtoBOHR;
+#endif 
+#else
+	//printf(" not yet implemented \n");
+	  qchemsf1.calc_dvec(coords);
+		qchemsf1.get_dvec(dvec);
+#endif
 	
 #if 0
   printf(" XYZ: \n");
@@ -857,6 +856,7 @@ int Gradient::dvec_calc(double* coords, double* dvec,int run,int rune)
 	return error;
 
 }
+
 double Gradient::energy_initial(double* coords,int run, int rune,int penalty, double sigma)
 {
   printf(" Calculating initial energy\n");

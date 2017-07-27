@@ -41,7 +41,6 @@ class Gradient
    GAUSSIAN gaus1;
    ASE ase1;
    ORCA orca1;
-   Molpro mp1;
 
    int knn_k;
    KNNR knnr1;
@@ -90,6 +89,7 @@ class Gradient
 	 double* dE;
    double** grada; //multistate gradients
    double* E; //for multiple states
+   Molpro mp1;
 
    int seedType;
 	 int dvec_calc(double* coords, double* dvec, int run, int rune);

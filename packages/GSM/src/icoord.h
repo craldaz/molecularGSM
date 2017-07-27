@@ -4,6 +4,7 @@
 #include "stringtools.h"
 #include "pTable.h"
 #include "grad.h"
+#include <math.h> 
 
 class ICoord {
 
@@ -264,6 +265,11 @@ class ICoord {
 	void constrain_bp();   //constrains the BP
 	void constrain_ss(double* C);
 	void bp_rot(double* C);	
+	double rot_angle();
+	double calc_pitch();
+	double calc_asymmetry();
+	void model_CI(int run, int node);
+
 
 	void constrain_ss_bp(double* C); //constrains SS ictan and BP
 

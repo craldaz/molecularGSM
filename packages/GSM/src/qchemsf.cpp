@@ -33,11 +33,13 @@ void QChemSF::init(string infilename, int natoms0, int* anumbers0, string* aname
     anames[i] = anames0[i];
 
   E = new double[10];
+  cis_state = new int[10];
   grad1 = new double[3*natoms];
   grad2 = new double[3*natoms];
   grad3 = new double[3*natoms];
   grad4 = new double[3*natoms];
   for (int i=0;i<10;i++) E[i] = 0.;
+  for (int i=0;i<10;i++) cis_state[i] = 0;
   for (int i=0;i<3*natoms;i++) 
     grad1[i] = grad2[i] = grad3[i] = grad4[i] = 0.;
 
@@ -224,8 +226,6 @@ double QChemSF::calc_grads(double* coords)
   
   //cout << calc_command.c_str() << endl;
   system(calc_command.c_str());
-  //fflush(stdout);
-
 
   FILE *goutfile;
 
@@ -268,14 +268,132 @@ double QChemSF::calc_grads(double* coords)
 
   gradcalls++;
 
-  //printf(" qcge"); fflush(stdout);
-
   double Eground = get_energy();
   get_grads();
   V = getE(0);
 
   return V * 627.5;
 }
+
+
+void QChemSF::calc_dvec(double* coords)
+{
+  int badgeom = check_array(3*natoms,coords);
+  if (badgeom)
+  {
+    printf(" ERROR: Geometry contains NaN, exiting! \n");
+    exit(-1);
+  }
+
+  if (ncpu<1) ncpu = 1;
+
+  //cout << "started QChem::grads" << endl;
+  for (int i=0;i<3*natoms;i++)
+    grad1[i] = grad2[i] = grad3[i] = grad4[i] = 0.;
+
+  int num,k,c;
+  double V = -1.;
+
+  string runends=StringTools::int2str(runend,3,"0");
+  string nstr=StringTools::int2str(runNum,4,"0");
+  string molname = fileloc+"molecule"+nstr+runends;
+  ofstream geomfile(molname.c_str());
+
+  // print the molecule coordinate section
+  for(int j=0;j<natoms;j++)
+  {
+    geomfile << setw(2) << anames[j];
+    geomfile << setw(16)<< coords[3*j+0];
+    geomfile << setw(16)<< coords[3*j+1];
+    geomfile << setw(16)<< coords[3*j+2] << endl;
+  }
+  geomfile.close();
+ 
+  //cout << "about to call ./gscreate" << endl;
+  nstr=StringTools::int2str(runNum,4,"0");
+  string cmd = "./gscreate2 "+nstr+runends;
+	
+	string qdername="qder";
+	ofstream inpfile;
+	inpfile.open(qdername.c_str());
+	inpfile.setf(ios::fixed);
+  inpfile.setf(ios::left);
+  inpfile << setprecision(6);
+	inpfile << "$derivative_coupling" << endl;
+	inpfile << "comment" << endl;
+	inpfile << cis_state[0] <<" " << cis_state[1] << endl; //should be wstate2-2
+	inpfile << "$end" << endl;
+	inpfile.close();
+
+  system(cmd.c_str());
+  if (!firstrun)
+  {
+    cmd = "mv "+qcoutfile+" "+qcoutfile+"_prev";
+    system(cmd.c_str());
+  }
+  else firstrun = 0;
+
+  string calc_command;
+  nstr=StringTools::int2str(ncpu,4,"0");
+  string nstrc = StringTools::int2str(ncpu,1,"0");
+  if (ncpu==1)
+    calc_command="cd "+fileloc+"; qchem -save ";
+  else
+#if THREADS_ON
+    calc_command="cd "+fileloc+"; qchem -nt "+nstrc+" -save ";
+#else
+    calc_command="cd "+fileloc+"; qchem -np "+nstrc+" -save ";
+#endif
+  calc_command=calc_command+qcinfile;
+  calc_command=calc_command+" "+qcoutfile;
+  calc_command=calc_command+" "+runName+" ";
+  int length2=StringTools::cleanstring(calc_command);
+  
+  system(calc_command.c_str());
+
+  FILE *goutfile;
+
+  string qcoutfilename = qcoutfile;
+  ifstream qcfile;
+  qcfile.open(qcoutfilename.c_str());
+
+  string test = "SCF failed to converge";
+  string test2 = "Target singlet state not found";
+  string tdenergy = "Total energy for state";
+
+  string line;
+  int getgrad = 1;
+  if (!qcfile)
+  {
+    printf(" failed to open qcout file \n");
+    getgrad = 0;
+  }
+  while (getline(qcfile, line) && getgrad)
+  {
+    if (line.find(test)!=string::npos)
+    {
+      printf(" SCF failure \n");
+      getgrad = 0;
+      V = 999;
+      break;
+    }
+    if (line.find(test2)!=string::npos)
+    {
+      printf("  need to increase CIS_N_ROOTS \n");
+      //exit(1);
+      cout << " skipping node for now " << endl;
+      getgrad = 0;
+      V = 999;
+      break;
+    }
+  }
+  qcfile.close();
+
+  gradcalls++;
+
+  return;
+}
+
 
 double QChemSF::get_energy() 
 {
@@ -290,7 +408,6 @@ double QChemSF::get_energy()
   while(!output.eof()) 
   { 
     getline(output,line);
-//    cout << " RR " << line << endl;
     if (line.find("Total energy in the final basis set")!=string::npos)
     {
       //cout << "  DFT out: " << line << endl;
@@ -301,6 +418,7 @@ double QChemSF::get_energy()
     {
       cout << "  DFT State Energy is: " << line << endl;
       tok_line = StringTools::tokenize(line, " \t");
+			cis_state[nf]=atoi(tok_line[1].c_str());
       E[nf] = atof(tok_line[5].c_str());
       nf++;
     }
@@ -394,6 +512,46 @@ void QChemSF::get_grads()
   return;
 }
 
+
+void QChemSF::get_dvec(double* dvec)
+{
+
+	printf(" getting dvec\n");
+  ifstream gradfile;
+  gradfile.open(qcoutfile.c_str());
+  if (!gradfile)
+  {
+    printf(" Error opening gradient file! %s \n",qcoutfile.c_str());
+    return;
+  }
+
+  string line;
+  bool success = true;
+
+  int wg = 0;
+  while (!gradfile.eof())
+  {
+    success=getline(gradfile, line);
+    if (line.find("SF-CIS derivative coupling with ETF")!=string::npos)
+    {
+			getline(gradfile,line);
+			getline(gradfile,line);
+      for (int i=0;i<natoms;i++)
+      {
+        success=getline(gradfile, line);
+        int length=StringTools::cleanstring(line);
+        vector<string> tok_line = StringTools::tokenize(line, " \t");
+        dvec[3*i+0] = atof(tok_line[1].c_str())*(ANGtoBOHR);
+        dvec[3*i+1] = atof(tok_line[2].c_str())*(ANGtoBOHR);
+        dvec[3*i+2] = atof(tok_line[3].c_str())*(ANGtoBOHR);
+      }
+    }
+  }
+
+  gradfile.close();
+
+  return;
+}
 
 void QChemSF::write_xyz_grad(double* coords, double* grad, string filename)
 {

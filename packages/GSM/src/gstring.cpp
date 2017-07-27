@@ -55,6 +55,8 @@ void GString::String_Method_Optimization()
     cout << "****** Starting IC-SSM calculation *****" << endl;
 	else if (isMECI>0)
 		cout << "****** Starting IC-MECI calculation *****" << endl;
+	else if (isPRODUCT>0)
+		cout << "****** Starting Product calculation *****" << endl;
   else if (isSSM==-1 && isFSM==-1)
     cout << "****** Starting OPT calculation *****" << endl;
   else
@@ -243,7 +245,7 @@ void GString::String_Method_Optimization()
 #if 1
   printf(" printing ic1 ic's \n");
   ic1.print_ic();
-  if (!isSSM || !isMECI)
+  if (!isSSM || !isMECI || !isPRODUCT)
   {
     printf(" printing ic2 ic's \n");
     ic2.print_ic();
@@ -432,6 +434,26 @@ void GString::String_Method_Optimization()
 		exit(-1);
 	}
 
+	if (isPRODUCT)
+	{
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("########### Starting experimental program #####################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+
+		icoords[0].grad1.seedType=3;
+		icoords[0].grad_init(infile0,ncpu,runNum,0,0,0);
+  	printf(" ---- Done preparing gradients ---- \n\n");
+		icoords[0].model_CI(runNum,0);
+		printf(" Finished\n");
+		exit(-1);
+	}
   if (initialOpt>0 && !isRestart)
   {
     printf("\n preopt_iter: opting first node \n");
@@ -1113,6 +1135,7 @@ void GString::parameter_init(string infilename)
   isSSM = 0;
   isFSM = 0;
 	isMECI =0;
+	isPRODUCT =0;
 	isDE_ESSM =0;
 	isSE_ESSM =0; //these are for excited state methods
   use_exact_climb = 2;
@@ -1240,6 +1263,11 @@ void GString::parameter_init(string infilename)
 			{
 				printf("  -using MECI \n");
 				isMECI = 1;
+			}
+			else if (tok_line[1]=="PRODUCT")
+			{
+				printf("  -using PRODUCT\n");
+				isPRODUCT = 1;
 			}
 			else if (tok_line[1]=="SE-ESSM")
 			{
@@ -1391,7 +1419,7 @@ void GString::structure_init(string xyzfile)
 
   for (int i=0;i<2;i++)
   {
-    if ((isSSM || isMECI) && i==1) break;
+    if ((isSSM || isMECI || isPRODUCT) && i==1) break;
     success=getline(infile, line);
     success=getline(infile, line);
     for (int j=0;j<natoms;j++)
@@ -1417,7 +1445,7 @@ void GString::structure_init(string xyzfile)
     }
   }
 
-  if (isSSM || isMECI)
+  if (isSSM || isMECI || isPRODUCT)
   for (int i=0;i<3*natoms;i++)
     coords[nnmax-1][i] = coords[0][i];
 
@@ -7987,7 +8015,7 @@ void GString::prepare_molpro()
 	int wstate2 = grad1.wstate2;
 	int wstate = grad1.wstate;
 
-	if (!isMECI)
+	if (!isMECI && !isPRODUCT)
   for (int n=0;n<nnmax0;n++)
   {
     printf("\n Node %2i \n",n); fflush(stdout);

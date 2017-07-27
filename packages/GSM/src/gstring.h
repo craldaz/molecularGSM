@@ -35,6 +35,7 @@ class GString {
  
   int isSSM; //shooting string flag
   int isMECI; //MECI opt
+  int isPRODUCT; //MECI opt
 	int isDE_ESSM;
 	int isSE_ESSM;
   int hessSSM; //starting SSM hessian given
