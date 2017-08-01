@@ -763,11 +763,11 @@ int Gradient::dvec_calc(double* coords, double* dvec,int run,int rune)
 { 
   runNum = run;
   runend = rune;
-  mp1.reset(coords);
   string nstr = StringTools::int2str(run,4,"0");
   runName0 = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(runend,4,"0");
 	int error=1;
 #if USE_MOLPRO
+  mp1.reset(coords);
 	mp1.runname("mp_"+runName0);
   mp1.calc_dvec();
   error = mp1.getDVec(dvec);

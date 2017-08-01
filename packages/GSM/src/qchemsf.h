@@ -53,6 +53,7 @@ class QChemSF {
    void xyz_save(string filename);
    double get_energy();
    void get_grads();
+	 int getgrad;
    int scangradient(string file, double* grad, int natoms);
 
   public:

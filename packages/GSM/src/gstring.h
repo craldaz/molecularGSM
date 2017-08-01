@@ -258,6 +258,10 @@ class GString {
   void shift_node(int nnOld, int nnNew);
 
   void build_fstring(double** fstring);
+
+	double rot_angle(double* dgrad,double* dvec);
+	double calc_pitch(double* dgrad,double* dvec);
+	double calc_asymmetry(double* dgrad,double* dvec);
 };
 
 #endif

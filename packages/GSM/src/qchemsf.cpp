@@ -22,6 +22,7 @@ void QChemSF::init(string infilename, int natoms0, int* anumbers0, string* aname
   gradcalls = 0;
   nscffail = 0;
   firstrun = 1;
+	getgrad=1;
 
   natoms = natoms0;
   anumbers = new int[natoms+1];
@@ -172,8 +173,8 @@ double QChemSF::calc_grads(double* coords)
   if (ncpu<1) ncpu = 1;
 
   //cout << "started QChem::grads" << endl;
-  for (int i=0;i<3*natoms;i++)
-    grad1[i] = grad2[i] = grad3[i] = grad4[i] = 0.;
+  //for (int i=0;i<3*natoms;i++) //turned this off to reuse
+  //  grad1[i] = grad2[i] = grad3[i] = grad4[i] = 0.;
 
   int num,k,c;
   double V = -1.;
@@ -238,7 +239,8 @@ double QChemSF::calc_grads(double* coords)
   string tdenergy = "Total energy for state";
 
   string line;
-  int getgrad = 1;
+  getgrad = 1;
+	int bad_grad=0;
   if (!qcfile)
   {
     printf(" failed to open qcout file \n");
@@ -258,8 +260,8 @@ double QChemSF::calc_grads(double* coords)
     {
       printf("  need to increase CIS_N_ROOTS \n");
       //exit(1);
+      bad_grad++;
       cout << " skipping node for now " << endl;
-      getgrad = 0;
       V = 999;
       break;
     }
@@ -267,12 +269,20 @@ double QChemSF::calc_grads(double* coords)
   qcfile.close();
 
   gradcalls++;
-
+	
+	if (bad_grad==1)
+  	getgrad = 0;
+	else if (bad_grad>1)
+	{	
+		printf(" found no roots\n");
+		exit(-1);
+	}
+	
   double Eground = get_energy();
   get_grads();
-  V = getE(0);
 
-  return V * 627.5;
+
+  return 1.0;
 }
 
 
@@ -286,10 +296,6 @@ void QChemSF::calc_dvec(double* coords)
   }
 
   if (ncpu<1) ncpu = 1;
-
-  //cout << "started QChem::grads" << endl;
-  for (int i=0;i<3*natoms;i++)
-    grad1[i] = grad2[i] = grad3[i] = grad4[i] = 0.;
 
   int num,k,c;
   double V = -1.;
@@ -362,18 +368,18 @@ void QChemSF::calc_dvec(double* coords)
   string tdenergy = "Total energy for state";
 
   string line;
-  int getgrad = 1;
+  int getdvec = 1;
   if (!qcfile)
   {
     printf(" failed to open qcout file \n");
-    getgrad = 0;
+    getdvec = 0;
   }
-  while (getline(qcfile, line) && getgrad)
+  while (getline(qcfile, line) && getdvec)
   {
     if (line.find(test)!=string::npos)
     {
       printf(" SCF failure \n");
-      getgrad = 0;
+      getdvec = 0;
       V = 999;
       break;
     }
@@ -382,7 +388,7 @@ void QChemSF::calc_dvec(double* coords)
       printf("  need to increase CIS_N_ROOTS \n");
       //exit(1);
       cout << " skipping node for now " << endl;
-      getgrad = 0;
+      getdvec = 0;
       V = 999;
       break;
     }
@@ -405,6 +411,7 @@ double QChemSF::get_energy()
   vector<string> tok_line;
   energy = 0;
   int nf = 0;
+
   while(!output.eof()) 
   { 
     getline(output,line);
@@ -429,6 +436,12 @@ double QChemSF::get_energy()
     printf(" energy zero, DFT failed \n");
     return 10000.;
   }
+
+	if (getgrad==1)
+	{
+		printf(" setting upper state to %i\n",cis_state[0]+1);
+		cis_state[1]=cis_state[0]+1;
+	}
 
   output.close();
 
@@ -462,6 +475,22 @@ void QChemSF::get_grads()
     printf(" Error opening gradient file! %s \n",qcoutfile.c_str());
     return;
   }
+#if 0
+  cout << " gradients: " << endl;
+
+  for (int i=0;i<natoms;i++) 
+    cout << grad1[3*i+0] << " " << grad1[3*i+1] << " " << grad1[3*i+2] << endl;
+  printf("\n");
+  for (int i=0;i<natoms;i++) 
+    cout << grad2[3*i+0] << " " << grad2[3*i+1] << " " << grad2[3*i+2] << endl;
+  //printf("\n");
+  //for (int i=0;i<natoms;i++) 
+  //  cout << grad3[3*i+0] << " " << grad3[3*i+1] << " " << grad3[3*i+2] << endl;
+  //printf("\n");
+  //for (int i=0;i<natoms;i++) 
+  //  cout << grad4[3*i+0] << " " << grad4[3*i+1] << " " << grad4[3*i+2] << endl;
+  printf("\n");
+#endif
 
   string line;
   bool success = true;
@@ -493,17 +522,18 @@ void QChemSF::get_grads()
 
 #if 0
   cout << " gradients: " << endl;
+
   for (int i=0;i<natoms;i++) 
     cout << grad1[3*i+0] << " " << grad1[3*i+1] << " " << grad1[3*i+2] << endl;
   printf("\n");
   for (int i=0;i<natoms;i++) 
     cout << grad2[3*i+0] << " " << grad2[3*i+1] << " " << grad2[3*i+2] << endl;
-  printf("\n");
-  for (int i=0;i<natoms;i++) 
-    cout << grad3[3*i+0] << " " << grad3[3*i+1] << " " << grad3[3*i+2] << endl;
-  printf("\n");
-  for (int i=0;i<natoms;i++) 
-    cout << grad4[3*i+0] << " " << grad4[3*i+1] << " " << grad4[3*i+2] << endl;
+  //printf("\n");
+  //for (int i=0;i<natoms;i++) 
+  //  cout << grad3[3*i+0] << " " << grad3[3*i+1] << " " << grad3[3*i+2] << endl;
+  //printf("\n");
+  //for (int i=0;i<natoms;i++) 
+  //  cout << grad4[3*i+0] << " " << grad4[3*i+1] << " " << grad4[3*i+2] << endl;
   printf("\n");
 #endif
 

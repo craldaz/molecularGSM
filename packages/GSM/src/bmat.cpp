@@ -2052,7 +2052,8 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
 	else
  		energy = grad1.grads(coords, grad, Ut, 1) - V0;
   if (energy > 1000.) { sprintf(sbuff,"SCF failed \n"); printout+=sbuff; return 10000.; }
-
+	
+	printf(" Energy=%1.4f\n",energy);
   energyp = energy;
   energyl = energy;
 #if 1
@@ -2070,7 +2071,7 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
   {
     //if (n==0)
     sprintf(sbuff," Opt step: %2i ",n+1); printout += sbuff;
-
+		printf(" iteration %i\n",n);
 #if USE_PRIMA
     energy += prima_force();
 #endif
@@ -2147,6 +2148,7 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
 			else
  				energy = grad1.grads(coords, grad, Ut, 1) - V0;
       if (energy > 1000.) { sprintf(sbuff,"SCF failed \n"); printout += sbuff; gradrms = 1.; break; }
+			printf(" Energy=%1.4f\n",energy);
 
 #if STEPCONTROL
       double dE = energy - energyp;
@@ -4512,7 +4514,7 @@ int ICoord::ic_to_xyz_opt() {
       printf(" %1.4f",qn[i]);
     printf("\n");
 #endif
-#if 1
+#if 0
   printf(" dq at start: \n");
   for (int i=0;i<nicd0;i++)
     printf(" %1.4f",dq[i]);
@@ -7200,13 +7202,13 @@ void ICoord::model_CI(int run, int node)
       for (int i=0;i<natoms;i++)
         cout <<" " <<  anames[i] << " " << r[3*i+0] <<" " << r[3*i+1] << " " << r[3*i+2] << endl;
 			//need to implement something here
-			string runName=StringTools::int2str(counter,4,"0")+"_"+StringTools::int2str(run,4,"0");
+			string runName=StringTools::int2str(k,4,"0")+"_"+StringTools::int2str(run,4,"0");
 			grad1.wstate2=0;
 			grad1.mp1.wstate2=0;
 			grad1.mp1.wstate=grad1.wstate;
 			printf("wstates: %i %i\n", grad1.wstate,grad1.wstate2);
 			double energy=opt_b("scratch/product"+runName+".xyz",100,0,0.0);
-			print_xyz();
+			print_xyz_save("product"+runName+".xyz");
       for (int i=0;i<3*natoms;i++)
         coords[i]=tmp[i];
 			printf(" opt_energy is %1.4f\n", V0+energy);
