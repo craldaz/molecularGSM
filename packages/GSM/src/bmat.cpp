@@ -7119,6 +7119,18 @@ void ICoord::model_CI(int run, int node)
   double asymmetry =calc_asymmetry();
   printf(" asymmetry = %1.5f\n",asymmetry);
 
+	if (asymmetry<0.0)
+	{
+		double* tmp_vec=new double[3*natoms];
+		for (int i=0;i<3*natoms;i++)
+		{
+			tmp_vec[i]=dgrad[i];
+			dgrad[i]=dvec[i];
+			dvec[i] = tmp_vec[i];
+		}
+  	asymmetry =calc_asymmetry();
+  	printf(" asymmetry = %1.5f\n",asymmetry);
+	}
 	
 	double rmag=0.1;
   double* r = new double[natoms*3];
@@ -7144,9 +7156,36 @@ void ICoord::model_CI(int run, int node)
   }
   sab_x = dotx/pitch;
   sab_y = doty/pitch;
+
+	if (sab_x < 0.0 && sab_y > 0.0)
+	{
+		for (int i=0;i<3*natoms;i++)
+			dgrad[i] = -dgrad[i];
+  	for (int i=0;i<3*natoms;i++)
+  	{
+  	  dotx+=sab[i]*dgrad[i]/norm_rdgrad;
+  	  doty+=sab[i]*dvec[i]/norm_rnacm;
+  	}
+  	sab_x = dotx/pitch;
+  	sab_y = doty/pitch;
+	}
+	else if (sab_x > 0.0 && sab_y < 0.0)
+	{
+		for (int i=0;i<3*natoms;i++)
+			dvec[i] = -dvec[i];
+  	for (int i=0;i<3*natoms;i++)
+  	{
+  	  dotx+=sab[i]*dgrad[i]/norm_rdgrad;
+  	  doty+=sab[i]*dvec[i]/norm_rnacm;
+  	}
+  	sab_x = dotx/pitch;
+  	sab_y = doty/pitch;
+	}
+
   double sigma =sqrt(sab_x*sab_x + sab_y*sab_y);
   double tmp2= sab_y/sab_x;
   double theta_s = atan(tmp2);
+
   printf(" sigma = %1.2f, theta_s = %1.3f, sx = %1.2f, sy = %1.2f\n",sigma,theta_s,sab_x,sab_y);
   for (int i=0;i<40;i++)
   {
@@ -7207,15 +7246,15 @@ void ICoord::model_CI(int run, int node)
 			grad1.mp1.wstate2=0;
 			grad1.mp1.wstate=grad1.wstate;
 			printf("wstates: %i %i\n", grad1.wstate,grad1.wstate2);
-			double energy=opt_b("scratch/product"+runName+".xyz",100,0,0.0);
-			print_xyz_save("product"+runName+".xyz");
+			//double energy=opt_b("scratch/product"+runName+".xyz",100,0,0.0);
+			//print_xyz_save("product"+runName+".xyz");
       for (int i=0;i<3*natoms;i++)
         coords[i]=tmp[i];
-			printf(" opt_energy is %1.4f\n", V0+energy);
+			//printf(" opt_energy is %1.4f\n", V0+energy);
     }
     printf(" Sucessfully found product(s)");
 
-
+	
 	delete [] tmp;
 	delete [] theta;
 	delete [] EmodelA;

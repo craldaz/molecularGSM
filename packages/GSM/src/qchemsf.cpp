@@ -437,7 +437,7 @@ double QChemSF::get_energy()
     return 10000.;
   }
 
-	if (getgrad==1)
+	if (getgrad==0 && cis_state[1] ==cis_state[0])
 	{
 		printf(" setting upper state to %i\n",cis_state[0]+1);
 		cis_state[1]=cis_state[0]+1;

@@ -530,7 +530,9 @@ void GString::String_Method_Optimization()
 	  double asymmetry =calc_asymmetry(dgrad,dvec);
 	  printf(" asymmetry = %1.5f\n",asymmetry);
 	
-		double rmag=0.1;
+		double rmag=0.5;
+		printf(" rmag=%1.2f\n",rmag);
+
 	  double* r = new double[natoms*3];
 	  double dtheta = 2*3.14159/40.;
 	  double* theta=new double[40];
@@ -584,6 +586,10 @@ void GString::String_Method_Optimization()
 	        min[counter]=i;
 	        counter++;
 	      }
+				printf(" i=%i\n",i);
+	      for (int j=0;j<3*natoms;j++)
+	       	newic.coords[j]=icoords[0].coords[j]+rmag*cos(theta[i])*dgrad[j]/norm_rdgrad + rmag*sin(theta[i])*dvec[j]/norm_rnacm;
+				newic.print_xyz();
 	    }
 	    //check endpoints
 	          if (EmodelB[0]<EmodelB[39] && EmodelB[1]>EmodelB[0])
@@ -8064,6 +8070,9 @@ void GString::add_last_node(int type)
   {
     printf(" already created node, opting \n");
   }
+#if USE_MOLPRO
+	icoords[nnR].grad1.seedType=-1;
+#endif
   string nstr = StringTools::int2str(runNum,4,"0");
   icoords[nnR].grad1.update_knnr();
   V_profile[nnR] = icoords[nnR].opt_b("scratch/intopt"+nstr+".xyz",noptsteps,0,0.0);
@@ -8223,8 +8232,10 @@ void GString::prepare_molpro()
 			if (isDE_ESSM)
 				printf(" Calc'd in starting_seam\n");
 				//V0=icoords[n].grad1.grads(coords[0], grads[0], icoords[0].Ut, 3); 
-			else if (isSSM>0 || isSE_ESSM)
+			else if (isSE_ESSM)
 				V0 = icoords[n].grad1.energy_initial(coords[n],runNum,n,1,0.);
+			else if (isSSM)
+				V0 = icoords[n].grad1.energy_initial(coords[n],runNum,n,0,0.);
 			else 
 				V0 = icoords[n].grad1.energy_initial(coords[n],runNum,n,0,0.);
   	 	printf("  setting V0 to: %8.1f (%12.8f au) \n",V0,V0/627.5);
@@ -8281,6 +8292,7 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
 	}
   string strfileg = "stringfile.xyz"+nstr+"g";
   printf(" writing grown string %s \n",strfileg.c_str());
+  icoords[nnR-1].OPTTHRESH =CONV_TOL/2;
   string strfile = "stringfile.xyz"+nstr;
   print_string(nnR,allcoords,strfileg);
 	printf(" Optimizing to MECI.\n");
