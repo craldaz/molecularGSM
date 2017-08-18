@@ -6173,7 +6173,7 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
 		printf(" Average energy = %1.2f, ",energy);
     sprintf(sbuff," E(M): %1.2f gRMS: %1.4f",energy,gradrms); printout += sbuff;
     sprintf(sbuff," DeltaE: %4.3f",grad1.dE[wstate2-2]); printout += sbuff;
-    if ((gradrms<(OPTTHRESH/5.) && !bcp && deltaE < 0.008) || (gradrms<OPTTHRESH && deltaE<0.001 && !bcp))  
+    if ((gradrms<(OPTTHRESH) && !bcp && deltaE < 0.001))  
     {
       sprintf(sbuff," * \n"); printout += sbuff;
 			//printf(" finished!\n");
@@ -6956,6 +6956,9 @@ void ICoord::bp_rot(double* C)
 		 dot_dv+=dvec_U[i]*C[i];
 	printf(" Overlap of tan with dvec =%1.4f\n",dot_dv);
 
+	double dot_bp=sqrt(dot_dv*dot_dv + dot_dg*dot_dg);
+	printf(" Overlap of tan with BP = %1.4f\n",dot_bp);
+
 	double norm=0.;
 	for (int i=0;i<len;i++)
 		norm+=C[i]*C[i];
@@ -7021,7 +7024,7 @@ void ICoord::dgrot_mag()
 	for (int i=0;i<len;i++)
 		overlap+=dgradq[i]*dvecq[i];
 
-	printf(" overlap(x1,x2) = %1.3f, Schmidt orthogonolize",overlap/overlap2);
+	printf(" overlap(x1,x2) = %1.3f, Schmidt orthogonolize\n",overlap/overlap2);
 
 	//printf(" Schmidt orthogonalize x1 wrt x2\n");
 	for (int i=0;i<len;i++)

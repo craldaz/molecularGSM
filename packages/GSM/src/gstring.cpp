@@ -466,6 +466,7 @@ void GString::String_Method_Optimization()
 		}
 
   	V0=grad1.grads(coords[0], grads[0], icoords[0].Ut, 3);
+		printf(" V0=%1.6f\n",V0);
 
 	  #if 1
 	  printf(" Grads\n");
@@ -528,7 +529,18 @@ void GString::String_Method_Optimization()
 	  double pitch = calc_pitch(dgrad,dvec);
 	  printf(" pitch = %1.5f\n",pitch);
 	  double asymmetry =calc_asymmetry(dgrad,dvec);
-	  printf(" asymmetry = %1.5f\n",asymmetry);
+		if (asymmetry<0.0)
+		{
+			double* tmp_vec=new double[3*natoms];
+			for (int i=0;i<3*natoms;i++)
+			{
+				tmp_vec[i]=dgrad[i];
+				dgrad[i]=dvec[i];
+				dvec[i] = tmp_vec[i];
+			}
+  		asymmetry =calc_asymmetry(dgrad,dvec);
+		}
+  	//printf(" asymmetry = %1.5f\n",asymmetry);
 	
 		double rmag=0.5;
 		printf(" rmag=%1.2f\n",rmag);
@@ -556,10 +568,38 @@ void GString::String_Method_Optimization()
 	  }
 	  sab_x = dotx/pitch;
 	  sab_y = doty/pitch;
+		if (sab_x < 0.0 && sab_y > 0.0)
+		{
+			for (int i=0;i<3*natoms;i++)
+				dgrad[i] = -dgrad[i];
+			dotx=0.;
+			doty=0.;
+  		for (int i=0;i<3*natoms;i++)
+  		{
+  		  dotx+=sab[i]*dgrad[i]/norm_rdgrad;
+  		  doty+=sab[i]*dvec[i]/norm_rnacm;
+  		}
+  		sab_x = dotx/pitch;
+  		sab_y = doty/pitch;
+		}
+		else if (sab_x > 0.0 && sab_y < 0.0)
+		{
+			for (int i=0;i<3*natoms;i++)
+				dvec[i] = -dvec[i];
+			dotx=0.;
+			doty=0.;
+  		for (int i=0;i<3*natoms;i++)
+  		{
+  		  dotx+=sab[i]*dgrad[i]/norm_rdgrad;
+  		  doty+=sab[i]*dvec[i]/norm_rnacm;
+  		}
+  		sab_x = dotx/pitch;
+  		sab_y = doty/pitch;
+		}
 	  double sigma =sqrt(sab_x*sab_x + sab_y*sab_y);
 	  double tmp2= sab_y/sab_x;
 	  double theta_s = atan(tmp2);
-	  printf(" sigma = %1.2f, theta_s = %1.3f, sx = %1.2f, sy = %1.2f\n",sigma,theta_s,sab_x,sab_y);
+	  printf(" asymmetry = %1.5f, sigma = %1.5f, theta_s = %1.5f, sx = %1.2f, sy = %1.2f\n",asymmetry,sigma,theta_s,sab_x,sab_y);
 	  for (int i=0;i<40;i++)
 	  {
 	    double factorA = sigma*cos(theta[i] - theta_s) +  sqrt(1+asymmetry*cos(2*theta[i]));
@@ -629,9 +669,9 @@ void GString::String_Method_Optimization()
 				icoords[k].bmatp_to_U();
 				icoords[k].bmat_create();
 				icoords[k].make_Hint();
-				double energy=icoords[k].opt_b("scratch/product"+runName+".xyz",STEP_OPT_ITERS,0,0.0);
-				icoords[k].print_xyz_save("product"+runName+".xyz");
-				printf(" opt_energy is %1.4f\n", V0+energy);
+				//double energy=icoords[k].opt_b("scratch/product"+runName+".xyz",STEP_OPT_ITERS,0,0.0);
+				//icoords[k].print_xyz_save("product"+runName+".xyz");
+				//printf(" opt_energy is %1.4f\n", V0+energy);
 	    }
 	    printf(" Sucessfully found product(s)");
 	
@@ -748,6 +788,8 @@ void GString::String_Method_Optimization()
   {
 #if !USE_MOLPRO
     V_profile[nnmax-1] = grad1.grads(coords[nnmax-1], grads[nnmax-1], icoords[0].Ut, 3) - V0;
+#else
+		V_profile[nnmax-1]=icoords[nnmax-1].grad1.energy_initial(coords[nnmax-1],runNum,nnmax-1,0,0.)-V0;
 #endif
   }
 
@@ -811,7 +853,7 @@ void GString::String_Method_Optimization()
 	{
     osteps = STEP_OPT_ITERS;
 		for (int n=0;n<nnmax;n++)
-			icoords[n].OPTTHRESH=CONV_TOL*5;
+			icoords[n].OPTTHRESH=gaddmax; //low and then set high later.
 		set_fsm_active(1,nnmax-2);
 	}
 		
@@ -1128,7 +1170,7 @@ int GString::isomer_init(string isofilename)
 
   printf(" reading isomers \n");
   if (bondfrags == 1)
-    printf("  WARNING: ignoring BONDS in ISOMERS file because BOND_FRAGMENTS == 0 or 1 \n");
+    printf("  WARNING: ignoring BONDS in ISOMERS file because BOND_FRAGMENTS == 1 \n");
 
   nfound = 0;
 
@@ -7044,7 +7086,6 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 
 		//DE-ESSM add node 
 		 printf(" nnR=%i,nnP=%i,nn=%i\n",nnR,nnP,nn);
-		//if (isDE_ESSM && icoords[nnR-1].gradrms<gaddmax)
 		if ((isDE_ESSM && icoords[nnR-1].grad1.dE[wstate2-2]<1.0 && icoords[nnR-1].gradrms<gaddmax) || (isDE_ESSM && icoords[nnR-1].grad1.dE[wstate2-2]<2.5 && icoords[nnR-1].gradrms<gaddmax/2.)  || (isDE_ESSM && icoords[nnR-1].grad1.dE[wstate2-2]<5. && icoords[nnR-1].gradrms<gaddmax/3.)  )
 		{
       if (oi>0 && nn < nnmax)
@@ -7054,7 +7095,6 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 			}
 		}
 		
-		//if (isDE_ESSM && icoords[nnmax-nnP].gradrms<gaddmax )
 		if ((isDE_ESSM && icoords[nnmax-nnP].grad1.dE[wstate2-2]<1.0 &&icoords[nnmax-nnP].gradrms<gaddmax && GROWD!=1) || (isDE_ESSM && icoords[nnmax-nnP].grad1.dE[wstate2-2]<2.5 && icoords[nnmax-nnP].gradrms<gaddmax/2.) ||(isDE_ESSM && icoords[nnR-1].grad1.dE[wstate2-2]<5. && icoords[nnR-1].gradrms<gaddmax/3. &&GROWD!=1) )
 		{
       if (oi>0 && nn < nnmax)
@@ -7063,24 +7103,8 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
         nnP++;
 			}
 		}
-		//if (oi>0 &&isDE_ESSM)
-		//{
-		//for (int n=1;n<nnR;n++)
-		//{
-		//	active[n]=-2;
-		//	if (icoords[n].gradrms>gaddmax || icoords[n].grad1.dE[wstate2-2]>1.0)
-		//		active[n]=1;
-		//}
-		//for (int n=nnmax-1;n>nnmax-nnP;n--)
-		//{
-		//	active[n]=-2;
-		//	if (icoords[n].gradrms>gaddmax || icoords[n].grad1.dE[wstate2-2]>1.0);
-		//		active[n]=1;
-		//}
-		//}
-		//if (isDE_ESSM)
-    //  set_fsm_active(nnR-1,nnmax-nnP);
 
+		//add Nodes
     if((icoords[nnR-1].gradrms<gaddmax && GROWD!=2 && !isDE_ESSM) || isFSM || isSSM )
     {
       if (oi>0 && nn < nnmax)
@@ -7120,6 +7144,8 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       }
     }
 
+
+		//all nodes added
     if (nn==nnmax) 
     {
       if (isFSM)
@@ -7129,6 +7155,10 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       }
 			else if (isDE_ESSM)
 			{
+				for (int n=0;n<nnmax;n++)
+				{
+					icoords[n].OPTTHRESH=CONV_TOL*2;
+				}
 				get_tangents_1g(dqa,dqmaga,ictan);
 				for (int n=0;n<nnmax;n++)
 				{
@@ -7175,10 +7205,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 		{
     	if (!isFSM && !isSSM) 
 			{
-				//if (isDE_ESSM) //&& addednode
-				//	printf(" skip param\n");
-				//else
-    	  	ic_reparam_g(dqa,dqmaga); //works for DE_ESSM too
+    	  ic_reparam_g(dqa,dqmaga); //works for DE_ESSM too
 			}
     	get_tangents_1g(dqa,dqmaga,ictan); //works for DE_ESSM too
 			if (isSE_ESSM)
@@ -7186,12 +7213,11 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 			else if (isDE_ESSM)
 			{
 				opt_steps_seam(osteps,ictan);	
-				print_dE();
 			}
 			else
     	  opt_steps(dqa,ictan,osteps,oesteps,0,K);
+			print_dE();
 		}
-
 	
 		if (!isSE_ESSM)
 		{
@@ -8771,20 +8797,29 @@ void GString::print_string(int nodes, double** allcoords0, string xyzstring)
 		xyzfilec <<"max-force" << endl;//dE
   	for (int n=0;n<nodes;n++)
 		if (active[n]>-1 || active[n]==-2 || isSSM)
-		{
-  	    xyzfilec<< icoords[n].grad1.dE[icoords[0].grad1.wstate2-2] << endl;      
+		{	
+			if (icoords[0].grad1.wstate2>0)
+  	  	xyzfilec<< icoords[n].grad1.dE[icoords[0].grad1.wstate2-2] << endl;      
+			else
+  	  	xyzfilec<< icoords[n].grad1.dE[icoords[0].grad1.nstates-2] << endl;      
 		}
 		xyzfilec <<"max-step"<< endl; //excited state
   	for (int n=0;n<nodes;n++)
 		if (active[n]>-1 || active[n]==-2 || isSSM)
 		{
-			xyzfilec << icoords[n].grad1.E[icoords[0].grad1.wstate2-1] - E0 <<endl;	
+			if (icoords[0].grad1.wstate2>0)
+				xyzfilec << icoords[n].grad1.E[icoords[0].grad1.wstate2-1] - E0 <<endl;	
+			else
+				xyzfilec << icoords[n].grad1.E[icoords[0].grad1.nstates-1] - E0 <<endl;	
 		}
 		xyzfilec << "rms-step" <<endl; //ground-state
   	for (int n=0;n<nodes;n++)
 		if (active[n]>-1 || active[n]==-2 || isSSM )
 		{
-			xyzfilec << icoords[n].grad1.E[icoords[n].grad1.wstate2-2] - E0 <<endl;	
+			if (icoords[0].grad1.wstate2>0)
+				xyzfilec << icoords[n].grad1.E[icoords[n].grad1.wstate2-2] - E0 <<endl;	
+			else
+				xyzfilec << icoords[n].grad1.E[icoords[n].grad1.nstates-2] - E0 <<endl;	
 		}
 	}
 #endif
