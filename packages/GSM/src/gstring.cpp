@@ -362,7 +362,7 @@ void GString::String_Method_Optimization()
 #endif
 
   //create template for R/P pair
-  //printf(" creating bondsic \n");
+  printf(" creating bondsic \n");
   ic1.isOpt = 0; ic2.isOpt = 0;
   ic1.ic_create();
   ic2.ic_create();
@@ -389,8 +389,6 @@ void GString::String_Method_Optimization()
     grad1.seedType = 3;
   }
 #endif
-
-
 
   printf("\n\n ---- Now preparing gradients ---- \n");
   string nstr = StringTools::int2str(runNum,4,"0");
@@ -6819,6 +6817,7 @@ void GString::set_fsm_active(int nnR, int nnP)
    else
      printf(" setting active node to %i \n",nnR);
 
+	 if (!isDE_ESSM)
    for (int i=0;i<nnmax;i++)
    {
      active[i] = -1;
@@ -8592,7 +8591,7 @@ int GString::add_seam_node(int n1,int n2,int n3)
 
 		for (int i=0;i<nstates-1;i++)
 		{
-		  icoords[iN].grad1.dE[i] = icoords[n].grad1.E[i+1] - icoords[n].grad1.E[i];
+		  icoords[iN].grad1.dE[i] = icoords[iN].grad1.E[i+1] - icoords[iN].grad1.E[i];
 			printf(" dE[%i][%i]: %5.4f\t ",iN,i,icoords[iN].grad1.dE[i]); 
 		}
     icoords[iN].make_Hint();
