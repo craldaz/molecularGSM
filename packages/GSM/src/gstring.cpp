@@ -8317,7 +8317,7 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
 	}
   string strfileg = "stringfile.xyz"+nstr+"g";
   printf(" writing grown string %s \n",strfileg.c_str());
-  icoords[nnR-1].OPTTHRESH =CONV_TOL/2;
+  icoords[nnR-1].OPTTHRESH =CONV_TOL;
   string strfile = "stringfile.xyz"+nstr;
   print_string(nnR,allcoords,strfileg);
 	printf(" Optimizing to MECI.\n");
