@@ -759,7 +759,7 @@ void GString::String_Method_Optimization()
     printf("  nnR: %2i nnP: %2i \n",nnR,nnP);
     ic_reparam_steps = 4;//changed from 4
 		//if (isDE_ESSM)
-		//	ic_reparam_steps=1;
+		//	ic_reparam_steps=20;
     if (!isSSM)
       ic_reparam_g(dqa,dqmaga);
 
@@ -767,11 +767,10 @@ void GString::String_Method_Optimization()
   else
     restart_string(strfile0);
 
-
  //after IC's are ready
   grad1.write_on = 0;
   int nstates = icoords[0].grad1.nstates;
-  if (initialOpt<1 || !isSSM || isRestart)
+  if (initialOpt<1 && !isSE_ESSM || !isSSM || isRestart)
   {
     V0 = grad1.grads(coords[0], grads[0], icoords[0].Ut, 3);
 #if QCHEMSF || USE_MOLPRO
@@ -2451,6 +2450,9 @@ int GString::addNode(int n1, int n2, int n3)
 
   double BDISTMIN = 0.01;
   double bdist = 0.;
+
+	if (isSE_ESSM)
+		BDISTMIN=0.05;
 
 // Add a node
   int iR,iP,wR,wP,iN;
@@ -6828,8 +6830,10 @@ void GString::set_fsm_active(int nnR, int nnP)
 
    if (isSSM)
    {
-     icoords[nnR].OPTTHRESH = CONV_TOL*10.;
-     icoords[nnP].OPTTHRESH = CONV_TOL*10.;
+     //icoords[nnR].OPTTHRESH = CONV_TOL*10.;
+     //icoords[nnP].OPTTHRESH = CONV_TOL*10.;
+     icoords[nnR].OPTTHRESH = ADD_NODE_TOL;
+     icoords[nnP].OPTTHRESH = ADD_NODE_TOL;
 //     icoords[nnR].OPTTHRESH = icoords[nnP].OPTTHRESH = CONV_TOL*15.;
    }
 
@@ -8321,7 +8325,7 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
   string strfile = "stringfile.xyz"+nstr;
   print_string(nnR,allcoords,strfileg);
 	printf(" Optimizing to MECI.\n");
-	//icoords[nnR-1].DMAX=0.1;
+	icoords[nnR-1].DMAX=0.1;
 	//icoords[nnR-1].make_Hint();
 	icoords[nnR-1].opt_meci(runNum,nnR-1,100);
   printf(" writing string %s \n",strfile.c_str());

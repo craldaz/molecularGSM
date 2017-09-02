@@ -1,0 +1,9 @@
+#!/bin/bash
+
+file=molecule
+
+cat qstart2 $QCSCRATCH/molecule$1 qend qder > $QCSCRATCH/qcin$1
+
+#rm tmp.geom tmp.geom2 tmp.link tmp.mole
+
+

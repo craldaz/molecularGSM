@@ -5937,7 +5937,6 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
       bcp = 1;
     }
     else bcp = 0;
-
     //print_xyz();
 		//print_q();
     update_ic();
@@ -5947,14 +5946,6 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
     energy = form_meci_space(run,node) - V0;
 		printf(" Average energy = %1.2f, ",energy);
 		grad_to_q();
-		for (int i=0;i<nstates-1;i++)
-		{
-			grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
-			printf(" dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
-		}
-		deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
-
-		
     if (n<OPTSTEPS-1)
     {
       noptdone++;
@@ -5979,7 +5970,7 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
         	  DMAX = DMAX / 1.2;
 				}
       }
-      if ((ratio < 0.25 || ratio > 1.5) && gradrms>pgradrms*1.35 ) //&& abs(dEpre)>0.05 this included before
+      else if ((ratio < 0.25 || ratio > 1.5) && gradrms>pgradrms*1.35 ) //&& abs(dEpre)>0.05 this included before
       {
         sprintf(sbuff," decreasing DMAX "); printout += sbuff;
         if (smag<DMAX)
@@ -5998,6 +5989,12 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
       if (DMAX<DMIN0) DMAX = DMIN0;
 #endif
     }
+		for (int i=0;i<nstates-1;i++)
+		{
+			grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
+			printf(" dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
+		}
+		deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
 
     if (gradrms<OPTTHRESH && !bcp && deltaE < 0.001)  
     {
@@ -6012,35 +6009,6 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
     pgradrms = gradrms;
 
   } //loop n over OPTSTEPS
-
-#if 0
-  if ((gradrms>gradrmsl*1.75 && !isTSnode && revertOpt)
-   || (gradrms>gradrmsl*3.0 && revertOpt))
-  {
-    //SCALEQN *= 1.85; //was 1.5
-    if (DMAX>smag)
-      DMAX = smag/1.5;
-    else
-      DMAX = DMAX/1.5;
-
-    sprintf(sbuff,"r"); printout += sbuff;
-    for (int j=0;j<3*natoms;j++)
-      coords[j] = xyzl[j];
-    energy = energyl;
-    gradrms = gradrmsl;
-    for (int j=0;j<nicd0;j++) gradq[j] = 0.0;
-//    make_Hint();
-  }
-  else if (gradrms>gradrmsl*1.5 && !isTSnode)
-  {
-    sprintf(sbuff,"S"); printout += sbuff;
-    //SCALEQN *= 1.35; //was 1.25 
-    if (DMAX>smag)
-      DMAX = smag/1.25;
-    else
-      DMAX = DMAX/1.25;
-  }
-#endif
 
   delete [] xyzl;
   return energy;
