@@ -2018,12 +2018,10 @@ double ICoord::opt_a(int nnewb, int* newb, int nnewt, int* newt, string xyzfile_
 
 double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
 {
-
+	//penalty 1 is MECI opt
+	//penalty 2 is MDCI opt
   printout = "";
-
   int OPTSTEPS = nsteps;
-  //printf("  \n"); 
-  
   int len = nbonds+nangles+ntor;
   for (int i=0;i<len;i++)
     dq0[i] = 0.;
@@ -2034,28 +2032,38 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
   double gradrmsl;
   int stepl = 0;
   double* xyzl = new double[3*natoms];
+  double* ref = new double[3*natoms];
   for (int j=0;j<3*natoms;j++) xyzl[j] = coords[j];
-
+  for (int j=0;j<3*natoms;j++) ref[j] = coords[j];
   pgradrms = 10000;
   SCALEQN = SCALEQN0;
   ixflag = 0;
-
   int rflag = 0;
   int nrflag = 0;
   noptdone = 1;
-
   do_bfgs = 0; //resets at each step
-
 	double energy;
-	if (penalty)
-		energy = grad1.levine_penalty(coords,grad,Ut,1,sigma)-V0;
+	double dmw=0.0;
+	//double C = 0.0;
+	//for (int i=0;i<natoms;i++)
+	//	for (int j=0;j<3;j++)
+	//		C+= amasses[i];	
+	grad1.dDmw_dR=0.0;
+
+	if (penalty==2)
+	{
+		V0 = grad1.levine_penalty(coords,grad,Ut,penalty,sigma,dmw); //penalty 2 is min dist
+		energy = 0.0;
+	}
+	else if (penalty==1)
+		energy = grad1.levine_penalty(coords,grad,Ut,penalty,sigma,dmw)-V0; //penalty 2 is min dist
 	else
  		energy = grad1.grads(coords, grad, Ut, 1) - V0;
-  if (energy > 1000.) { sprintf(sbuff,"SCF failed \n"); printout+=sbuff; return 10000.; }
-	
 	printf(" Energy=%1.4f\n",energy);
+  if (energy > 1000.) { sprintf(sbuff,"SCF failed \n"); printout+=sbuff; return 10000.; }
   energyp = energy;
   energyl = energy;
+
 #if 1
   ofstream xyzfile;
   xyzfile.open(xyzfile_string.c_str());
@@ -2064,12 +2072,9 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
   xyzfile << setprecision(6);
 #endif
 
-  //printf(" \n beginning opt \n\n");
-
   sprintf(sbuff,"\n"); printout += sbuff;
   for (int n=0;n<OPTSTEPS;n++)
   {
-    //if (n==0)
     sprintf(sbuff," Opt step: %2i ",n+1); printout += sbuff;
 		printf(" iteration %i\n",n);
 #if USE_PRIMA
@@ -2078,9 +2083,7 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
 
     bmatp_create();
     bmat_create();
-
     grad_to_q();
-    //print_gradq();
     if (n==0) gradrmsl = gradrms;
     if ( (gradrms<gradrmsl && energy<energyl) ||
           energy<energyl-5.)
@@ -2090,7 +2093,6 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
       stepl = n;
       for (int j=0;j<3*natoms;j++) xyzl[j] = coords[j];
     }
-
     if (do_bfgs) update_bfgsp(1);
     save_hess();
     do_bfgs = 1;
@@ -2109,19 +2111,32 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
     if (gradrms<OPTTHRESH) break;
 
     update_ic_eigen();
-
     nretry = 0;
     rflag = ic_to_xyz_opt();
     update_ic();
-    //print_ic();
-    //print_xyz();
+		if (penalty==2)
+		{	
+			dmw =0.0;
+			double tmp=0.0;
+			for (int i=0;i<natoms;i++)
+			{
+				for (int j=0;j<3;j++)
+				{
+					tmp=(coords[3*i+j]-ref[3*i+j]);
+					dmw += amasses[i]*tmp*tmp;
+				}
+			}
+			dmw = sqrt(dmw);
+			grad1.dDmw_dR=0.0;
+			for (int i=0;i<natoms;i++)
+				for (int j=0;j<3;j++)
+					grad1.dDmw_dR += (1.0/dmw)*(coords[3*i+j] - ref[3*i+j])*amasses[i];
+		}
 
     if (rflag)
     {
       nrflag++;
       DMAX = DMAX/1.6;
-      //MAXAD = MAXAD/1.1;
-    //  SCALEQN *= 1.5;
       sprintf(sbuff," updating SCALE "); printout += sbuff; 
       update_ic_eigen();
       ic_to_xyz_opt();
@@ -2144,7 +2159,7 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
     {
       noptdone++;
 			if (penalty)
-				energy = grad1.levine_penalty(coords,grad,Ut,1,sigma)-V0;
+				energy = grad1.levine_penalty(coords,grad,Ut,penalty,sigma,dmw)-V0;
 			else
  				energy = grad1.grads(coords, grad, Ut, 1) - V0;
       if (energy > 1000.) { sprintf(sbuff,"SCF failed \n"); printout += sbuff; gradrms = 1.; break; }
@@ -2320,7 +2335,7 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0,in
 	
 	double energy;
 	if (penalty)
-		energy = grad1.levine_penalty(coords,grad,Ut,1,sigma)-V0;
+		energy = grad1.levine_penalty(coords,grad,Ut,1,sigma,0.0)-V0;
 	else
  		energy = grad1.grads(coords, grad, Ut, 1) - V0;
 
@@ -2450,7 +2465,7 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0,in
     {
       noptdone++;
 			if (penalty)
-				energy = grad1.levine_penalty(coords,grad,Ut,1,sigma)-V0;
+				energy = grad1.levine_penalty(coords,grad,Ut,1,sigma,0.0)-V0;
 			else
  				energy = grad1.grads(coords, grad, Ut, 1) - V0;
       if (energy > 1000.) { gradrms = 1.; break; }
@@ -6245,6 +6260,19 @@ void ICoord::opt_meci(int runNum,int runEnd,int STEP_OPT_ITERS)
 	
 	printf(" opt_energy is %1.4f\n", V0+energy);
 
+	return;
+}
+
+void ICoord::opt_penalty(int runNum,int runEnd,double sigma, int penalty,int STEP_OPT_ITERS)
+{
+	printf(" Optimizing node to MECI using Penalty Optimizer\n");
+	string runName0 = StringTools::int2str(runNum,4,"0")+"."+StringTools::int2str(runEnd,4,"0");	
+	gradrms = 100.;
+	//make_Hint();
+	double energy = opt_b("scratch/cfile_"+runName0+".xyz",STEP_OPT_ITERS,penalty,sigma);
+  printf(" %s",printout.c_str());
+	
+	printf(" opt_energy is %1.4f\n", V0+energy);
 	return;
 }
 

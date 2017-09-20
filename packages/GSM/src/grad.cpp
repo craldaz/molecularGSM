@@ -918,11 +918,11 @@ double Gradient::energy_initial(double* coords,int run, int rune,int penalty, do
   return energy;
 }
 
-double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int type,double sigma)
+double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int type,double sigma,double dmw)
 {
   wrote_grad = 0;
   energy = -99.;
-  type = 0;
+	double alpha = 0.02*627.5; //kcal/mol
 	//printf(" In Levine penalty fxn\n");
   int do_exact = 1;
   if (do_exact)
@@ -936,10 +936,9 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
 
 #if USE_MOLPRO
   	mp1.reset(coords);
-
   	if (gradcalls==0 && seedType<1)
   	{
-  	  //need to copy wfn 
+  	  //copy wfn 
   	  int runendCopy = runend;
   	  if (seedType==0) 
   	  {
@@ -953,40 +952,20 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
 			{
   	 	 string runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(runendCopy,4,"0");
   	 	 printf(" copying wfn from mp_%s to mp_%s \n",runNameCopy.c_str(),runName0.c_str());
-     	 //string cmd = "cp mp_"+runNameCopy+".orb mp_"+runName0+".orb";
-     	 //printf(" copying orbs from mp_%s.orb to mp_%s.orb \n",runNameCopy.c_str(),runName0.c_str());
-
   	 	 string cmd = "cp scratch/mp_"+runNameCopy+" scratch/mp_"+runName0;
-		 	 //printf("temporarily disabling this feature\n");
   	 	 system(cmd.c_str());
 			}
   	}
-
   	int error = mp1.run(); //grad and energy
 		if (error == 1)
 		{
 			error = mp1.run();
 			if (error==1)
-				{	
-					cout << " Calculation failed twice! Exiting." << endl;
-					exit(-1);
-				}
+			{	
+				cout << " Calculation failed twice! Exiting." << endl;
+				exit(-1);
+			}
 		}
-#else
-  	qchemsf1.calc_grads(coords);
-#endif
-
- #if USE_MOLPRO
-  	//energy= mp1.getE(wstate2) * 627.5;
-  	energy = mp1.getE(wstate) * 627.5;
-  	energy+= mp1.getE(wstate2) * 627.5; // try with this off
-		energy /= 2.0;
-		//double sigma = 1.0; //no longer fixed.
-  	//energy+= mp1.getE(wstate2) * 627.5; 
-		double alpha = 0.02*627.5; //kcal/mol
-		double deltaE = mp1.getE(wstate2)*627.5 - mp1.getE(wstate)*627.5;
-		double G = pow(deltaE,2)/(deltaE+alpha);	
-		energy += sigma*G;
   	error = mp1.getGrad(grada[0],wstate);
 		if (error==1)
 		{
@@ -999,7 +978,6 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
 			printf(" error in get grad\n");
 			exit(-1);
 		}
-
   	for (int i=0;i<N3;i++)
   	  grada[0][i] *= ANGtoBOHR;
   	for (int i=0;i<N3;i++)
@@ -1007,35 +985,58 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
   	for (int i=0;i<nstates;i++)
   	  E[i] = mp1.getE(i+1) * 627.5;
 #else
-		energy = qchemsf1.getE(wstate-1);
-		energy+= qchemsf1.getE(wstate2-1);
-		energy /= 2.0;
+  	qchemsf1.calc_grads(coords);
   	qchemsf1.getGrad(wstate,grada[0]);
     qchemsf1.getGrad(wstate2,grada[1]);
-    //for (int i=0;i<N3;i++) 
-    //	grad[i] = (grada[0][i] + grada[1][i])/2.;
-		double alpha = 0.02*627.5; //kcal/mol
-		double deltaE = qchemsf1.getE(wstate2-1)- qchemsf1.getE(wstate-1);
-		double G = pow(deltaE,2)/(deltaE+alpha);	
-		energy += sigma*G;
   	for (int i=0;i<nstates;i++)
   	  E[i] = qchemsf1.getE(i);
 #endif
 
-#if 1
-  	for (int i=0;i<N3;i++) 
-  		  grad[i] = (grada[0][i] + grada[1][i])/2.;
-			//	grad[i] = grada[1][i];
-		double factor = sigma*(pow(deltaE,2) + 2*alpha*deltaE)/pow(deltaE+alpha,2);
-  	for (int i=0;i<N3;i++) 
-  	  grad[i] += factor*(grada[1][i] - grada[0][i]);
+		if (type==1)
+		{
+#if USE_MOLPRO
+  		energy = mp1.getE(wstate) * 627.5;
+  		energy+= mp1.getE(wstate2) * 627.5; 
+			energy /= 2.0;
+			double deltaE = mp1.getE(wstate2)*627.5 - mp1.getE(wstate)*627.5;
 #else
-  	for (int i=0;i<N3;i++) 
-  	  grad[i] = grada[1][i];
+			energy = qchemsf1.getE(wstate-1);
+			energy+= qchemsf1.getE(wstate2-1);
+			energy /= 2.0;
+			double deltaE = qchemsf1.getE(wstate2-1)- qchemsf1.getE(wstate-1);
 #endif
-		
-
-
+			//penalty energy and gradient
+			double G = pow(deltaE,2)/(deltaE+alpha);	
+			energy += sigma*G;                        	
+  		for (int i=0;i<N3;i++) 
+  			grad[i] = (grada[0][i] + grada[1][i])/2.;
+			double factor = sigma*(pow(deltaE,2) + 2*alpha*deltaE)/pow(deltaE+alpha,2);
+  		for (int i=0;i<N3;i++) 
+  		  grad[i] += factor*(grada[1][i] - grada[0][i]);
+		}
+		else if (type==2)
+		{
+#if USE_MOLPRO
+			double deltaE = mp1.getE(wstate2)*627.5 - mp1.getE(wstate)*627.5;
+			printf(" dE=%1.4f\n",deltaE);
+#else
+			double deltaE = qchemsf1.getE(wstate2-1)- qchemsf1.getE(wstate-1);
+#endif
+			double alpha_mw = 0.1;
+			double G = pow(deltaE,2)/(deltaE+alpha);	
+			printf(" G=%1.4f\n",G);
+			printf(" sigma=%1.4f\n",sigma);
+			printf(" dmw = %1.4f\n",dmw);
+			printf(" dDmw_dR = %1.4f\n",dDmw_dR);
+			energy = (dmw*dmw)/(dmw +alpha_mw);
+			energy += sigma*G;
+			double factor = sigma*(pow(deltaE,2) + 2*alpha*deltaE)/pow(deltaE+alpha,2);
+			double factor2 = dDmw_dR*dmw*(2.0*(dmw+alpha_mw) - dmw)/pow(dmw+alpha_mw,2);
+  		for (int i=0;i<N3;i++) 
+  		  grad[i] = factor*(grada[1][i] - grada[0][i]);
+  		for (int i=0;i<N3;i++) 
+  		  grad[i] += factor2;
+		}
   	  xyz_grad = 1;
   }
 

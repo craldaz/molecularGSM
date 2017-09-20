@@ -163,7 +163,9 @@ class GString {
 
  //for prima
   void set_prima(string pstring);
-  int read_string(string stringfile, double** coordsn, double* energies);
+  int read_string(string stringfile, double** coordsn, double* energies,int nstruct);
+	void interpolate(int cnumNodes, int nnumNodes, double** coords);
+	int count_lines(string stringfile);
   int pTSnode;
   double* pTSnodecoords;
   void print_string_clump_p(int STEPS, double grad, double** allcoords, string xyzstring);

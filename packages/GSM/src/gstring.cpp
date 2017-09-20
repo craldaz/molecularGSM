@@ -42,6 +42,7 @@ using namespace std;
 #define CLOSE_DIST_ADD 0
 
 #define ADD_EXTRA_BONDS 0
+#define PENALTY 2
 
 
 void GString::String_Method_Optimization()
@@ -420,14 +421,31 @@ void GString::String_Method_Optimization()
 		printf("###############################################################\n");
 		printf("###############################################################\n");
 		printf("###############################################################\n");
-		//Conical meci(icoords[0],ncpu, runNum,runend-1,STEP_OPT_ITERS,isMECI); //constructor
 
 		icoords[0].grad1.seedType=3;
 		icoords[0].optCG=0;
 		icoords[0].grad_init(infile0,ncpu,runNum,0,0,0);
+		//V0 = icoords[0].grad1.energy_initial(coords[0],runNum,0,0,0.);
+  	//for (int n=0;n<nnmax0;n++)
+  	//  icoords[n].V0 = V0;
   	printf(" ---- Done preparing gradients ---- \n\n");
 		icoords[0].make_Hint();
+#if !PENALTY
 		icoords[0].opt_meci(runNum,runend-1,STEP_OPT_ITERS);
+#elif PENATLY==1
+		printf(" penalty MECI opt\n");
+		double sigma = 2.0; //arbitrary
+		icoords[0].opt_penalty(runNum,runend-1,sigma,1,STEP_OPT_ITERS);
+#else
+		double sigma = 0.0;
+		for (int i=0;i<natoms;i++)
+			sigma+=amasses[i];
+		sigma = 6*sqrt(sigma);
+		printf(" sigma = %1.4f\n",sigma);
+		printf(" penalty>1 MIN Dist CI\n");
+		icoords[0].opt_penalty(runNum,runend-1,sigma,2,STEP_OPT_ITERS);
+#endif
+	
 		printf(" Finished\n");
 		exit(-1);
 	}
@@ -540,7 +558,7 @@ void GString::String_Method_Optimization()
 		}
   	//printf(" asymmetry = %1.5f\n",asymmetry);
 	
-		double rmag=0.5;
+		double rmag=0.1;
 		printf(" rmag=%1.2f\n",rmag);
 
 	  double* r = new double[natoms*3];
@@ -667,9 +685,9 @@ void GString::String_Method_Optimization()
 				icoords[k].bmatp_to_U();
 				icoords[k].bmat_create();
 				icoords[k].make_Hint();
-				//double energy=icoords[k].opt_b("scratch/product"+runName+".xyz",STEP_OPT_ITERS,0,0.0);
-				//icoords[k].print_xyz_save("product"+runName+".xyz");
-				//printf(" opt_energy is %1.4f\n", V0+energy);
+				double energy=icoords[k].opt_b("scratch/product"+runName+".xyz",STEP_OPT_ITERS,0,0.0);
+				icoords[k].print_xyz_save("product"+runName+".xyz");
+				printf(" opt_energy is %1.4f\n", energy);
 	    }
 	    printf(" Sucessfully found product(s)");
 	
@@ -697,7 +715,7 @@ void GString::String_Method_Optimization()
     printf(" energy of first node: %9.6f \n",V_profile[0]/627.5);
     V0 = icoords[0].grad1.E[0] = V_profile[0];
   }
-  if (isRestart)
+  if (isRestart) //force
   {
     icoords[0].grad1.add_force(icoords[0].coords,NULL);
     icoords[nnmax-1].grad1.add_force(icoords[nnmax-1].coords,NULL);
@@ -713,9 +731,6 @@ void GString::String_Method_Optimization()
     printf(" exiting now \n");
     exit(1);
   }
-
-//printf(" exit early! \n");
-//exit(-1);
 
   //Grow the string
   printf("\n\n Begin Growing the String \n");
@@ -767,17 +782,18 @@ void GString::String_Method_Optimization()
   else
     restart_string(strfile0);
 
+	
  //after IC's are ready
   grad1.write_on = 0;
   int nstates = icoords[0].grad1.nstates;
   if (initialOpt<1 && !isSE_ESSM || !isSSM || isRestart)
   {
     V0 = grad1.grads(coords[0], grads[0], icoords[0].Ut, 3);
-#if QCHEMSF || USE_MOLPRO
-    //V0 = grad1.E[0];
-    for (int i=0;i<nstates;i++)
-      icoords[0].grad1.E[i] = grad1.E[i];
-#endif
+//#if QCHEMSF || USE_MOLPRO
+//    //V0 = grad1.E[0];
+//    for (int i=0;i<nstates;i++)
+//      icoords[0].grad1.E[i] = grad1.E[i];
+//#endif
   }
 
   V_profile[0] = 0.;
@@ -813,13 +829,10 @@ void GString::String_Method_Optimization()
 #endif
   }
 
-
   if (isSSM)
     printf("\n at beginning, starting V is 0.0 (%8.6f) \n",V0/627.5);
   else
     printf("\n at beginning, starting V's are %8.6f %8.6f \n",V_profile[0],V_profile[nnmax-1]);
-
-
 
   double totalgrad  = 100.;
   double gradrms = 100.;
@@ -868,14 +881,12 @@ void GString::String_Method_Optimization()
     tscontinue = 0;
   }
 
-
   printf(" writing grown string %s \n",strfileg.c_str());
 #if QCHEM || QCHEMSF || USE_ORCA || USE_GAUSSIAN
   if (!isSSM && !isFSM && !isRestart)
     printf(" Warning: last added node(s) do not have energies yet \n");
 #endif
   print_string(nnmax,allcoords,strfileg);
-
 
   if (!isFSM && tscontinue && !isRestart)
   {
@@ -3440,6 +3451,7 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,in
  #pragma omp parallel for
 #endif
 #endif
+	print_em(nnmax);
   for (int n=n0+1;n<nnmax;n++)
   {
 #ifdef _OPENMP
@@ -3533,12 +3545,12 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,in
 					else 
 					 V_profile[n] = icoords[n].opt_c("scratch/xyzfile_"+runName0+".xyz",osteps*exsteps,C,C0,0,0);
 				}
-
       }
       else
         V_profile[n] = icoords[n].opt_eigen_ts("scratch/xyzfile.xyzt"+nstr,oesteps,C,C0);
 
     } //if active
+
     if (optlastnode && n==nnmax-1)
     {
       string nstr = StringTools::int2str(n,2,"0");
@@ -5750,7 +5762,7 @@ void GString::get_tangents_1e(double** dqa, double* dqmaga, double** ictan)
   for (int n=0;n<nnmax;n++)
     printf(" %1.1f",V_profile[n]);
   printf("\n");
-
+	
   int TSnode = TSnode0;
 
   //printf(" gt1el"); fflush(stdout);
@@ -6443,7 +6455,20 @@ void GString::rotate_structure(double* xyz0, int* a)
   return;
 }
 
-int GString::read_string(string stringfile, double** coordsn, double* energies)
+
+int GString::count_lines(string stringfile)
+{
+  int number_of_lines = 0;
+    string line;
+    ifstream myfile(stringfile.c_str());
+
+    while (std::getline(myfile, line))
+        ++number_of_lines;
+    std::cout << "Number of lines in text file: " << number_of_lines;
+    return number_of_lines;
+}
+
+int GString::read_string(string stringfile, double** coordsn, double* energies,int nstruct)
 {
   printf("  in read_string \n");
 
@@ -6456,7 +6481,11 @@ int GString::read_string(string stringfile, double** coordsn, double* energies)
 
   string line;
   bool success=true;
-  success=getline(infile, line);
+
+	getline(infile,line); //first two lines are useless
+	getline(infile,line);
+	getline(infile,line);
+	
   if (success)
   {
     int length=StringTools::cleanstring(line);
@@ -6467,9 +6496,8 @@ int GString::read_string(string stringfile, double** coordsn, double* energies)
       exit(1);
     }
   }
-
   int nfound = 0;
-  for (int i=0;i<nnmax;i++)
+  for (int i=0;i<nstruct;i++)
   {
     if (i>0)
       success=getline(infile, line);
@@ -6481,7 +6509,7 @@ int GString::read_string(string stringfile, double** coordsn, double* energies)
     }
     int length1=StringTools::cleanstring(line);
     vector<string> tok_line1 = StringTools::tokenize(line, " \t");
-    energies[i]=atof(tok_line1[0].c_str());
+    //energies[i]=atof(tok_line1[0].c_str());
 
     for (int j=0;j<natoms;j++)
     {
@@ -6500,10 +6528,62 @@ int GString::read_string(string stringfile, double** coordsn, double* energies)
       break;
     }
   }
-
+  success=getline(infile, line); //read geom line
+	for (int i=0;i<nstruct;i++) //read E
+	{
+    if (i==0)
+      success=getline(infile, line);
+    success=getline(infile, line);
+    int length1=StringTools::cleanstring(line);
+    vector<string> tok_line1 = StringTools::tokenize(line, " \t");
+    energies[i]=atof(tok_line1[0].c_str());
+	}
+	
+  if (icoords[0].grad1.nstates>1)
+	{
+		for (int i=0;i<nstruct;i++) //read dE
+		{
+  	  if (i==0)
+  	    success=getline(infile, line);
+  	  success=getline(infile, line);
+  	  int length1=StringTools::cleanstring(line);
+  	  vector<string> tok_line1 = StringTools::tokenize(line, " \t");
+			if (icoords[0].grad1.wstate2>0)
+  	  	icoords[i].grad1.dE[icoords[0].grad1.wstate2-2]=atof(tok_line1[0].c_str());
+			else
+  	  	icoords[i].grad1.dE[icoords[0].grad1.nstates-2]=atof(tok_line1[0].c_str());
+			printf(" dE[0][%i]=%1.4f\n",i,icoords[i].grad1.dE[0]);
+		}
+		for (int i=0;i<nstruct;i++) //read E1
+		{
+  	  if (i==0)
+  	    success=getline(infile, line);
+  	  success=getline(infile, line);
+  	  int length1=StringTools::cleanstring(line);
+  	  vector<string> tok_line1 = StringTools::tokenize(line, " \t");
+			if (icoords[0].grad1.wstate2>0)
+  	  	icoords[i].grad1.E[icoords[0].grad1.wstate2-1]=atof(tok_line1[0].c_str());
+			else 
+  	  	icoords[i].grad1.E[icoords[0].grad1.nstates-1]=atof(tok_line1[0].c_str());
+			printf(" E[1][%i]=%1.4f\n",i,icoords[i].grad1.E[1]);
+		}
+		for (int i=0;i<nstruct;i++) //read E0
+		{
+  	  if (i==0)
+  	    success=getline(infile, line);
+  	  success=getline(infile, line);
+  	  int length1=StringTools::cleanstring(line);
+  	  vector<string> tok_line1 = StringTools::tokenize(line, " \t");
+			if (icoords[0].grad1.wstate2>0)
+  	  	icoords[i].grad1.E[icoords[0].grad1.wstate2-2]=atof(tok_line1[0].c_str());
+			else 
+  	  	icoords[i].grad1.E[icoords[0].grad1.nstates-2]=atof(tok_line1[0].c_str());
+			printf(" E[0][%i]=%1.4f\n",i,icoords[i].grad1.E[0]);
+		}
+	}
   infile.close();
 
-  //printf("  done reading \n");
+  printf("  done reading \n");
 
 #if 0
   printf(" printing string back \n");
@@ -6518,20 +6598,215 @@ int GString::read_string(string stringfile, double** coordsn, double* energies)
   return nfound;
 }
 
+void GString::interpolate(int cnumNodes, int nnumNodes, double** coords)
+{
+	printf(" current number of nodes is %i, new number of nodes is %i\n",cnumNodes,nnumNodes);
+
+	//ICoord* newicoords = new ICoord[nnumNodes];
+	double** newicoords = new double*[nnumNodes];
+  for (int i=0;i<nnumNodes;i++)
+		newicoords[i] = new double[3*natoms];
+  //  newicoords[i].alloc(natoms);
+	printf(" nnmax=%i, natoms=%i\n",nnmax,natoms);
+
+  int nbonds = newic.nbonds;
+  int nangles = newic.nangles;
+  int ntor = newic.ntor;
+  int size_ic = nbonds + nangles + ntor;
+  int len_d = newic.nicd0;
+  double* ictan = new double[size_ic];
+  double* ictan0 = new double[size_ic];
+	double increment = ((double)cnumNodes-1.)/((double)nnumNodes -1.);
+	double* V_profile_tmp = new double[1+nnmax0];	
+	int wstate2=icoords[0].grad1.wstate2;
+	int wstate=icoords[0].grad1.wstate;
+	int nstates = icoords[0].grad1.nstates;
+	double** dE_tmp = new double*[1+nnmax0];	
+	for (int i=0;i<nnmax0;i++)
+		dE_tmp[i] = new double[nstates-1];
+	double** E_tmp = new double*[1+nnmax0];	
+	for (int i=0;i<nnmax0;i++)
+		E_tmp[i] = new double[nstates-1];
+
+	printf(" increment distance is %1.3f\n",increment);
+	for (int i=0;i<nnumNodes-1;i++)
+	{
+		double position = (double)i*((double)cnumNodes-1.)/((double)nnumNodes-1.);
+		int floorIndex = floor(position);
+		printf(" position is %1.2f, floorIndex is %i, newicoord index is %i\n",position, floorIndex,i);
+		newic.reset(natoms,anames,anumbers,coords[floorIndex]);
+		intic.reset(natoms,anames,anumbers,coords[floorIndex+1]);
+    newic.update_ic();
+    intic.update_ic();
+		tangent_1(ictan);
+    double dqmag = 0.;
+    newic.bmatp_create();
+    newic.bmatp_to_U();
+    newic.opt_constraint(ictan);
+    newic.bmat_create();
+    for (int j=0;j<size_ic;j++) ictan0[j] = ictan[j];
+    for (int j=0;j<size_ic-ntor;j++)
+      dqmag += ictan0[j]*newic.Ut[newic.nicd*size_ic+j];
+    for (int j=nbonds+nangles;j<size_ic;j++)
+      dqmag += ictan0[j]*newic.Ut[newic.nicd*size_ic+j]; //CPMZ check
+
+    printf(" dqmag: %1.2f",dqmag);
+    newic.dq0[newic.nicd0-1] = -dqmag*(position-floorIndex); //move increment distance?
+    printf(" dq0[constraint]: %1.2f \n",newic.dq0[newic.nicd0-1]);
+    int success = newic.ic_to_xyz();
+		//newic.print_xyz();
+    newic.update_ic();
+		for (int j=0;j<3*natoms;j++)
+			newicoords[i][j] = newic.coords[j];
+		//newicoords[i].reset(natoms,anames,anumbers,newic.coords);
+		V_profile_tmp[i] = V_profile[floorIndex] + (V_profile[floorIndex+1]-V_profile[floorIndex])*(position-floorIndex);
+
+		for (int n=0;n<nstates-1;n++)
+			dE_tmp[i][n] = icoords[floorIndex].grad1.dE[n] + (icoords[floorIndex+1].grad1.dE[n]-icoords[floorIndex].grad1.dE[n])*(position-floorIndex);
+	
+		for (int n=0;n<nstates;n++)
+			E_tmp[i][n] = icoords[floorIndex].grad1.E[n] + (icoords[floorIndex+1].grad1.E[n]-icoords[floorIndex].grad1.E[n])*(position-floorIndex);
+		
+
+#if USE_MOLPRO
+		////need to copy wfus
+		if ((position-floorIndex)<0.5)
+		{
+			//cp mp_runNum_floorIndex mp_runNum_newIcoordIndex+1_tmp
+			int nIndexp1=i+1;
+    	string runName0 = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(floorIndex,4,"0");
+    	string runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(nIndexp1,4,"0");
+    	string cmd = "cp scratch/mp_"+runName0+" scratch/mp_"+runNameCopy+"_tmp";
+    	printf(" copying file from mp_%s to mp_%s_tmp \n",runName0.c_str(),runNameCopy.c_str());
+    	system(cmd.c_str());
+		}
+		else if ((floorIndex+1-position )<0.5)
+		{
+			int nIndexp1=i+1;
+			int floorIndexp1=floorIndex+1;
+    	string runName0 = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(floorIndexp1,4,"0");
+    	string runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(nIndexp1,4,"0");
+    	string cmd = "cp scratch/mp_"+runName0+" scratch/mp_"+runNameCopy+"_tmp";
+    	printf(" copying file from mp_%s to mp_%s_tmp \n",runName0.c_str(),runNameCopy.c_str());
+    	system(cmd.c_str());
+		}
+#endif			
+		 
+	}
+
+#if USE_MOLPRO
+  string runName0 = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(0,4,"0");
+  string runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(0,4,"0");
+  string cmd = "cp scratch/mp_"+runName0+" scratch/mp_"+runNameCopy+"_tmp";
+  printf(" copying file from mp_%s to mp_%s_tmp \n",runName0.c_str(),runNameCopy.c_str());
+  system(cmd.c_str());
+  runName0 = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(cnumNodes-1,4,"0");
+  runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(nnumNodes-1,4,"0");
+  cmd = "cp scratch/mp_"+runName0+" scratch/mp_"+runNameCopy+"_tmp";
+  printf(" copying file from mp_%s to mp_%s_tmp \n",runName0.c_str(),runNameCopy.c_str());
+  system(cmd.c_str());
+#endif
+
+	//newicoords[nnumNodes-1].reset(natoms,anames,anumbers,coords[cnumNodes-1]);
+	  for (int j=0;j<3*natoms;j++)
+			newicoords[nnumNodes-1][j] = coords[cnumNodes-1][j];
+	V_profile_tmp[nnumNodes-1] = V_profile[cnumNodes-1];
+	for (int n=0;n<nstates-1;n++)
+		dE_tmp[nnumNodes-1][n]= icoords[cnumNodes-1].grad1.dE[n];
+	for (int n=0;n<nstates;n++)
+		E_tmp[nnumNodes-1][n] = icoords[cnumNodes-1].grad1.E[n];
+	
+	
+#if 0
+	for (int i=0;i<nnumNodes;i++)
+	{	
+		printf(" %i\n",natoms);
+		printf(" %i\n",i);
+		for (int j=0;j<natoms;j++)
+		{
+     cout << "  " << anames[i];
+     printf(" %f %f %f \n",newicoords[i][3*j+0],newicoords[i][3*j+1],newicoords[i][3*j+2]);
+		}
+	}
+		printf(" \n\n");
+		//	newicoords[i].print_xyz();
+#endif	
+	for (int i=0;i<nnumNodes;i++)
+	{
+		icoords[i].reset(natoms,anames,anumbers,newicoords[i]);
+		icoords[i].update_ic();
+		icoords[i].print_xyz();
+		icoords[i].bmatp_create();
+		icoords[i].bmatp_to_U();
+		for (int n=0;n<nstates-1;n++)
+			icoords[i].grad1.dE[n] = dE_tmp[i][n];
+		for (int n=0;n<nstates;n++)
+			icoords[i].grad1.E[n] = E_tmp[i][n];
+		icoords[i].grad1.seedType=3;
+		V_profile[i]= V_profile_tmp[i];
+  	icoords[i].make_Hint();
+  	icoords[i].gradrms = 0.;
+  	icoords[i].DMAX = 0.05; //half of default value
+		
+		//if (icoords[0].grad1.wstate2>0)
+		//	printf("  V_profile[%i] = %1.4f, dE[%i] = %1.4f\n",i,V_profile[i],wstate2-2,icoords[i].grad1.dE[wstate2-2]);
+		//else
+		//	printf("  V_profile[%i] = %1.4f, dE[%i] = %1.4f\n",i,V_profile[i],nstates-2,icoords[i].grad1.dE[nstates-2]);
+		//printf("  V_profile[%i] = %1.4f\n",i,V_profile[i]);
+#if USE_MOLPRO
+  	string runName0 = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(i,4,"0");
+  	string runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(i,4,"0");
+  	string cmd = "mv scratch/mp_"+runName0+"_tmp"+" scratch/mp_"+runNameCopy;
+  	//printf(" moving file from mp_%s_tmp to mp_%s \n",runName0.c_str(),runNameCopy.c_str());
+  	system(cmd.c_str());
+#endif
+		//need to init grad
+	}
+	
+	nnR=nnumNodes;
+	nn=nnR;
+	nnmax=nnR;
+	active[0]=0;
+	for (int i=1;i<nnR-1;i++)
+	{
+		active[i]=1;
+		printf(" active[%i]=%i\n",i,active[i]);
+	}
+	active[nnumNodes-1]=0;
+
+	
+	for (int i=0;i<nnmax0;i++)
+		delete [] dE_tmp[i];
+	for (int i=0;i<nnmax0;i++)
+		delete [] E_tmp[i];
+	delete [] V_profile_tmp;
+  delete [] ictan;
+  delete [] ictan0;
+	for (int i=0;i<nnumNodes;i++)
+		delete [] newicoords[i]; //??
+	delete [] newicoords;
+	
+	return;
+}
 
 //CPMZ here
 void GString::restart_string(string pstring)
 {
  //Note: isRestart==2 keeps initial.xyz structures at endpoints
-  int natoms = newic.natoms;
+  //int natoms = newic.natoms;
   int N3 = 3*natoms;
 
+	int nlines = count_lines(pstring);
+	int nstruct = (nlines - 7)/(natoms+6);
+	printf(" number of structures in restart file is %i\n",nstruct);
+
   //read in xyz file
-  double** coordsn = new double*[nnmax];
-  for (int i=0;i<nnmax;i++)
+  printf(" read in xyz file\n");
+  double** coordsn = new double*[nstruct]; 
+  for (int i=0;i<nstruct;i++)
     coordsn[i] = new double[N3];
-  double* energies = new double[nnmax];
-  int nrnodes = read_string(pstring,coordsn,energies);
+  double* energies = new double[nstruct];
+  int nrnodes = read_string(pstring,coordsn,energies,nstruct);
   printf("  found %i nodes \n",nrnodes);
 
   printf(" restart energies:");
@@ -6539,46 +6814,56 @@ void GString::restart_string(string pstring)
     printf(" E[%i]: %3.2f",i,energies[i]);
   printf("\n");
 
-  printf(" copying structures to coords \n");
-  if (isRestart==2)
-    printf(" not modifying starting point \n");
-  else
-  for (int i=0;i<3*natoms;i++)
-    coords[0][i] = coordsn[0][i];
-  
-  for (int n=1;n<nrnodes-1;n++)
-  for (int i=0;i<3*natoms;i++)
-    coords[n][i] = coordsn[n][i];
+	if (nrnodes != nnmax)
+	{
+  	for (int n=0;n<nrnodes;n++)
+  	  V_profile[n] = energies[n];
+		interpolate(nrnodes,nnmax,coordsn);
+		nrnodes=nnmax;
+	}
+	else
+	{
+  	printf(" copying structures to coords \n");
+  	if (isRestart==2)
+  	  printf(" not modifying starting point \n");
+  	else
+  	for (int i=0;i<3*natoms;i++)
+  	  coords[0][i] = coordsn[0][i];
+  	for (int n=1;n<nrnodes-1;n++)
+  	for (int i=0;i<3*natoms;i++)
+  	  coords[n][i] = coordsn[n][i];
 
-  if (isRestart!=2)
-  for (int i=0;i<3*natoms;i++)
-    coords[nrnodes-1][i] = coordsn[nrnodes-1][i];
+  	if (isRestart!=2)
+  	for (int i=0;i<3*natoms;i++)
+  	  coords[nrnodes-1][i] = coordsn[nrnodes-1][i];
 
-  printf(" updating icoords \n");
-  for (int n=0;n<nrnodes;n++)
-    icoords[n].reset(natoms,anames,anumbers,coords[n]);
+  	printf(" updating icoords \n");
+  	for (int n=0;n<nrnodes;n++)
+  	  icoords[n].reset(natoms,anames,anumbers,coords[n]);
+  	printf(" resetting hessians \n");
+  	for (int n=1;n<nrnodes;n++)
+  	{
+  	  icoords[n].bmatp_create();
+  	  icoords[n].bmatp_to_U();
+  	  icoords[n].bmat_create();
+  	  icoords[n].update_ic();
+  	  icoords[n].make_Hint();
+  	  icoords[n].gradrms = 0.;
+  	  icoords[n].DMAX = 0.05; //half of default value
+  	}
 
-  printf(" resetting hessians \n");
-  for (int n=1;n<nrnodes;n++)
-  {
-    icoords[n].bmatp_create();
-    icoords[n].bmatp_to_U();
-    icoords[n].bmat_create();
-    icoords[n].update_ic();
-    icoords[n].make_Hint();
-    icoords[n].gradrms = 0.;
-    icoords[n].DMAX = 0.05; //half of default value
-  }
-
-  for (int n=1;n<nrnodes-1;n++)
-  {
-    active[n] = 1;
-    V_profile[n] = energies[n];
-  }
-  V_profile[nrnodes-1] = energies[nrnodes-1];
+  	for (int n=1;n<nrnodes-1;n++)
+  	{
+  	  active[n] = 1;
+  	  V_profile[n] = energies[n];
+  	}
+  	V_profile[nrnodes-1] = energies[nrnodes-1];
+	}
+	
+	print_em(nnmax);
   active[nrnodes-1] = 0;
 
-  for (int i=0;i<nnmax;i++)
+  for (int i=0;i<nstruct;i++)
     delete [] coordsn[i];
   delete [] coordsn;
   delete [] energies;
@@ -6645,7 +6930,7 @@ void GString::set_prima(string pstring)
   for (int i=0;i<nnmax;i++)
     coordsn[i] = new double[N3];
   double* energies = new double[nnmax];
-  int nrnodes = read_string(pstring,coordsn,energies);
+  int nrnodes = read_string(pstring,coordsn,energies,nnmax);
 
 #if 1
   printf(" restart energies:");
@@ -7619,6 +7904,7 @@ void GString::opt_iters(int max_iter, double& totalgrad, double& gradrms, double
     string strfile = "stringfile.xyz"+nstr;
     printf(" printing string to %s \n",strfile.c_str());
     print_string(nnmax,allcoords,strfile);
+		//print_em(nnmax);
 #if 0
     string ois = StringTools::int2str(oi,2,"0");
     strfile = "stringfile.xyz"+nstr+"_"+ois+".xyz";
@@ -8761,7 +9047,7 @@ void GString::print_string(int nodes, double** allcoords0, string xyzstring)
 {
   if (nodes>nnmax0)
     nodes = nnmax0;
-	//cout << " nnR: " << nodes;
+	cout << " nnR: " << nodes;
   ofstream xyzfilec;
 //  string xyzstring = "xyzfile.xyzc";
   xyzfilec.open(xyzstring.c_str());
