@@ -2277,7 +2277,6 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0,in
     dq0[i] = 0.;
 
 //Creating Tangent Vector in Delocalized coordinates
-
   bmatp_create();
   bmat_create();
 
@@ -2308,14 +2307,11 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0,in
     printf(" %1.2f",Cn[j]);
   printf("\n");
 #endif
-
-
-
   pgradrms = 10000;
   Hintp_to_Hint();
 
   double energyp;
-//revert to lowest energy found
+	//revert to lowest energy found
   double energyl;
   double gradrmsl;
   double* xyzl = new double[3*natoms];
@@ -2324,7 +2320,7 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0,in
   if (SCALEQN>=SCALEQN0) SCALEQN = SCALEQN/1.2;
   if (SCALEQN<SCALEQN0) SCALEQN = SCALEQN0;
   if (DMAX<DMIN0) DMAX = DMIN0;
-//  if (isTSnode) SCALEQN = 2.;
+	//if (isTSnode) SCALEQN = 2.;
   ixflag = 0;
 
   do_bfgs = 0; //resets at each step
@@ -2348,7 +2344,6 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0,in
   xyzfile.setf(ios::left);
   xyzfile << setprecision(6);
 #endif
-
 
   sprintf(sbuff,"\n"); printout += sbuff;
   for (int n=0;n<OPTSTEPS;n++)
@@ -2388,8 +2383,6 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0,in
     }
 #endif
 
-  //  print_grad();
-  //  print_gradq();
 #if HESS_TANG && !USE_MOLPRO && !QCHEMSF
     update_ic_eigen_h(Cn,Cn);  
 #else
@@ -2397,8 +2390,6 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0,in
 
     if (isTSnode) walk_up();
 #endif
-
-
  
     if (n==0) gradrmsl = gradrms;
     if ( (gradrms<gradrmsl && energy<energyl) ||
@@ -2412,7 +2403,6 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0,in
     nretry = 0;
     rflag = ic_to_xyz_opt();
     update_ic();
-    //print_xyz();
     if (rflag)
     {
       nrflag++;
@@ -2453,8 +2443,6 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0,in
       bcp = 1;
     }
     else bcp = 0;
-    //printf(" oc3"); fflush(stdout);
-
     sprintf(sbuff," E(M): %1.2f gRMS: %1.4f",energy,gradrms); printout += sbuff;
     if (gradrms<OPTTHRESH && !bcp) 
     {

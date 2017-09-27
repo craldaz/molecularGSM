@@ -158,7 +158,7 @@ class GString {
   void align_string(ICoord ic1, ICoord ic2);
   void rotate_structure(double* xyz0, int* a);
 
-  void print_em(int nmaxp);
+  void print_em();
 	void print_dE();
 
  //for prima

@@ -232,7 +232,6 @@ int Gradient::external_grad(double* coords, double* grad)
     	system(cmd.c_str());
 		}
   }
-
   int error = mp1.run(); //grad and energy
 	if (error == 1)
 	{
@@ -275,11 +274,8 @@ int Gradient::external_grad(double* coords, double* grad)
     for (int i=0;i<N3;i++) 
       grad[i] = (grada[0][i] + grada[1][i] + grada[2][i])/3.;
   }
-	
   for (int i=0;i<nstates;i++)
     E[i] = mp1.getE(i+1) * 627.5;
-
-  //printf("  gmpe");
 
 #elif USE_ORCA
   //printf( " grad ORCA \n"); fflush(stdout);
@@ -633,19 +629,10 @@ void Gradient::init(string infilename, int natoms0, int* anumbers0, string* anam
 
   E = new double[nstates];
   for (int i=0;i<nstates;i++) E[i] = 0.;
-#if QCHEMSF
+#if QCHEMSF || USE_MOLPRO
   grada = new double*[nstates];
   for (int i=0;i<nstates;i++)
     grada[i] = new double[N3];
-  for (int i=0;i<nstates;i++)
-    E[i] = -1.;
-#endif
-#if USE_MOLPRO
-  grada = new double*[nstates];
-  for (int i=0;i<nstates;i++)
-    grada[i] = new double[N3];
-  for (int i=0;i<nstates;i++)
-    E[i] = mp1.getE(i+1) * 627.5;
 #endif
 
   dE = new double[nstates-1];
