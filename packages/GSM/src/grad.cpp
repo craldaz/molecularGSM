@@ -849,12 +849,12 @@ double Gradient::energy_initial(double* coords,int run, int rune,int penalty, do
   printf(" Calculating initial energy\n");
   runNum = run;
   runend = rune;
-  mp1.reset(coords);
   string nstr = StringTools::int2str(run,4,"0");
   runName0 = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(runend,4,"0");
   int error=1;
   //cout << " seedType is "<< seedType << endl;
 #if USE_MOLPRO
+  mp1.reset(coords);
   mp1.runname("mp_"+runName0);
   error = mp1.calc_energy();
   if (error == 1)

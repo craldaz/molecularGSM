@@ -81,12 +81,6 @@ int ICoord::alloc(int size){
 
  natoms = size;
 
-	//cra put this here
- anumbers = new int[1+natoms];
- amasses = new double[1+natoms];
- amasses3 = new double[1+3*natoms];
- anames = new string[1+natoms];
-
 //otherwise allocated in structure_read
  anumbers = new int[1+natoms];
  amasses = new double[1+natoms];
@@ -98,8 +92,8 @@ int ICoord::alloc(int size){
 
  dgrad = new double[3*natoms]; //for meci
  dvec = new double[3*natoms]; //for meci
- dgradq = new double[nicd0+50]; //for meci
- dvecq = new double[nicd0+50];
+ dgradq = new double[3*natoms+50]; //for meci
+ dvecq = new double[3*natoms+50];
  dgrad_U = new double[3*natoms+50]; //for meci
  dvec_U = new double[3*natoms+50];
 

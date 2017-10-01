@@ -115,7 +115,6 @@ void GString::String_Method_Optimization()
   }
   printf("\n");
 
-
   //align initial string
 #if 0
   if (!isSSM)
@@ -151,7 +150,6 @@ void GString::String_Method_Optimization()
   if (coords[0][3*i]<xdistmin)
     xdistmin = coords[0][3*i];
   xdist = xdistmax-xdistmin + 1.0 + 0.25;
-
 
   printf("\n NOTICES \n");
 #if USE_DAVID
@@ -205,7 +203,6 @@ void GString::String_Method_Optimization()
   ic1.alloc(natoms);
   ic2.alloc(natoms);
   ic3.alloc(natoms);
-  
   ic1.isOpt = 1; ic1.farBond = 1.;
   ic2.isOpt = 1; ic2.farBond = 1.;
   if (isSSM && bondfrags==0)
@@ -218,7 +215,6 @@ void GString::String_Method_Optimization()
     ic1.isOpt = 2;
     ic2.isOpt = 2;
   }
-
   ic1.reset(natoms,anames,anumbers,coords[0]);
   ic2.reset(natoms,anames,anumbers,coords[nnmax-1]);
   ic1.ic_create();
@@ -245,7 +241,6 @@ void GString::String_Method_Optimization()
   printf(" total tor: %i \n",ic1.ntor);
 #endif
 
-#if 1
   printf(" printing ic1 ic's \n");
   ic1.print_ic();
   if (!isSSM || !isMECI || !isPRODUCT)
@@ -253,7 +248,6 @@ void GString::String_Method_Optimization()
     printf(" printing ic2 ic's \n");
     ic2.print_ic();
   }
-#endif
 
 // create union_ic
   newic.alloc(natoms);
@@ -275,7 +269,6 @@ void GString::String_Method_Optimization()
   intic.copy_ic(newic);
   int2ic.copy_ic(newic);
 #endif
-
 
 	//initialize actual ics
   printf("\n actual IC's \n");
@@ -330,13 +323,11 @@ void GString::String_Method_Optimization()
     ictan[i] = new double[size_ic+100];
   double* dq = new double[len_d+100];
   double dqmag = 0.;
-
   double** dqa = new double*[nnmax];
   for (int i=0;i<nnmax;i++)
     dqa[i] = new double[len_d+100];
   double* dqmaga = new double[nnmax];
   for (int n=0;n<nnmax;n++) dqmaga[n] =0.;
-
   for (int i=0;i<nnmax;i++) icoords[i].gradrms = 1000.;
 
 #if USE_PRIMA
@@ -394,6 +385,7 @@ void GString::String_Method_Optimization()
     icoords[n].grad_init(infile0,ncpu,runNum,runend+n,0,CHARGE); //level 3 is exact kNNR only, 0 is QM grad always
 #endif
 
+//do I need this?
 #if USE_MOLPRO || QCHEMSF
   printf("\n MOLPRO/QCHEMSF mode: turning off H-follow (t/ol) in opt \n");
   printf("\n MOLPRO/QCHEMSF mode: turning off r in opt \n");
@@ -688,6 +680,7 @@ void GString::String_Method_Optimization()
 		exit(-1);
 	}
 
+	//preopt
   if (initialOpt>0 && !isRestart)
   {
     printf("\n preopt_iter: opting first node \n");
@@ -707,12 +700,14 @@ void GString::String_Method_Optimization()
     printf(" energy of first node: %9.6f \n",V_profile[0]/627.5);
     V0 = icoords[0].grad1.E[0] = V_profile[0];
   }
+
   if (isRestart) //force
   {
     icoords[0].grad1.add_force(icoords[0].coords,NULL);
     icoords[nnmax-1].grad1.add_force(icoords[nnmax-1].coords,NULL);
   }
 
+	//product optimization 
   if (isSSM==-1 && isFSM==-1)
   {
     //string optfname = "scratch/firstnode.xyz"+nstr;
@@ -774,13 +769,17 @@ void GString::String_Method_Optimization()
     restart_string(strfile0);
 
 	//Set V0
- //after IC's are ready
   grad1.write_on = 0;
   int nstates = icoords[0].grad1.nstates;
-  if (initialOpt<1 && !isSE_ESSM || !isSSM || isRestart)
+  if ((initialOpt<1 || isRestart) && !isDE_ESSM) //&& !isSE_ESSM || !isSSM 
+	{
+#if !USE_MOLPRO
     V0 = icoords[0].grad1.grads(coords[0], grads[0], icoords[0].Ut, 3);
+#else
+		V0 = icoords[n].grad1.energy_initial(coords[n],runNum,n,0,0.);
+#endif
+	}
 
-	printf(" Test print %1.4f\n",icoords[0].grad1.E[0]);
 	if (isRestart)
 		for (int i=1;i<nnmax;i++)
 			for (int j=0;j<icoords[0].grad1.nstates;j++)
@@ -790,7 +789,7 @@ void GString::String_Method_Optimization()
   if (!isSSM && !isRestart)
   {
 #if !USE_MOLPRO
-    V_profile[nnmax-1] = grad1.grads(coords[nnmax-1], grads[nnmax-1], icoords[0].Ut, 3) - V0;
+    V_profile[nnmax-1] = icoords[nnmax-1].grad1.grads(coords[nnmax-1], grads[nnmax-1], icoords[0].Ut, 3) - V0;
 #else
 		V_profile[nnmax-1]=icoords[nnmax-1].grad1.energy_initial(coords[nnmax-1],runNum,nnmax-1,0,0.)-V0;
 #endif
@@ -806,6 +805,7 @@ void GString::String_Method_Optimization()
   gradJobCount++; 
   if (!isSSM) gradJobCount++;
 
+	//make SSM hess
   if (isSSM && !isRestart)
   {
     active[nnmax-2] = 0;
@@ -821,7 +821,6 @@ void GString::String_Method_Optimization()
     icoords[0].save_hessp("hess.icp");
 #endif
   }
-
 	
 	//string variables
   double totalgrad  = 100.;
@@ -873,7 +872,6 @@ void GString::String_Method_Optimization()
 #endif
   print_string(nnmax,allcoords,strfileg);
 
-
 	//initial ic_reparam
   if (!isFSM && tscontinue && !isRestart)
   {
@@ -885,16 +883,7 @@ void GString::String_Method_Optimization()
       ic_reparam(dqa,dqmaga,0);
   }
 
-
-
 	//starting String opt
-////  if (!isFSM && !isSSM)
-  //if (!isFSM && tscontinue)
-  //printf("\n\n Starting String opt \n");
-  //osteps = 3;
-  //oesteps = osteps*2;
-  //ic_reparam_steps = 5; //CPMZ was 2!
-
   int maxw = 10000;
   while (1)
   {
@@ -944,8 +933,8 @@ void GString::String_Method_Optimization()
   } 
   overlapn = icoords[TSnode0].path_overlap_n;
   overlap = icoords[TSnode0].path_overlap;
-
   printf("\n opt_iters over: totalgrad: %5.3f gradrms: %6.4f tgrads: %4i  ol(%i): %3.2f max E: %5.1f Erxn: %4.1f nmax: %2i TSnode: %2i ",totalgrad,gradrms,gradJobCount,overlapn,overlap,emax-emin,V_profile[nnmax-1],nmax,TSnode0);
+
   int converged = 0;
   if (isFSM)
     printf("   -FSM done-");
@@ -974,7 +963,6 @@ void GString::String_Method_Optimization()
   }
   if (nsplit) printf(" split");
   printf(" \n");
-
   printf("\n oi: %i nmax: %i TSnode0: %i overlapn: %i \n",oi,nmax,TSnode0,overlapn);
 
 #if USE_KNNR
@@ -1035,7 +1023,6 @@ void GString::String_Method_Optimization()
 
   print_em();
 
-
 #if FINAL_FREQ
   int nnegfound = 0;
   if (converged && !endearly) 
@@ -1043,18 +1030,6 @@ void GString::String_Method_Optimization()
   printf(" found %i negative eigenvalue",nnegfound);
   if (nnegfound!=1) printf("s");
   printf(" \n");
-#endif
-
-
-#if 0
-  align_string(ic1,ic2);
-#endif
-//  Eckart::Eckart_align_string(allcoords,nnmax,amasses,natoms);
-#if 0
-//this doesn't work
-  for (int i=0;i<20;i++)
-  for (int n=1;n<nnmax-1;n++)
-    com_rotate_move(0,nnmax-1,n,2.0*n/nnmax);
 #endif
 
 	//final string
@@ -1087,7 +1062,6 @@ void GString::String_Method_Optimization()
       endearly = 0;
     }
   }
-
   printf("\n about to write tsq.xyz, tscontinue: %i endearly: %i \n",tscontinue,endearly);
   int wts,wint;
   int rxnocc = check_for_reaction(wts,wint);
@@ -1152,14 +1126,11 @@ void GString::String_Method_Optimization()
     initial2_file.close();
   }
 
-
-
   return;
 
   delete [] masses;
 
 }
-
 
 
 int GString::isomer_init(string isofilename)
@@ -3485,7 +3456,6 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,in
 				printf(" Hi\n");
        	icoords[n].opt_constraint(ictan[n]); //|| USE_MOLPRO || QCHEMSF
 #endif
-				//printf(" Hi2\n");
        	icoords[n].opt_constraint(ictan[n]); //|| USE_MOLPRO || QCHEMSF
         if (growing) icoords[n].stage1opt = 1;
         else icoords[n].stage1opt = 0;
@@ -3529,8 +3499,8 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,in
 					}
 					else 
 					 V_profile[n] = icoords[n].opt_c("scratch/xyzfile_"+runName0+".xyz",osteps*exsteps,C,C0,0,0);
-					printf(" Test print %1.4f\n",icoords[n].grad1.E[0]);
-					printf(" Test print %1.4f\n",icoords[n].grad1.E[1]);
+					//printf(" Test print %1.4f\n",icoords[n].grad1.E[0]);
+					//printf(" Test print %1.4f\n",icoords[n].grad1.E[1]);
 				}
       }
       else
@@ -8536,24 +8506,24 @@ void GString::prepare_molpro()
 
 		//calculate initial energy and/or gradient
 		//restart_wfn means already have the wfn files
-		if (restart_wfn && n==0 && !isRestart) 
-		{
-  		printf("  wstate: %i, wstate2: %i\n",wstate,wstate2);
-			if (isDE_ESSM)
-				printf(" Calc'd in starting_seam\n");
-				//V0=icoords[n].grad1.grads(coords[0], grads[0], icoords[0].Ut, 3); 
-			else if (isSE_ESSM)
-				V0 = icoords[n].grad1.energy_initial(coords[n],runNum,n,1,0.);
-			else if (isSSM)
-				V0 = icoords[n].grad1.energy_initial(coords[n],runNum,n,0,0.);
-			else 
-				V0 = icoords[n].grad1.energy_initial(coords[n],runNum,n,0,0.);
-  	 	printf("  setting V0 to: %8.1f (%12.8f au) \n",V0,V0/627.5);
-			//need to fix for 3 states
-			printf(" icoords[0].grad1.E[wstate]=%1.4f\n",icoords[0].grad1.E[nstates-2]); 
-			printf(" icoords[0].grad1.E[wstate2]=%1.4f\n",icoords[0].grad1.E[nstates-1]);
-		 	 	
-		}
+		//if (restart_wfn && n==0 && !isRestart) 
+		//{
+  	//	printf("  wstate: %i, wstate2: %i\n",wstate,wstate2);
+		//	if (isDE_ESSM)
+		//		printf(" Calc'd in starting_seam\n");
+		//		//V0=icoords[n].grad1.grads(coords[0], grads[0], icoords[0].Ut, 3); 
+		//	else if (isSE_ESSM)
+		//		V0 = icoords[n].grad1.energy_initial(coords[n],runNum,n,1,0.);
+		//	else if (isSSM)
+		//		V0 = icoords[n].grad1.energy_initial(coords[n],runNum,n,0,0.);
+		//	else  //DE-GSM
+		//		V0 = icoords[n].grad1.energy_initial(coords[n],runNum,n,0,0.);
+  	// 	printf("  setting V0 to: %8.1f (%12.8f au) \n",V0,V0/627.5);
+		//	//need to fix for 3 states
+		//	printf(" icoords[0].grad1.E[wstate]=%1.4f\n",icoords[0].grad1.E[nstates-2]); 
+		//	printf(" icoords[0].grad1.E[wstate2]=%1.4f\n",icoords[0].grad1.E[nstates-1]);
+		// 	 	
+		//}
 		if (restart_wfn && n==nnmax-1 && !isRestart && isDE_ESSM) 
 		{
 			icoords[n].grad1.seedType = 3;	
@@ -9078,7 +9048,6 @@ void GString::print_string(int nodes, double** allcoords0, string xyzstring)
 			xyzfilec << icoords[n].grad1.E[0] - V0 <<endl;	
 	}
 
-#if USE_MOLPRO	
   if (icoords[0].grad1.nstates>1)
 	{
 		xyzfilec <<"max-force" << endl;//dE
@@ -9109,7 +9078,6 @@ void GString::print_string(int nodes, double** allcoords0, string xyzstring)
 				xyzfilec << icoords[n].grad1.E[icoords[n].grad1.nstates-2] - E0 <<endl;	
 		}
 	}
-#endif
 	
   xyzfilec.close();
 
