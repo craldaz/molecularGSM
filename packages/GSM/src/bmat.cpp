@@ -4255,9 +4255,6 @@ void ICoord::update_ic_eigen_ts(double* Cn)
   return;
 }
 
-
-
-
 void ICoord::print_gradq(){
 
   //printf(" Gradient in delocalized IC:\n");

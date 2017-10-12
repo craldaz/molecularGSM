@@ -468,7 +468,7 @@ void GString::String_Method_Optimization()
   	V0=grad1.grads(coords[0], grads[0], icoords[0].Ut, 3);
 		printf(" V0=%1.6f\n",V0);
 
-	  #if 1
+	  #if 0
 	  printf(" Grads\n");
 	  for (int j=0;j<2;j++)
 	  {for (int i=0;i<3*natoms;i++)
@@ -495,17 +495,9 @@ void GString::String_Method_Optimization()
 	  for (int i=0;i<3*natoms;i++)
 	    tmp[i] = dvec[i]*grad1.dE[wstate2-2];
 		
-		printf(" printing dvec\n");
-		for (int i=0;i<3*natoms;i++)
-			printf("%1.3f\t",dvec[i]);	
-		printf("\n");
 	  printf(" Multiplying dvec by delta E to get NACM\n");
 	  for (int i=0;i<3*natoms;i++)
 	    dvec[i] = dvec[i]*grad1.dE[wstate2-2];
-		printf(" printing vec\n");
-		for (int i=0;i<3*natoms;i++)
-			printf("%1.3f\t",dvec[i]);	
-		printf("\n");
 	
 		double beta = rot_angle(dgrad,dvec);
 	  printf(" beta = %1.6f\n",beta);
@@ -514,7 +506,7 @@ void GString::String_Method_Optimization()
 	
 	  for (int i=0;i<3*natoms;i++)
 	    dgrad[i] = dgrad[i]*cos(beta) + tmp[i]*sin(beta);
-	
+
 	  double norm_rnacm=0.0;
 	  double norm_rdgrad=0.0;
 	  for (int i=0;i<3*natoms;i++)
@@ -540,11 +532,9 @@ void GString::String_Method_Optimization()
 			}
   		asymmetry =calc_asymmetry(dgrad,dvec);
 		}
-  	//printf(" asymmetry = %1.5f\n",asymmetry);
 	
-		double rmag=0.1;
+		double rmag=0.2;
 		printf(" rmag=%1.2f\n",rmag);
-
 	  double* r = new double[natoms*3];
 	  double dtheta = 2*3.14159/40.;
 	  double* theta=new double[40];
@@ -596,6 +586,15 @@ void GString::String_Method_Optimization()
   		sab_x = dotx/pitch;
   		sab_y = doty/pitch;
 		}
+		printf(" printing dvec\n");
+		for (int i=0;i<3*natoms;i++)
+			printf("%1.3f\t",dvec[i]);	
+		printf("\n");
+		printf(" printing dgrad\n");
+		for (int i=0;i<3*natoms;i++)
+			printf("%1.3f\t",dgrad[i]);	
+		printf("\n");
+	
 	  double sigma =sqrt(sab_x*sab_x + sab_y*sab_y);
 	  double tmp2= sab_y/sab_x;
 	  double theta_s = atan(tmp2);
@@ -610,14 +609,25 @@ void GString::String_Method_Optimization()
 		#if 1
 			printf(" E_A\n");
 			for (int i=0;i<40;i++)
-				printf(" %2.8f\n",EmodelA[i]);
+				printf(" %2.8f\n",EmodelA[i]-V0);
 			printf(" E_B\n");
 			for (int i=0;i<40;i++)
-				printf(" %2.8f\n",EmodelB[i]);
+				printf(" %2.8f\n",EmodelB[i]-V0);
 		#endif
 	
 	    int* min = new int[3];
 	    int counter =0;
+			
+			//print xyzs
+			for (int i=0;i<40;i++)
+			{
+		    for (int j=0;j<3*natoms;j++)
+		     	newic.coords[j]=icoords[0].coords[j]+rmag*cos(theta[i])*dgrad[j]/norm_rdgrad + rmag*sin(theta[i])*dvec[j]/norm_rnacm;
+				newic.print_xyz();	
+				newic.reset(natoms,anames,anumbers,icoords[0].coords);
+			}
+			
+			//determine minima
 	    for (int i=1;i<39;i++)
 	    {
 	      if (EmodelB[i]<EmodelB[i-1] && EmodelB[i+1]> EmodelB[i])
@@ -626,13 +636,9 @@ void GString::String_Method_Optimization()
 	        min[counter]=i;
 	        counter++;
 	      }
-				printf(" i=%i\n",i);
-	      for (int j=0;j<3*natoms;j++)
-	       	newic.coords[j]=icoords[0].coords[j]+rmag*cos(theta[i])*dgrad[j]/norm_rdgrad + rmag*sin(theta[i])*dvec[j]/norm_rnacm;
-				newic.print_xyz();
 	    }
 	    //check endpoints
-	          if (EmodelB[0]<EmodelB[39] && EmodelB[1]>EmodelB[0])
+	    if (EmodelB[0]<EmodelB[39] && EmodelB[1]>EmodelB[0])
 	    {
 	        printf(" Minimum at node 0; theta = 0");
 	        min[counter]=0;
@@ -644,6 +650,41 @@ void GString::String_Method_Optimization()
 	        min[counter]=39;
 	        counter++;
 	    }
+			
+			//determine maxima
+	    for (int i=1;i<39;i++)
+	    {
+	      if (EmodelB[i]>EmodelB[i-1] && EmodelB[i+1]<EmodelB[i])
+	      {
+	        printf(" Maximum at theta = %1.5f\n",theta[i]);
+	        min[counter]=i;
+	        counter++;
+	      }
+	    }
+	    //check endpoints
+	    if (EmodelB[0]>EmodelB[39] && EmodelB[1]<EmodelB[0])
+	    {
+	        printf(" Maximum at node 0; theta = 0");
+	        min[counter]=0;
+	        counter++;
+	    }
+	    if (EmodelB[39]>EmodelB[38] && EmodelB[0]<EmodelB[39])
+	    {
+	        printf(" Maximum at node 39; theta = %1.4f",theta[39]);
+	        min[counter]=39;
+	        counter++;
+	    }
+
+			//print geometries of x-section just in case
+			printf(" Print geoms of min and max geoms\n");
+	    for (int k=1;k<counter+1;k++)
+	    {
+	      for (int i=0;i<3*natoms;i++)
+	       	icoords[k].coords[i]=icoords[0].coords[i]+rmag*cos(theta[min[k-1]])*dgrad[i]/norm_rdgrad + rmag*sin(theta[min[k-1]])*dvec[i]/norm_rnacm;
+				icoords[k].print_xyz();
+				icoords[k].reset(natoms,anames,anumbers,icoords[0].coords);
+			}
+
 	    printf(" Take step along min theta\n");
 	    for (int k=1;k<counter+1;k++)
 	    {
@@ -669,6 +710,10 @@ void GString::String_Method_Optimization()
 				icoords[k].bmatp_to_U();
 				icoords[k].bmat_create();
 				icoords[k].make_Hint();
+				//icoords[k].grad1.grads(icoords[k].coords,grads[0],icoords[k].Ut,3);
+				//icoords[k].grad_to_q();
+				//icoords[k].print_gradq();
+				//icoords[k].print_ic();
 				double energy=icoords[k].opt_b("scratch/product"+runName+".xyz",STEP_OPT_ITERS,0,0.0);
 				icoords[k].print_xyz_save("product"+runName+".xyz");
 				printf(" opt_energy is %1.4f\n", energy);
@@ -776,7 +821,7 @@ void GString::String_Method_Optimization()
 #if !USE_MOLPRO
     V0 = icoords[0].grad1.grads(coords[0], grads[0], icoords[0].Ut, 3);
 #else
-		V0 = icoords[n].grad1.energy_initial(coords[n],runNum,n,0,0.);
+		V0 = icoords[0].grad1.energy_initial(coords[0],runNum,0,0,0.);
 #endif
 	}
 
