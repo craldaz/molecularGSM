@@ -763,13 +763,60 @@ void GString::String_Method_Optimization()
     printf(" exiting now \n");
     exit(1);
   }
-
-  printf("\n\n Begin Growing the String \n");
+	
+//Set V0
   nnP = 1;
   nnR = 1;
   nn = 4;
   if (isSSM) nn = 2;
 
+  if (isRestart)
+		restart_string(strfile0);
+  grad1.write_on = 0;
+  int nstates = icoords[0].grad1.nstates;
+  if ((initialOpt<1 || isRestart) && !isDE_ESSM) //&& !isSE_ESSM || !isSSM 
+	{
+#if !USE_MOLPRO
+    V0 = icoords[0].grad1.grads(coords[0], grads[0], icoords[0].Ut, 3);
+#else
+		V0 = icoords[0].grad1.energy_initial(coords[0],runNum,0,0,0.);
+#endif
+	}
+  if (isDE_ESSM)
+		V0 = icoords[0].calc_BP(runNum,0);
+
+	if (isRestart)
+		for (int i=1;i<nnmax;i++)
+			for (int j=0;j<icoords[0].grad1.nstates;j++)
+				icoords[i].grad1.E[j]=icoords[i].grad1.E[j]+icoords[0].grad1.E[0];
+
+  V_profile[0] = 0.;
+  if (!isSSM && !isRestart && !isDE_ESSM)
+  {
+#if !USE_MOLPRO
+    V_profile[nnmax-1] = icoords[nnmax-1].grad1.grads(coords[nnmax-1], grads[nnmax-1], icoords[0].Ut, 3) - V0;
+#else
+		V_profile[nnmax-1]=icoords[nnmax-1].grad1.energy_initial(coords[nnmax-1],runNum,nnmax-1,0,0.)-V0;
+#endif
+  }
+	if (isDE_ESSM && !isRestart)
+		V_profile[nnmax-1]= icoords[nnmax-1].calc_BP(runNum,nnmax-1) - V0;
+	if (isDE_ESSM && isRestart)
+		for (int n=1;n<nnmax;n++)
+		V_profile[n]= icoords[n].calc_BP(runNum,n) - V0;
+
+  printf("  setting V0 to: %8.1f (%12.8f au) \n",V0,V0/627.5);
+  newic.V0 = V0;
+  for (int n=0;n<nnmax0;n++)
+    icoords[n].V0 = V0;
+  if (isSSM)
+    printf("\n at beginning, starting V is 0.0 (%8.6f) \n",V0/627.5);
+  else
+    printf("\n at beginning, starting V's are %8.6f %8.6f \n",V_profile[0],V_profile[nnmax-1]);
+  gradJobCount++; 
+  if (!isSSM) gradJobCount++;
+
+  printf("\n\n Begin Growing the String \n");
 #if ALIGN_RXN
   printf(" Before align, V_profile[0] = %4.3f V0 = %4.3f \n",V_profile[0],V0);
   if (!isSSM)
@@ -810,45 +857,6 @@ void GString::String_Method_Optimization()
       ic_reparam_g(dqa,dqmaga);
 
   }// if not restart
-  else
-    restart_string(strfile0);
-
-	//Set V0
-  grad1.write_on = 0;
-  int nstates = icoords[0].grad1.nstates;
-  if ((initialOpt<1 || isRestart) && !isDE_ESSM) //&& !isSE_ESSM || !isSSM 
-	{
-#if !USE_MOLPRO
-    V0 = icoords[0].grad1.grads(coords[0], grads[0], icoords[0].Ut, 3);
-#else
-		V0 = icoords[0].grad1.energy_initial(coords[0],runNum,0,0,0.);
-#endif
-	}
-
-	if (isRestart)
-		for (int i=1;i<nnmax;i++)
-			for (int j=0;j<icoords[0].grad1.nstates;j++)
-				icoords[i].grad1.E[j]=icoords[i].grad1.E[j]+icoords[0].grad1.E[0];
-
-  V_profile[0] = 0.;
-  if (!isSSM && !isRestart)
-  {
-#if !USE_MOLPRO
-    V_profile[nnmax-1] = icoords[nnmax-1].grad1.grads(coords[nnmax-1], grads[nnmax-1], icoords[0].Ut, 3) - V0;
-#else
-		V_profile[nnmax-1]=icoords[nnmax-1].grad1.energy_initial(coords[nnmax-1],runNum,nnmax-1,0,0.)-V0;
-#endif
-  }
-  printf("  setting V0 to: %8.1f (%12.8f au) \n",V0,V0/627.5);
-  newic.V0 = V0;
-  for (int n=0;n<nnmax0;n++)
-    icoords[n].V0 = V0;
-  if (isSSM)
-    printf("\n at beginning, starting V is 0.0 (%8.6f) \n",V0/627.5);
-  else
-    printf("\n at beginning, starting V's are %8.6f %8.6f \n",V_profile[0],V_profile[nnmax-1]);
-  gradJobCount++; 
-  if (!isSSM) gradJobCount++;
 
 	//make SSM hess
   if (isSSM && !isRestart)
@@ -895,7 +903,8 @@ void GString::String_Method_Optimization()
     osteps = STEP_OPT_ITERS;
 		for (int n=0;n<nnmax;n++)
 			icoords[n].OPTTHRESH=gaddmax; //low and then set high later.
-		set_fsm_active(1,nnmax-2);
+		if (!isRestart)
+			set_fsm_active(1,nnmax-2);
 	}
   int oesteps = 0;
   int max_iter = MAX_OPT_ITERS;
@@ -4243,12 +4252,12 @@ void GString::ic_reparam(double** dqa, double* dqmaga, int rtype)
 			}
 
       icoords[n].reset(natoms,anames,anumbers,newic.coords);
-			//icoords[n].calc_BP(runNum,n);
-			//for (int i=0;i<nstates-1;i++)
-			//{
-			//	icoords[n].grad1.dE[i] = icoords[n].grad1.E[i+1] - icoords[n].grad1.E[i];
-			//	printf(" dE[%i][%i]: %5.4f\t",n,i,icoords[n].grad1.dE[i]); 
-			//}
+			icoords[n].calc_BP(runNum,n);
+			for (int i=0;i<nstates-1;i++)
+			{
+				icoords[n].grad1.dE[i] = icoords[n].grad1.E[i+1] - icoords[n].grad1.E[i];
+				printf(" dE[%i][%i]: %5.4f\t",n,i,icoords[n].grad1.dE[i]); 
+			}
 			
     }//loop n over nodes
     
@@ -8681,14 +8690,14 @@ void GString::starting_seam(double* dq,int nnodes)
   double* ictan = new double[size_ic];
   double* ictan0 = new double[size_ic];
 
-	V0 = icoords[0].calc_BP(runNum,0);
+	//V0 = icoords[0].calc_BP(runNum,0);
 	for (int i=0;i<nstates-1;i++)
 	{
 		icoords[0].grad1.dE[i] = icoords[0].grad1.E[i+1] - icoords[0].grad1.E[i];
 		printf(" dE[0][%i]:  %5.4f\t ",i,icoords[0].grad1.dE[i]); 
 	}
 	cout <<endl;
-	V_profile[nnmax-1]= icoords[nnmax-1].calc_BP(runNum,nnmax-1) - V0;
+	//V_profile[nnmax-1]= icoords[nnmax-1].calc_BP(runNum,nnmax-1) - V0;
 	for (int i=0;i<nstates-1;i++)
 	{
 		icoords[nnmax-1].grad1.dE[i] = icoords[nnmax-1].grad1.E[i+1] - icoords[nnmax-1].grad1.E[i];
@@ -8931,7 +8940,7 @@ void GString::opt_iters_seam(int max_iter, double& totalgrad, double& gradrms, s
 	print_string(nnmax,allcoords,strfiler);
   for (;oi<max_iter;oi++)
 	{
-    get_tangents_1g(dqa,dqmaga,ictan); //works for DE_ESSM too
+    get_tangents_1(dqa,dqmaga,ictan); //works for DE_ESSM too
 		opt_steps_seam(osteps,ictan);	
 		print_em();
 		for (int n=0;n<nnmax-1;n++)
@@ -9060,7 +9069,7 @@ void GString::print_string(int nodes, double** allcoords0, string xyzstring)
 {
   if (nodes>nnmax0)
     nodes = nnmax0;
-	cout << " nnR: " << nodes;
+	//cout << " nnR: " << nodes;
   ofstream xyzfilec;
 //  string xyzstring = "xyzfile.xyzc";
   xyzfilec.open(xyzstring.c_str());
