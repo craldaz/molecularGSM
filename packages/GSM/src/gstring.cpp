@@ -2344,7 +2344,10 @@ void GString::starting_string(double* dq, int nnodes)
 
     double bdist = 0.;
     if (isSSM)
+		{
       bdist = tangent_1b(ictan);
+			icoords[iN].bdist=bdist;
+		}
     else
       tangent_1(ictan);
     printf(" bdist: %4.3f \n",bdist);
@@ -2497,8 +2500,10 @@ int GString::addNode(int n1, int n2, int n3)
     if (isSSM)
     {
       bdist = tangent_1b(ictan);
+			icoords[iN].bdist=bdist;
       printf(" bdist: %4.3f \n",bdist);
       if (bdist<BDISTMIN) break;
+			if (bdist>icoords[iR].bdist) break; //not getting smaller
     }
     else
       tangent_1(ictan);
@@ -2509,6 +2514,7 @@ int GString::addNode(int n1, int n2, int n3)
       printf(" %1.2f",ictan[i]);
     printf("\n");
     for (int i=0;i<nangles;i++)
+
       printf(" %1.2f",ictan[nbonds+i]);
     printf("\n");
     if (ntors>0)
@@ -3520,30 +3526,38 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,in
 				{	
 					if (penalty==1)
 					{
-						if (oi>0 && (V_profile[nnR-2] - V_profile[nnR-1])>0.0)
-							K+=1.;
-						printf(" n=%i\n",n);
-						double sigma=get_sigma(n-1,K);
-						V0=(icoords[0].grad1.E[wstate-1] + icoords[0].grad1.E[wstate2-1])/2.0;
+						//if (oi>0 && (V_profile[nnR-2] - V_profile[nnR-1])>0.0)
+						//	K+=1.;
+						//if (oi>0 && icoords[nnR-1].gradrms < icoords[nnR-1].OPTTHRESH)
+						printf(" icoords[%i].gradrms] =%1.4f, icoords[%i].OPTHRESH=%1.4f\n",n-1,icoords[n-1].gradrms,n,icoords[n].OPTTHRESH);
+						printf(" n=%i,K=%1.2f\n",n,K);
+						if (oi>0 && icoords[n-1].gradrms < icoords[n].OPTTHRESH)
+						{
+								printf(" increasing sigma\n");
+								K+=1.;
+						}
+						double sigma=K;
+						//double sigma=get_sigma(n-1,K);
+						//V0=(icoords[0].grad1.E[wstate-1] + icoords[0].grad1.E[wstate2-1])/2.0;
 						double alpha = 0.02*627.5; //kcal/mol
 						double deltaE = icoords[0].grad1.E[wstate2-1] - icoords[0].grad1.E[wstate-1];
 						double G = pow(deltaE,2)/(deltaE+alpha);	
-						V0 += sigma*G;
+						//V0 += sigma*G;
 						for (int i=0;i<nnmax;i++)
 						{
 							icoords[i].grad1.V0=V0;
   					  icoords[n].V0 = V0;
 						}
   					printf("  setting V0 to: %8.1f (%12.8f au) \n",V0,V0/627.5);
-						for (int i=0;i<nnR;i++)	
-						{
-						 	V_profile[i] = (icoords[i].grad1.E[wstate-1]+icoords[i].grad1.E[wstate2-1])/2.0;
-						 	double alpha = 0.02*627.5; //kcal/mol
-						 	double deltaE = icoords[i].grad1.E[wstate2-1] - icoords[i].grad1.E[wstate-1];
-						 	double G = pow(deltaE,2)/(deltaE+alpha);	
-						 	V_profile[i] += sigma*G;
-						 	V_profile[i] -= V0;
-						}
+						//for (int i=0;i<nnR;i++)	
+						//{
+						// 	V_profile[i] = (icoords[i].grad1.E[wstate-1]+icoords[i].grad1.E[wstate2-1])/2.0;
+						// 	double alpha = 0.02*627.5; //kcal/mol
+						// 	double deltaE = icoords[i].grad1.E[wstate2-1] - icoords[i].grad1.E[wstate-1];
+						// 	double G = pow(deltaE,2)/(deltaE+alpha);	
+						// 	V_profile[i] += sigma*G;
+						// 	V_profile[i] -= V0;
+						//}
 						V_profile[n] = icoords[n].opt_c("scratch/xyzfile_"+runName0+".xyz",osteps*exsteps,C,C0,1,sigma);
 					}
 					else if (penalty==2)
@@ -7362,7 +7376,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
   int wstate2=icoords[0].grad1.wstate2;
   int wstate=icoords[0].grad1.wstate;	
 	int nstates = icoords[0].grad1.nstates;
-	double K = 1.0; //parameter for penalty function
+	double K = 0.; //parameter for penalty function
 
   if (isSSM)
     osteps = STEP_OPT_ITERS;
@@ -7608,7 +7622,8 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
     {
       printf("%i %1.4f\n",nnR-1,icoords[nnR-1].grad1.dE[wstate2-2]);
       printf("%i %1.4f\n",nnR-2,icoords[nnR-2].grad1.dE[wstate2-2]);
-      nnR-=1;
+			//turn this off 11/18/2017
+      //nnR-=1;
       int done=check_essm_done(osteps,oesteps,dqa,runNum,K);
       if (done)
       {
@@ -8613,18 +8628,23 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
   //icoords[nnR-1].bmatp_to_U();
   //icoords[nnR-1].bmat_create();
 
-	if (icoords[nnR-1].grad1.dE[wstate2-2]>10.0)
-	{
-		K+=1;
-		osteps=30;
-	}
+	//if (icoords[nnR-1].grad1.dE[wstate2-2]>10.0)
+	//{
+	//	K+=1.;
+	//	osteps=30;
+	//}
 
-	if (icoords[nnR-1].grad1.dE[wstate2-2]>5.0)
+	//icoords[nnR-1].grad1.dE[wstate2-2]>5.0)
+	if (icoords[nnR-1].gradrms > CONV_TOL*3)
 	{
 		printf(" Optimizing on penalty function on node %i",nnR-1);
-  	icoords[nnR-1].OPTTHRESH =CONV_TOL;
-  	double sigma=	get_sigma(nnR-1,K);
-		icoords[nnR-1].opt_b("scratch/xyzfile_"+runName0+".xyz",osteps,1,sigma);
+  	icoords[nnR-1].OPTTHRESH =CONV_TOL*10;
+  	//double sigma=	get_sigma(nnR-1,K);
+  	//double sigma=3.5;
+  	  //try with increase sigma next
+  	K+=1;
+  	double sigma=K;
+		icoords[nnR-1].opt_b("scratch/xyzfile_"+runName0+".xyz",60,1,sigma);
   	printf(" %s \n",icoords[nnR-1].printout.c_str()); 
 	}
   string strfileg = "stringfile.xyz"+nstr+"g";
@@ -8645,6 +8665,8 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
 
 double GString::get_sigma(int n,double K)
 {
+
+#if 1
 	if (n==0)
 	{
 		printf(" n=0, setting sigma equal to 0\n");
@@ -8663,6 +8685,7 @@ double GString::get_sigma(int n,double K)
 	if (dEdE0<1.0)
 		sigma = K - K*dEdE0;
 	printf(" K= %1.2f, sigma = %1.4f\n",K, sigma);
+#endif
 
 	return sigma;
 }
