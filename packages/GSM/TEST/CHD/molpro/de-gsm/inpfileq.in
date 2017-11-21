@@ -22,6 +22,6 @@
  PRODUCT_LIMIT           100.0  # kcal/mol
  TS_FINAL_TYPE  	       	0      # any/delta bond: 0/1
  CLIMB_TS       	       	2      # none/climb/full: 0/1/2
- NNODES			7      # including endpoints
+ NNODES			9      # including endpoints
  ---------------------------------------------------------
 #

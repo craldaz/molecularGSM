@@ -8,7 +8,7 @@
  RESTART                 0      # read restart.xyz
  RESTART_WFN						 1
  MAX_OPT_ITERS           100     # maximum iterations
- STEP_OPT_ITERS          15    # for FSM/SSM
+ STEP_OPT_ITERS          30    # for FSM/SSM
  CONV_TOL           	0.0005 # perp grad
  ADD_NODE_TOL		0.05   # for GSM
  SCALING			1.0    # for opt steps

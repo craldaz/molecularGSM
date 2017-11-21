@@ -17,6 +17,6 @@ else
 fi
 
 #run job
-ID=`printf "%0*d\n" 4 $SLURM_ARRAY_TASK_ID`
+ID=`printf "%0*d\n" 2 $SLURM_ARRAY_TASK_ID`
 ${PROJECT_BINARY_DIR}/packages/GSM/src/gsm.molpro.exe $ID 4 > output_$ID
 exit

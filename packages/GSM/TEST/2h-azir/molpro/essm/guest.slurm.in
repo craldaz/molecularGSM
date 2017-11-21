@@ -2,7 +2,7 @@
 #SBATCH -p guest --job-name=${TEST_NAME}
 #SBATCH --output=${TEST_NAME}.o
 #SBATCH --error=${TEST_NAME}.e
-#SBATCH --array=1
+#SBATCH --array=1-2
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --time=14:00:00
@@ -17,5 +17,7 @@ else
 fi
 
 #run job
-${PROJECT_BINARY_DIR}/packages/GSM/src/gsm.molpro.exe 1 1 > output
+
+ID=`printf "%0*d\n" 2 $SLURM_ARRAY_TASK_ID`
+${PROJECT_BINARY_DIR}/packages/GSM/src/gsm.molpro.exe $ID 1 > output_$ID
 exit

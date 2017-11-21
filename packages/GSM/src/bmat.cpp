@@ -3536,7 +3536,7 @@ void ICoord::update_ic_eigen()
     printf(" %1.4f",dqe0[i]);
   printf("\n");
 #endif
-#if 0
+#if 1
   printf(" dq0: ");
   for (int i=0;i<len0;i++)
     printf(" %1.4f",dq0[i]);
@@ -5917,7 +5917,11 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
     }
     rflag = ic_to_xyz_opt();
 	
-    if (nrflag > 4) break;
+    if (nrflag > 4)
+		{
+			printf(" nrflag>4)\n");
+			break;
+		}
     if (ixflag>2)
 		{
       DMAX = DMAX/1.5;
@@ -5950,7 +5954,10 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
     {
       noptdone++;
 
-      if (energy > 3000.) { gradrms = 1.; break; }
+      if (energy > 3000.) { 
+			printf(" energy > 3000!!\n");
+			gradrms = 1.; break; 
+			}
 
 			double correction =gradq[nicd0-1]*dq0[nicd0-1]*627.5;
 			dEpre += correction;
@@ -6277,9 +6284,11 @@ double ICoord::opt_to_seam(int runNum,int node, int osteps, double* ictan)
 
 double ICoord::form_meci_space(int run, int node)
 {
+	int wstate2 = grad1.wstate2;
 	double energy = calc_BP(run,node);
 	//print_bp();
 	printf(" Forming the 3N-6 dimensional space defined by a MECI\n");
+
 	dgrad_to_dgradq();
 	dvec_to_dvecq();
 
@@ -6781,7 +6790,6 @@ void ICoord::dvec_to_dvecq()
     printf(" %1.4f",dvecq[i]);
   printf("\n");
 #endif  
-
 
 	return;
 }

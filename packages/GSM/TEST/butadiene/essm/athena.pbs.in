@@ -1,0 +1,10 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=1 -l walltime=18:00:00
+#PBS -N ${TEST_NAME}
+#PBS -o ${TEST_NAME}
+#PBS -e ${TEST_NAME}
+#PBS -t 1-2
+cd $PBS_O_WORKDIR
+
+ID=`printf "%0*d\n" 2 $PBS_ARRAYID`
+${PROJECT_BINARY_DIR}/packages/GSM/src/gsm.molpro.exe $ID 1 > output_$ID

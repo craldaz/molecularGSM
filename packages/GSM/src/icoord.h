@@ -246,6 +246,7 @@ class ICoord {
 	double* dvec_U;
   double* dgrad; 
   double* dvec;
+	double* sab;
 
 	double* dE;
 	int nstates;

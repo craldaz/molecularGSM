@@ -5,7 +5,7 @@
 #SBATCH --array=1-2
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --time=44:00:00
+#SBATCH --time=144:00:00
 
 if [ -f /etc/bashrc ]; then
         . /etc/bashrc
@@ -17,6 +17,6 @@ else
 fi
 
 #run job
-ID=`printf "%0*d\n" 4 $SLURM_ARRAY_TASK_ID`
+ID=`printf "%0*d\n" 2 $SLURM_ARRAY_TASK_ID`
 ${PROJECT_BINARY_DIR}/packages/GSM/src/gsm.molpro.exe $ID 1 > output_$ID
 exit

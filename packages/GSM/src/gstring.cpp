@@ -441,7 +441,7 @@ void GString::String_Method_Optimization()
 		printf("###############################################################\n");
 		printf("###############################################################\n");
 		printf("###############################################################\n");
-		printf("########### Starting experimental program #####################\n");
+		printf("########### Starting PRODUCT  program #########################\n");
 		printf("###############################################################\n");
 		printf("###############################################################\n");
 		printf("###############################################################\n");
@@ -8645,10 +8645,12 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
   	K+=1;
   	double sigma=K;
 		icoords[nnR-1].opt_b("scratch/xyzfile_"+runName0+".xyz",60,1,sigma);
+    gradJobCount += icoords[nnR-1].noptdone;
   	printf(" %s \n",icoords[nnR-1].printout.c_str()); 
 	}
   string strfileg = "stringfile.xyz"+nstr+"g";
   printf(" writing grown string %s \n",strfileg.c_str());
+  printf(" tgrads: %i",gradJobCount);
   icoords[nnR-1].OPTTHRESH =CONV_TOL;
   string strfile = "stringfile.xyz"+nstr;
   print_string(nnR,allcoords,strfileg);
