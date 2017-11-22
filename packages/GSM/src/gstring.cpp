@@ -3531,11 +3531,11 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,in
 						//if (oi>0 && icoords[nnR-1].gradrms < icoords[nnR-1].OPTTHRESH)
 						printf(" icoords[%i].gradrms] =%1.4f, icoords[%i].OPTHRESH=%1.4f\n",n-1,icoords[n-1].gradrms,n,icoords[n].OPTTHRESH);
 						printf(" n=%i,K=%1.2f\n",n,K);
-						if (oi>0 && icoords[n-1].gradrms < icoords[n].OPTTHRESH)
-						{
-								printf(" increasing sigma\n");
-								K+=1.;
-						}
+						//if (oi>0 && icoords[n-1].gradrms < icoords[n].OPTTHRESH)
+						//{
+						//		printf(" increasing sigma\n");
+						//		K+=1.;
+						//}
 						double sigma=K;
 						//double sigma=get_sigma(n-1,K);
 						//V0=(icoords[0].grad1.E[wstate-1] + icoords[0].grad1.E[wstate2-1])/2.0;
@@ -7376,7 +7376,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
   int wstate2=icoords[0].grad1.wstate2;
   int wstate=icoords[0].grad1.wstate;	
 	int nstates = icoords[0].grad1.nstates;
-	double K = 0.; //parameter for penalty function
+	double K = 1.0; //parameter for penalty function
 
   if (isSSM)
     osteps = STEP_OPT_ITERS;
@@ -8642,7 +8642,9 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
   	//double sigma=	get_sigma(nnR-1,K);
   	//double sigma=3.5;
   	  //try with increase sigma next
-  	K+=1;
+  	//K+=1;
+  	if (K<3.5)
+  		K=3.5;
   	double sigma=K;
 		icoords[nnR-1].opt_b("scratch/xyzfile_"+runName0+".xyz",60,1,sigma);
     gradJobCount += icoords[nnR-1].noptdone;
@@ -8655,7 +8657,7 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
   string strfile = "stringfile.xyz"+nstr;
   print_string(nnR,allcoords,strfileg);
 	printf(" Optimizing to MECI.\n");
-	icoords[nnR-1].DMAX=0.1;
+	icoords[nnR-1].DMAX=0.15;
 	//icoords[nnR-1].make_Hint();
 	icoords[nnR-1].opt_meci(runNum,nnR-1,100);
   printf(" writing string %s \n",strfile.c_str());
