@@ -182,6 +182,7 @@ elseif(GSM_ENABLE_MOLPRO)
 		GFSTRINGQ_TEST(23_dimethyl_2_butene/ 23_dimethyl_2_butene)
     GFSTRINGQ_TEST(penta-iminium/essm penta_iminium)
     GFSTRINGQ_TEST(methaniminium/molpro/essm/ methanim)
+    GFSTRINGQ_TEST(hexatriene/essm/ hexatriene)
 
 		##Double-Ended Excited State String Method
     #GFSTRINGQ_TEST(ethyleneRotation/molpro/map/ map_ethene)

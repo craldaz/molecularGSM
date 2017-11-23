@@ -76,7 +76,7 @@ int ICoord::bmat_alloc() {
  
   MAXAD = 0.075; //max along one coordinate (was using 0.1)
   DMAX = 0.10; //max of step magnitude (was using 0.125)
-  DMIN0 = DMAX/10.; //was 5.
+  DMIN0 = DMAX/20.; //was 5.
 #if USE_PRIMA
   DMAX = 0.025;
 #endif

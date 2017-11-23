@@ -2613,7 +2613,7 @@ int GString::addNode(int n1, int n2, int n3)
   int success = 1;
   if (isSSM)
   {
-    if (bdist>=BDISTMIN)
+    if (bdist>=BDISTMIN && icoords[n2].bdist < icoords[n1].bdist)
       nn++;
     else
       success = 0;
@@ -8635,10 +8635,11 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
 	//}
 
 	//icoords[nnR-1].grad1.dE[wstate2-2]>5.0)
-	if (icoords[nnR-1].gradrms > CONV_TOL*3)
+	if (icoords[nnR-1].gradrms > CONV_TOL)
 	{
 		printf(" Optimizing on penalty function on node %i",nnR-1);
-  	icoords[nnR-1].OPTTHRESH =CONV_TOL*10;
+  	//icoords[nnR-1].OPTTHRESH =CONV_TOL*10;
+  	icoords[nnR-1].OPTTHRESH =CONV_TOL;
   	//double sigma=	get_sigma(nnR-1,K);
   	//double sigma=3.5;
   	  //try with increase sigma next

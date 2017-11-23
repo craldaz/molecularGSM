@@ -2,7 +2,7 @@
 #SBATCH -p guest --job-name=${TEST_NAME}
 #SBATCH --output=${TEST_NAME}.o
 #SBATCH --error=${TEST_NAME}.e
-#SBATCH --array=3
+#SBATCH --array=1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --time=14:00:00
