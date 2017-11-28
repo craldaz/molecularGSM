@@ -62,6 +62,8 @@ class GString {
   double* anglet;
   int* tors;
   double* tort;
+	double bdist0;
+
   int isomer_init(string isofilename);
   void set_ssm_bonds(ICoord &ic1);
   double get_ssm_dqmag(double bdist);

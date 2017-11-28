@@ -2346,6 +2346,7 @@ void GString::starting_string(double* dq, int nnodes)
     if (isSSM)
 		{
       bdist = tangent_1b(ictan);
+			bdist0=bdist;
 			icoords[iN].bdist=bdist;
 		}
     else
@@ -7618,7 +7619,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       }
     }
 		//isSE_ESSM growth termination
-   	if (isSE_ESSM && (icoords[nnR-1].grad1.dE[wstate2-2]-icoords[nnR-2].grad1.dE[wstate2-2])>0.0)
+   	if (isSE_ESSM && (icoords[nnR-1].grad1.dE[wstate2-2]-icoords[nnR-2].grad1.dE[wstate2-2])>0.0 && (1.0 - bdist/bdist0)>0.5)
     {
       printf("%i %1.4f\n",nnR-1,icoords[nnR-1].grad1.dE[wstate2-2]);
       printf("%i %1.4f\n",nnR-2,icoords[nnR-2].grad1.dE[wstate2-2]);
@@ -8638,14 +8639,8 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
 	if (icoords[nnR-1].gradrms > CONV_TOL)
 	{
 		printf(" Optimizing on penalty function on node %i",nnR-1);
-  	//icoords[nnR-1].OPTTHRESH =CONV_TOL*10;
   	icoords[nnR-1].OPTTHRESH =CONV_TOL;
-  	//double sigma=	get_sigma(nnR-1,K);
-  	//double sigma=3.5;
-  	  //try with increase sigma next
-  	//K+=1;
-  	if (K<3.5)
-  		K=3.5;
+  	K=3.5;
   	double sigma=K;
 		icoords[nnR-1].opt_b("scratch/xyzfile_"+runName0+".xyz",60,1,sigma);
     gradJobCount += icoords[nnR-1].noptdone;
