@@ -36,7 +36,8 @@ class GString {
   int isSSM; //shooting string flag
   int isMECI; //MECI opt
   int isPRODUCT; //MECI opt
-	int isDE_ESSM;
+	int isMAP_DE;
+	int isMAP_SE;
 	int isSE_ESSM;
   int hessSSM; //starting SSM hessian given
   int isFSM; //freezing string flag
@@ -124,6 +125,7 @@ class GString {
 	int add_seam_node(int n1,int n2,int n3);
   int addCNode(int n1);
   void add_last_node(int type);
+  void add_last_seam_node(int type);
   void com_rotate_move(int iR, int iP, int iN, double ff);
   void scan_r(int eigen);
   void opt_tr();

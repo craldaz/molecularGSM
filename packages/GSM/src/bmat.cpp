@@ -6238,7 +6238,7 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
   delete [] xyzl;
   return energy;
 }
-void ICoord::opt_meci(int runNum,int runEnd,int STEP_OPT_ITERS)
+double ICoord::opt_meci(int runNum,int runEnd,int STEP_OPT_ITERS)
 {
 	printf(" Optimizing node to MECI using Combined-Step Optimizer\n");
 	//double energy = form_meci_space(runNum,runEnd);	
@@ -6252,7 +6252,7 @@ void ICoord::opt_meci(int runNum,int runEnd,int STEP_OPT_ITERS)
 	
 	printf(" opt_energy is %1.4f\n", V0+energy);
 
-	return;
+	return energy;
 }
 
 void ICoord::opt_penalty(int runNum,int runEnd,double sigma, int penalty,int STEP_OPT_ITERS)
@@ -6687,6 +6687,7 @@ void ICoord::form_constraint_space(double* C)
 	update_ic();
 	bmatp_create();
 	bmatp_to_U();
+	bmat_create();//new12/5/2017
 	//printf(" Assuming BP already calc'd\n");
 	//double energy = calc_BP( run, node);
 	dgrad_to_dgradq();

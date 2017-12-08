@@ -37,9 +37,9 @@ int Molpro::run()
   inpfile << "file,2," << scratchname << endl;
   inpfile << "symmetry,nosym" << endl;
   inpfile << "orient,noorient" << endl;
-	//inpfile << "gthresh,orbital=1.d-11" << endl;
-	//inpfile << "gthresh,ENERGY=1.d-11" << endl;
-	//inpfile << "gthresh,gradient=1.d-11" << endl;
+	inpfile << "gthresh,orbital=1.d-11" << endl;
+	inpfile << "gthresh,ENERGY=1.d-11" << endl;
+	inpfile << "gthresh,gradient=1.d-11" << endl;
 
   inpfile << "geometry={" << endl;
   for (int i=0;i<natoms;i++)
@@ -701,9 +701,9 @@ int Molpro::calc_dvec()
   inpfile << "file,2," << scratchname << endl;
   inpfile << "symmetry,nosym" << endl;
   inpfile << "orient,noorient" << endl;
-	//inpfile << "gthresh,orbital=1.d-11" << endl;
-	//inpfile << "gthresh,ENERGY=1.d-11" << endl;
-	//inpfile << "gthresh,gradient=1.d-11" << endl;
+	inpfile << "gthresh,orbital=1.d-11" << endl;
+	inpfile << "gthresh,ENERGY=1.d-11" << endl;
+	inpfile << "gthresh,gradient=1.d-11" << endl;
   inpfile << "geometry={" << endl;
   for (int i=0;i<natoms;i++)
     inpfile << " " << anames[i] << " " << xyz[3*i+0] << " " << xyz[3*i+1] << " " << xyz[3*i+2] << " " << endl;
