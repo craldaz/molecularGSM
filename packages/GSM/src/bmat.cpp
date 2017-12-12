@@ -6098,11 +6098,11 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
       xyzfile << endl;
     }
 #endif
-		printf(" iteration: %i \t ",n);
+		//printf(" iteration: %i \t ",n);
 		for (int i=0;i<nstates-1;i++)
 		{
 			grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
-			printf("dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
+			//printf("dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
 		}
 		printf("\n");
 		
@@ -6110,8 +6110,8 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
 	  deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
   	dq0[nicd0-1] = -deltaE/norm_dg; //not sure
   	printf(" dq0[constraint]: %1.4f ",dq0[nicd0-1]);
-		if (dq0[nicd0-1] < -0.075)
-			dq0[nicd0-1]=-0.075;
+		if (dq0[nicd0-1] < -0.05)
+			dq0[nicd0-1]=-0.05;
     update_ic_eigen();
 
     if (n==0) gradrmsl = gradrms;
@@ -6148,7 +6148,7 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
 		bmat_create();
 
     energy = form_constraint_space(run,node,ictan) - V0;
-		printf(" Average energy = %1.2f, ",energy);
+		//printf(" Average energy = %1.2f, ",energy);
     sprintf(sbuff," E(M): %1.2f gRMS: %1.4f",energy,gradrms); printout += sbuff;
     sprintf(sbuff," DeltaE: %4.3f",grad1.dE[wstate2-2]); printout += sbuff;
     if ((gradrms<(OPTTHRESH) && !bcp && deltaE < 0.001))  
@@ -6207,8 +6207,7 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
   } //loop n over OPTSTEPS
 
 #if 1
-  if ((gradrms>gradrmsl*1.75 && !isTSnode && revertOpt)
-   || (gradrms>gradrmsl*3.0 && revertOpt))
+  if ((gradrms>gradrmsl*1.75 && !isTSnode && revertOpt) || energy>energyl*10)
   {
     //SCALEQN *= 1.85; //was 1.5
     if (DMAX>smag)
@@ -6238,6 +6237,7 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
   delete [] xyzl;
   return energy;
 }
+
 double ICoord::opt_meci(int runNum,int runEnd,int STEP_OPT_ITERS)
 {
 	printf(" Optimizing node to MECI using Combined-Step Optimizer\n");
@@ -6943,14 +6943,16 @@ void ICoord::bp_rot(double* C)
 	for (int i=0;i<len;i++)
 		dot_dg+=dgrad_U[i]*C[i];
 	
-	printf(" Overlap of tan with dgrad =%1.4f\n",dot_dg);
 	double dot_dv=0.;
 	for (int i=0;i<len;i++)
 		 dot_dv+=dvec_U[i]*C[i];
-	printf(" Overlap of tan with dvec =%1.4f\n",dot_dv);
 
 	double dot_bp=sqrt(dot_dv*dot_dv + dot_dg*dot_dg);
+#if 0
+	printf(" Overlap of tan with dgrad =%1.4f\n",dot_dg);
+	printf(" Overlap of tan with dvec =%1.4f\n",dot_dv);
 	printf(" Overlap of tan with BP = %1.4f\n",dot_bp);
+#endif
 
 	double norm=0.;
 	for (int i=0;i<len;i++)
@@ -7017,7 +7019,7 @@ void ICoord::dgrot_mag()
 	for (int i=0;i<len;i++)
 		overlap+=dgradq[i]*dvecq[i];
 
-	printf(" overlap(x1,x2) = %1.3f, Schmidt orthogonolize\n",overlap/overlap2);
+	//printf(" overlap(x1,x2) = %1.3f, Schmidt orthogonolize\n",overlap/overlap2);
 
 	//printf(" Schmidt orthogonalize x1 wrt x2\n");
 	for (int i=0;i<len;i++)
