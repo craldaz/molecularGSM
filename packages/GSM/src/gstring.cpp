@@ -937,9 +937,9 @@ void GString::String_Method_Optimization()
   {
     printf(" \n initial ic_reparam \n");
     ic_reparam_steps = 25;
-		if (isMAP_DE || isMAP_SE)
-			ic_reparam_steps=5;
-    if ((nn==nnmax && !isFSM) || (isSSM && tscontinue))
+		//if (isMAP_DE || isMAP_SE)
+		//	ic_reparam_steps=5;
+    if ((nn==nnmax && !isFSM) || (isSSM && tscontinue)) //TODO MAP_SE
       ic_reparam(dqa,dqmaga,0);
   }
 	
@@ -955,6 +955,7 @@ void GString::String_Method_Optimization()
 			{
 				for (int n=1;n<nnmax-1;n++)
 					active[n]=1;
+				//osteps=10;
 				opt_iters_seam(max_iter,totalgrad,gradrms,strfileg,osteps,oesteps,dqa,dqmaga,ictan);
 				printf(" Finished!!!\n");
 				exit(-1);
@@ -3998,7 +3999,7 @@ void GString::ic_reparam_g(double** dqa, double* dqmaga)
       for (int j=0;j<size_ic;j++)
         ictan[n][j] = ictan0[n][j];
 
-			if (!isMAP_DE)
+			if (!isMAP_DE && !isMAP_SE)
      		 newic.opt_constraint(ictan[n]);
 			else
 				newic.form_constraint_space(ictan[n]);
@@ -4034,11 +4035,11 @@ void GString::ic_reparam_g(double** dqa, double* dqmaga)
     exit(-1);
   }
 
-	//if (newic.nicd != newic.nicd0-3 && isMAP_DE)
-	//{
-	//	printf(" Error: wrong dimensions\n");
-	//	exit(-1);
-	//}
+	if (newic.nicd != newic.nicd0-3 && isMAP_DE)
+	{
+		printf(" Error: wrong dimensions\n");
+		exit(-1);
+	}
   for (int i=0;i<nnmax;i++)
     delete [] ictan0[i];
   delete [] ictan0;
@@ -4277,7 +4278,7 @@ void GString::ic_reparam(double** dqa, double* dqmaga, int rtype)
           ictan[n][j] = ictan0[n+1][j];
       }
 
-			if (!isMAP_DE)
+			if (!isMAP_DE && !isMAP_SE)
       	newic.opt_constraint(ictan[n]);
 			else
 				newic.form_constraint_space(ictan[n]);
@@ -4286,12 +4287,14 @@ void GString::ic_reparam(double** dqa, double* dqmaga, int rtype)
       for (int j=0;j<newic.nicd0;j++) newic.dq0[j]=0.;
       newic.dq0[newic.nicd] = rpmove[n];
       newic.ic_to_xyz();
-			if (newic.nicd != newic.nicd0-3 && isMAP_DE)
+			printf(" nicd=%i\n",newic.nicd);
+			if (newic.nicd != newic.nicd0-3 && (isMAP_DE || isMAP_SE))
 			{
 				printf(" Error: wrong dimensions\n");
 				exit(-1);
 			}
-
+	
+			#if 0
       icoords[n].reset(natoms,anames,anumbers,newic.coords);
 			icoords[n].calc_BP(runNum,n);
 			for (int i=0;i<nstates-1;i++)
@@ -4299,6 +4302,7 @@ void GString::ic_reparam(double** dqa, double* dqmaga, int rtype)
 				icoords[n].grad1.dE[i] = icoords[n].grad1.E[i+1] - icoords[n].grad1.E[i];
 				printf(" dE[%i][%i]: %5.4f\t",n,i,icoords[n].grad1.dE[i]); 
 			}
+		#endif
 			
     }//loop n over nodes
     
@@ -5624,11 +5628,11 @@ void GString::get_tangents_1(double** dqa, double* dqmaga, double** ictan)
     newic.bmatp_create();
     newic.bmatp_to_U();
 	
-		if (!isMAP_DE)
+		if (!isMAP_DE && !isMAP_SE)
     	newic.opt_constraint(ictan[n]);
 		else
 			newic.form_constraint_space(ictan[n]);
-    //newic.bmat_create();
+
 		if (newic.nicd != newic.nicd0-3 && isMAP_DE)
 		{
 			printf(" Error: wrong dimensions\n");
@@ -5729,6 +5733,9 @@ void GString::get_tangents_1g(double** dqa, double* dqmaga, double** ictan)
     intic.update_ic();
 
 		newic.copy_CI(icoords[nlist[2*n]]); //cra not sure //was 2*n+1 12122017
+		//if (isMAP_DE)
+		//	newic.copy_CI(icoords[nlist[2*n+1]]); //temp
+		
 		printf(" nlist[2*n]=%i, nlist[2*n+1]=%i\n",nlist[2*n],nlist[2*n+1]);
 
     if ((isSSM || isMAP_SE) && nlist[2*n]==nnR-1) //|| isMAP_SE
@@ -5748,7 +5755,7 @@ void GString::get_tangents_1g(double** dqa, double* dqmaga, double** ictan)
 		}
 		else
 		{
-			printf(" creating tan between node %i and %i\n", nlist[2*n], nlist[2*n]);
+			printf(" creating tan between node %i and %i\n", nlist[2*n], nlist[2*n+1]);
     	newic.bmatp_create();
     	newic.bmatp_to_U();
 			newic.form_constraint_space(ictan[nlist[2*n]]);
@@ -7432,6 +7439,8 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
   for (;oi<max_iter;oi++)
   {
     printf("\n growing iter: %i \n",oi+1);
+
+		//set active
 		printf(" nnR=%i,nnP=%i,nn=%i\n",nnR,nnP,nn);
     if (oi>0 && isFSM)
       set_fsm_active(nnR,nnmax-nnP-1);
@@ -7463,6 +7472,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
         nnP++;
 			}
 		}
+		//MAP_SE add node
 		if ((isMAP_SE) && (icoords[nnR-1].grad1.dE[wstate2-2]<2.0 && icoords[nnR-1].gradrms<icoords[nnR-1].OPTTHRESH))
 		{
       if (oi>0 && nn < nnmax)
@@ -7527,13 +7537,6 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 					icoords[n].OPTTHRESH=CONV_TOL*2;
 				}
 				get_tangents_1g(dqa,dqmaga,ictan);
-				for (int n=0;n<nnmax;n++)
-				{
-					active[n]=-2;
-					if ((icoords[n].grad1.dE[wstate2-2] >1.0 && icoords[n].gradrms> gaddmax)||(icoords[n].grad1.dE[wstate2-2]>2.5 && icoords[n].gradrms>gaddmax/2.) || ( icoords[n].grad1.dE[wstate2-2]>5. && icoords[nnR-1].gradrms>gaddmax/3.))
-						active[n]=1;
-				 				
-				}
 				opt_steps_seam(osteps,ictan);
 				for (int n=0;n<nnmax;n++)
 				{
@@ -7552,6 +7555,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 				for (int n=0;n<nnmax;n++)
 				{
 					//if (icoords[n].grad1.dE[wstate2-2] >1.0 || totalgrad>(gaddmax*nnmax))
+					//if ((icoords[n].grad1.dE[wstate2-2]>1.0 || icoords[n].gradrms>CONV_TOL*5)) 
 					if ((icoords[n].grad1.dE[wstate2-2]>1. && icoords[n].gradrms>gaddmax) || (icoords[n].grad1.dE[wstate2-2]>2.5 && icoords[n].gradrms>gaddmax/2.) )
 						break;
 					if (n==nnmax-1)
@@ -7640,6 +7644,8 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
         gradrms += icoords[i].gradrms*icoords[i].gradrms;
       }
     }
+
+		//getgrad
     if (isSSM || isMAP_SE)
       gradrms = sqrt(gradrms/(nnR-1));
     else
@@ -9042,7 +9048,7 @@ int GString::add_seam_node(int n1,int n2,int n3)
     else
     	tangent_1(ictan);
 
-#if 1
+#if 0
     printf(" printing ictan \n");
     for (int i=0;i<nbonds;i++)
       printf(" %1.2f",ictan[i]);
@@ -9060,8 +9066,11 @@ int GString::add_seam_node(int n1,int n2,int n3)
 
     newic.bmatp_create();
     newic.bmatp_to_U();
+#if 1
 		newic.form_constraint_space(ictan);
-    newic.bmat_create();
+#else
+    newic.opt_constraint(ictan);
+#endif
 
     if (isMAP_SE)
     {
@@ -9080,16 +9089,26 @@ int GString::add_seam_node(int n1,int n2,int n3)
 
     printf(" dqmag: %1.2f",dqmag);
 
+
+#if 1
     if (nnmax-nn!=1)
       newic.dq0[newic.nicd0-3] = -dqmag/(nnmax-nn);
-    else 
+    else
       newic.dq0[newic.nicd0-3] = -dqmag/2;
     if (isMAP_SE)
       newic.dq0[newic.nicd0-3] = -dqmag; //CPMZ check
+#else
+    if (nnmax-nn!=1)
+      newic.dq0[newic.nicd0-1] = -dqmag/(nnmax-nn);
+    else 
+      newic.dq0[newic.nicd0-1] = -dqmag/2;
+#endif
 
-    printf(" dq0[constraint]: %1.2f \n",newic.dq0[newic.nicd0-3]);
+    printf(" dq0[constraint]: %1.2f \n",newic.dq0[newic.nicd]);
+		newic.print_xyz();
     int success = newic.ic_to_xyz();
 		newic.print_xyz();
+		intic.print_xyz();
     newic.update_ic();
     icoords[iN].reset(natoms,anames,anumbers,newic.coords);
     com_rotate_move(iR,iP,iN,1.0); //operates on iN via newic
@@ -9107,7 +9126,8 @@ int GString::add_seam_node(int n1,int n2,int n3)
     icoords[iN].newHess = 5;
 
     active[iN] = 1;
-		active[iR]=-2;
+		if (isMAP_SE)
+			active[iR]=-2;
 		cout << iN << endl;	
   } //loop over interpolation
 
@@ -9139,9 +9159,11 @@ void GString::opt_iters_seam(int max_iter, double& totalgrad, double& gradrms, s
   string strfiler = "stringfile.xyz"+nstr+"r";
   printf(" printing string to %s \n",strfiler.c_str());
 	print_string(nnmax,allcoords,strfiler);
+	printf(" nnmax=%i\n",nnmax);
   for (;oi<max_iter;oi++)
 	{
     get_tangents_1(dqa,dqmaga,ictan); //works for DE_ESSM too
+     //get_tangents_1g(dqa,dqmaga,ictan);
 		opt_steps_seam(osteps,ictan);	
 		print_em();
 		for (int n=0;n<nnmax-1;n++)
@@ -9160,7 +9182,7 @@ void GString::opt_iters_seam(int max_iter, double& totalgrad, double& gradrms, s
 
     totalgrad = 0.;
     gradrms = 0.;
-    get_tangents_1(dqa,dqmaga,ictan); //works for DE_ESSM too
+    //get_tangents_1(dqa,dqmaga,ictan); //good idea to try her
     for (int i=n0+1;i<nnmax-1;i++)
     { 
 			icoords[i].grad_to_q();
@@ -9186,7 +9208,7 @@ void GString::opt_iters_seam(int max_iter, double& totalgrad, double& gradrms, s
 		for (int n=1;n<nnmax;n++)
 		{
 			printf(" node %i\t",n);
-			if (icoords[n].grad1.dE[wstate2-2]>1.0 || icoords[n].gradrms>CONV_TOL*5)  // || totalgrad>CONV_TOL*5*(nnmax-2)*rn3m6)
+			if ((icoords[n].grad1.dE[wstate2-2]>1.0 || icoords[n].gradrms>CONV_TOL*5)) 
 				break;
 			if (n==nnmax-1)
 			{
@@ -9196,10 +9218,17 @@ void GString::opt_iters_seam(int max_iter, double& totalgrad, double& gradrms, s
 				return;
 			 }
 		}
-
+		if (totalgrad<(CONV_TOL*(nnmax-2)*rn3m6))
+		{
+				printf(" Seam is converged.\n");
+  			string strfile = "stringfile.xyz"+nstr;
+				printf(" printing final string to %s \n",strfile.c_str());
+				return;
+		}
     if (oi!=max_iter-1)
 		{
     	ic_reparam(dqa,dqmaga,0);
+    	//ic_reparam_g(dqa,dqmaga);
 			cout << endl;
 		}
 		

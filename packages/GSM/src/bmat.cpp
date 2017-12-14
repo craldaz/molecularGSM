@@ -76,7 +76,7 @@ int ICoord::bmat_alloc() {
  
   MAXAD = 0.075; //max along one coordinate (was using 0.1)
   DMAX = 0.10; //max of step magnitude (was using 0.125)
-  DMIN0 = DMAX/20.; //was 5.
+  DMIN0 = DMAX/10.; //was 5.
 #if USE_PRIMA
   DMAX = 0.025;
 #endif
@@ -3262,7 +3262,7 @@ int ICoord::grad_to_q()
   for (int i=0;i<nicd;i++)
     gradrms+=gradq[i]*gradq[i];
   gradrms = sqrt(gradrms/nicd);
-	printf(" gradrms = %1.4f\n",gradrms);
+	//printf(" gradrms = %1.4f\n",gradrms);
   //print_gradq();
 
 #if 1
@@ -3536,7 +3536,7 @@ void ICoord::update_ic_eigen()
     printf(" %1.4f",dqe0[i]);
   printf("\n");
 #endif
-#if 1
+#if 0
   printf(" dq0: ");
   for (int i=0;i<len0;i++)
     printf(" %1.4f",dq0[i]);
@@ -6040,6 +6040,7 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
   double energyp;
   double energyl;
   double gradrmsl;
+	double dELow;
   double* xyzl = new double[3*natoms];
   for (int j=0;j<3*natoms;j++) xyzl[j] = coords[j];
 
@@ -6098,7 +6099,7 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
       xyzfile << endl;
     }
 #endif
-		//printf(" iteration: %i \t ",n);
+		printf(" iteration: %i \t ",n);
 		for (int i=0;i<nstates-1;i++)
 		{
 			grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
@@ -6109,7 +6110,7 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
 		//take the combined step
 	  deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
   	dq0[nicd0-1] = -deltaE/norm_dg; //not sure
-  	printf(" dq0[constraint]: %1.4f ",dq0[nicd0-1]);
+  	//printf(" dq0[constraint]: %1.4f ",dq0[nicd0-1]);
 		if (dq0[nicd0-1] < -0.05)
 			dq0[nicd0-1]=-0.05;
     update_ic_eigen();
@@ -6120,6 +6121,7 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
     {
       gradrmsl = gradrms;
       energyl = energy;
+			dELow=grad1.dE[wstate2-2];
       for (int j=0;j<3*natoms;j++) xyzl[j] = coords[j];
     }
     rflag = ic_to_xyz_opt();
@@ -6207,15 +6209,34 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
   } //loop n over OPTSTEPS
 
 #if 1
-  if ((gradrms>gradrmsl*1.75 && !isTSnode && revertOpt) || energy>energyl*10)
+	double tmp;
+	double tmp2;
+	int revertOpt2=0;
+	if (energyl<0.0 && energy<0.0)
+	{
+		tmp=energyl*-1.0;
+		tmp2=energy*-1.0;
+		revertOpt2=1;
+	}
+	else if (energyl>0.0 && energy>0.0)
+	{
+		tmp=energyl;
+		tmp2=energy;	
+		revertOpt2=1;
+	}	
+		
+		
+
+  if ((gradrms>gradrmsl*1.75 && !isTSnode && revertOpt) || (tmp2>tmp*10 && grad1.dE[wstate2-2]> dELow*2 && revertOpt2))
   {
     //SCALEQN *= 1.85; //was 1.5
     if (DMAX>smag)
       DMAX = smag/1.5;
     else
       DMAX = DMAX/1.5;
-
-    sprintf(sbuff,"r"); printout += sbuff;
+		
+		sprintf(sbuff,"gradrms=%1.4f, gradrmsl=%1.4ff, energy=%1.4f, energyl=%1.4f\n",gradrms,gradrmsl,energy,energyl);printout+=sbuff;
+    sprintf(sbuff,"reverting"); printout += sbuff;
     for (int j=0;j<3*natoms;j++)
       coords[j] = xyzl[j];
     energy = energyl;
@@ -6648,6 +6669,7 @@ double ICoord::form_constraint_space(int run, int node, double* C)
 	update_ic();
 	bmatp_create();
 	bmatp_to_U();
+	bmat_create(); //12/18/
 	double energy = calc_BP( run, node);
 	dgrad_to_dgradq();
 	dvec_to_dvecq();

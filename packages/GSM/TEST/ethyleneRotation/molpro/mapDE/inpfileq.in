@@ -8,9 +8,9 @@
  RESTART                 0      # read restart.xyz
  RESTART_WFN						 1
  MAX_OPT_ITERS           100     # maximum iterations
- STEP_OPT_ITERS          10    # for FSM/SSM
- CONV_TOL           	0.0005 # perp grad
- ADD_NODE_TOL						0.5   # divided by two for DE-ESSM
+ STEP_OPT_ITERS          3    # for FSM/SSM
+ CONV_TOL           	0.001 # perp grad
+ ADD_NODE_TOL						0.05   # divided by two for DE-ESSM
  SCALING			1.0    # for opt steps
  SSM_DQMAX              0.8   # add step size
  GROWTH_DIRECTION        0      # normal/react/prod: 0/1/2
