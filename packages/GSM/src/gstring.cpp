@@ -937,8 +937,8 @@ void GString::String_Method_Optimization()
   {
     printf(" \n initial ic_reparam \n");
     ic_reparam_steps = 25;
-		//if (isMAP_DE || isMAP_SE)
-		//	ic_reparam_steps=5;
+		if (isMAP_DE || isMAP_SE)
+			ic_reparam_steps=5;
     if ((nn==nnmax && !isFSM) || (isSSM && tscontinue)) //TODO MAP_SE
       ic_reparam(dqa,dqmaga,0);
   }
@@ -7460,6 +7460,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       {
 				addednode = add_seam_node(nnR-1,nnR,nnmax-nnP);
         nnR++;
+				get_tangents_1g(dqa,dqmaga,ictan);//experimental 12/24
 			}
 		}
 		if ((isMAP_DE && icoords[nnmax-nnP].grad1.dE[wstate2-2]<1.0 &&icoords[nnmax-nnP].gradrms<gaddmax) || \
@@ -7537,6 +7538,14 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 					icoords[n].OPTTHRESH=CONV_TOL*2;
 				}
 				get_tangents_1g(dqa,dqmaga,ictan);
+				//experimental
+				for (int n=0;n<nnmax;n++)
+				{
+					active[n]=-2;
+					if ((icoords[n].grad1.dE[wstate2-2] >1.0 && icoords[n].gradrms> gaddmax)||(icoords[n].grad1.dE[wstate2-2]>2.5 && icoords[n].gradrms>gaddmax/2.) || ( icoords[n].grad1.dE[wstate2-2]>5. && icoords[nnR-1].gradrms>gaddmax/3.))
+						active[n]=1;
+				 				
+				}
 				opt_steps_seam(osteps,ictan);
 				for (int n=0;n<nnmax;n++)
 				{
@@ -9066,8 +9075,10 @@ int GString::add_seam_node(int n1,int n2,int n3)
 
     newic.bmatp_create();
     newic.bmatp_to_U();
+		newic.bmat_create(); //new 12/24
 #if 1
 		newic.form_constraint_space(ictan);
+		newic.bmat_create();
 #else
     newic.opt_constraint(ictan);
 #endif
@@ -9105,10 +9116,10 @@ int GString::add_seam_node(int n1,int n2,int n3)
 #endif
 
     printf(" dq0[constraint]: %1.2f \n",newic.dq0[newic.nicd]);
-		newic.print_xyz();
+		//newic.print_xyz();
     int success = newic.ic_to_xyz();
-		newic.print_xyz();
-		intic.print_xyz();
+		//newic.print_xyz();
+		//intic.print_xyz();
     newic.update_ic();
     icoords[iN].reset(natoms,anames,anumbers,newic.coords);
     com_rotate_move(iR,iP,iN,1.0); //operates on iN via newic
@@ -9116,6 +9127,7 @@ int GString::add_seam_node(int n1,int n2,int n3)
     icoords[iN].bmatp_to_U();
     icoords[iN].bmat_create();
 		V_profile[iN] = icoords[iN].calc_BP(runNum,iN)-V0; // this needs to be calcd so reparam can happen correctly
+		icoords[iN].bmat_create(); //new 12/24
 
 		for (int i=0;i<nstates-1;i++)
 		{
@@ -9162,8 +9174,8 @@ void GString::opt_iters_seam(int max_iter, double& totalgrad, double& gradrms, s
 	printf(" nnmax=%i\n",nnmax);
   for (;oi<max_iter;oi++)
 	{
-    get_tangents_1(dqa,dqmaga,ictan); //works for DE_ESSM too
-     //get_tangents_1g(dqa,dqmaga,ictan);
+    //get_tangents_1(dqa,dqmaga,ictan); //works for DE_ESSM too
+    get_tangents_1g(dqa,dqmaga,ictan);
 		opt_steps_seam(osteps,ictan);	
 		print_em();
 		for (int n=0;n<nnmax-1;n++)

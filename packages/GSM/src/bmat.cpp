@@ -6111,8 +6111,8 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
 	  deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
   	dq0[nicd0-1] = -deltaE/norm_dg; //not sure
   	//printf(" dq0[constraint]: %1.4f ",dq0[nicd0-1]);
-		if (dq0[nicd0-1] < -0.05)
-			dq0[nicd0-1]=-0.05;
+		if (dq0[nicd0-1] < -0.075)
+			dq0[nicd0-1]=-0.075;
     update_ic_eigen();
 
     if (n==0) gradrmsl = gradrms;
@@ -6669,7 +6669,7 @@ double ICoord::form_constraint_space(int run, int node, double* C)
 	update_ic();
 	bmatp_create();
 	bmatp_to_U();
-	bmat_create(); //12/18/
+  bmat_create(); //12/18/
 	double energy = calc_BP( run, node);
 	dgrad_to_dgradq();
 	dvec_to_dvecq();
