@@ -2037,7 +2037,7 @@ double ICoord::calc_BP(int run, int node)
 
 double ICoord::calc_dgrad(int run, int node)
 {
-	printf(" Calculating dgrad\n");
+	//printf(" Calculating dgrad\n");
 	double energy=grad1.grads(coords, grad,Ut, 3); 
 	for (int i=0;i<3*natoms;i++)
   	dgrad[i] = grad1.grada[1][i] - grad1.grada[0][i]; 
@@ -2046,7 +2046,7 @@ double ICoord::calc_dgrad(int run, int node)
 
 void ICoord::calc_dvec(int run, int node)
 {
-	printf(" Calculating dvec\n");
+	//printf(" Calculating dvec\n");
 	grad1.dvec_calc(coords, dvec,run,node); 
 	return;
 }

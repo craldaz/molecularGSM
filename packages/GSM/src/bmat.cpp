@@ -1257,7 +1257,7 @@ void ICoord::update_bfgsp(int makeHint)
   double dxHdx = 0.;
 
 
-  printf(" in update_bfgsp, nicd, nicd0: %i %i \n",nicd,nicd0);
+  //printf(" in update_bfgsp, nicd, nicd0: %i %i \n",nicd,nicd0);
 
 
 //  printf(" WARNING: constraining dqprim! \n");
@@ -6273,7 +6273,7 @@ double ICoord::opt_meci(int runNum,int runEnd,int STEP_OPT_ITERS)
 	
 	printf(" opt_energy is %1.4f\n", V0+energy);
 
-	return energy;
+	return V0+energy;
 }
 
 void ICoord::opt_penalty(int runNum,int runEnd,double sigma, int penalty,int STEP_OPT_ITERS)
