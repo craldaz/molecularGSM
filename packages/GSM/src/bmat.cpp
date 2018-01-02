@@ -5948,7 +5948,7 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
 		bmatp_to_U();
 		bmat_create();
     energy = form_meci_space(run,node) - V0;
-		printf(" Average energy = %1.2f, ",energy);
+		//printf(" Average energy = %1.2f, ",energy);
 		grad_to_q();
     if (n<OPTSTEPS-1)
     {
@@ -5999,7 +5999,7 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
 		for (int i=0;i<nstates-1;i++)
 		{
 			grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
-			printf(" dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
+			//printf(" dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
 		}
 		deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
 

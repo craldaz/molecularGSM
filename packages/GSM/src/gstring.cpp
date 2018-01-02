@@ -943,7 +943,7 @@ void GString::String_Method_Optimization()
     ic_reparam_steps = 25;
 		if (isMAP_DE || isMAP_SE)
 			ic_reparam_steps=5;
-    if ((nn==nnmax && !isFSM) || (isSSM && tscontinue)) //TODO MAP_SE
+    if ((nn==nnmax && !isFSM) || (isSSM && tscontinue) || isMAP_SE) 
       ic_reparam(dqa,dqmaga,0);
   }
 	
@@ -2097,6 +2097,7 @@ double GString::tangent_1b(double* ictan)
     double d0 = (newic.getR(b1) + newic.getR(b2));  //was *2
 		//printf(" nfrags=%i\n",newic.nfrags);
 		//if (newic.nfrags==1)
+		 if (!isMAP_SE)
 			d0 = d0/1.5;
 
     if (newic.distance(b1,b2)<d0)
@@ -5700,6 +5701,9 @@ void GString::get_tangents_1g(double** dqa, double* dqmaga, double** ictan)
   int len_d = newic.nicd0;
   double* ictan0 = new double[size_ic];
   int* nlist = new int[2*nnmax];
+	for (int n=0;n<2*nnmax;n++)
+		nlist[n]=0;
+
   int ncurrent = 0;
   for (int n=n0+0;n<nnR-1;n++)
   {
@@ -5718,6 +5722,9 @@ void GString::get_tangents_1g(double** dqa, double* dqmaga, double** ictan)
   //printf(" pair: %i %i \n",nnR-1,nnmax-nnP);
   nlist[2*ncurrent] = nnR-1;
   nlist[2*ncurrent+1] = nnmax-nnP;
+	if (isMAP_SE)
+		nlist[2*ncurrent+1]=nnR-2;
+
   if (nnR==0) nlist[2*ncurrent]++;
   if (nnP==0) nlist[2*ncurrent+1]--;
   ncurrent++;
@@ -5728,6 +5735,7 @@ void GString::get_tangents_1g(double** dqa, double* dqmaga, double** ictan)
   if (nnR==0) nlist[2*ncurrent+1]++;
   ncurrent++;
 
+	
   for (int n=0;n<ncurrent;n++)
   {
     newic.reset(natoms,anames,anumbers,icoords[nlist[2*n+1]].coords);
@@ -5740,7 +5748,7 @@ void GString::get_tangents_1g(double** dqa, double* dqmaga, double** ictan)
 		
 		//printf(" nlist[2*n]=%i, nlist[2*n+1]=%i\n",nlist[2*n],nlist[2*n+1]);
 
-    if ((isSSM || isMAP_SE) && nlist[2*n]==nnR-1) //|| isMAP_SE
+    if ((isSSM) && nlist[2*n]==nnR-1) //|| isMAP_SE
       tangent_1b(ictan[nlist[2*n]]);
     else
       tangent_1(ictan[nlist[2*n]]);
@@ -5757,7 +5765,7 @@ void GString::get_tangents_1g(double** dqa, double* dqmaga, double** ictan)
 		}
 		else
 		{
-			printf(" creating tan between node %i and %i\n", nlist[2*n], nlist[2*n+1]);
+			//printf(" creating tan between node %i and %i\n", nlist[2*n], nlist[2*n+1]);
     	newic.bmatp_create();
     	newic.bmatp_to_U();
 			newic.bmat_create(); //new 12/30/2017
@@ -7166,7 +7174,8 @@ void GString::set_fsm_active(int nnR, int nnP)
    else
      printf(" setting active node to %i \n",nnR);
 
-	 if (!isMAP_DE)
+
+	 if (!isMAP_DE && !isMAP_SE)
    for (int i=0;i<nnmax;i++)
    {
      active[i] = -1;
@@ -7174,9 +7183,9 @@ void GString::set_fsm_active(int nnR, int nnP)
    }
 
 	//try 12/5/2017
-	if (isMAP_SE)
-	for (int i=0;i<nnR;i++)
-		active[i]=-2;
+	//if (isMAP_SE)
+	//for (int i=0;i<nnR;i++)
+	//	active[i]=-2;
    active[nnR] = 1;
    active[nnP] = 1;
 
@@ -7597,7 +7606,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 				opt_steps_seam(osteps,ictan);	
 			else
     	  opt_steps(dqa,ictan,osteps,oesteps,0,K);
-			print_dE();
+			//print_dE();
 		}
 	
 		//check for SE completion
@@ -9090,13 +9099,12 @@ int GString::add_seam_node(int n1,int n2,int n3)
     newic.bmatp_create();
     newic.bmatp_to_U();
 		newic.bmat_create(); //new 12/24
-#if 1
-		newic.form_constraint_space(ictan);
+		if (isMAP_DE)
+			newic.form_constraint_space(ictan);
+		else
+ 	   newic.opt_constraint(ictan);
+	
 		newic.bmat_create();
-#else
-    newic.opt_constraint(ictan);
-#endif
-
     if (isMAP_SE)
     {
       dqmag = get_ssm_dqmag(bdist);
@@ -9121,7 +9129,7 @@ int GString::add_seam_node(int n1,int n2,int n3)
     else
       newic.dq0[newic.nicd0-3] = -dqmag/2;
     if (isMAP_SE)
-      newic.dq0[newic.nicd0-3] = -dqmag; //CPMZ check
+      newic.dq0[newic.nicd0-1] = -dqmag; //CPMZ check
 #else
     if (nnmax-nn!=1)
       newic.dq0[newic.nicd0-1] = -dqmag/(nnmax-nn);
@@ -9130,9 +9138,9 @@ int GString::add_seam_node(int n1,int n2,int n3)
 #endif
 
     printf(" dq0[constraint]: %1.2f \n",newic.dq0[newic.nicd]);
-		//newic.print_xyz();
+		newic.print_xyz();
     int success = newic.ic_to_xyz();
-		//newic.print_xyz();
+		newic.print_xyz();
 		//intic.print_xyz();
     newic.update_ic();
     icoords[iN].reset(natoms,anames,anumbers,newic.coords);
