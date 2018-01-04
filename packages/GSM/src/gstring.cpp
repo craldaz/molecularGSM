@@ -828,6 +828,7 @@ void GString::String_Method_Optimization()
   printf(" after align, V_profile[0] = %4.3f V0 = %4.3f \n",V_profile[0],V0);
 #endif
 
+  ic_reparam_steps = 4;//changed from 4
   if (isSSM)
   {
     add_linear(); //CPMZ new
@@ -856,13 +857,13 @@ void GString::String_Method_Optimization()
       nnR = 1; active[1] = -1; nn--;  
     }
     printf("  nnR: %2i nnP: %2i \n",nnR,nnP);
-    ic_reparam_steps = 4;//changed from 4
 		//if (isMAP_DE)
 		//	ic_reparam_steps=20;
     if (!isSSM && !isMAP_SE)
       ic_reparam_g(dqa,dqmaga);
 
   }// if not restart
+
 
 	//make SSM hess
   if (isSSM && !isRestart)
