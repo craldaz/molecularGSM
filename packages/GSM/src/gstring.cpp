@@ -3502,7 +3502,6 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,in
  #pragma omp parallel for
 #endif
 #endif
-	print_em();
   for (int n=n0+1;n<nnmax;n++)
   {
 #ifdef _OPENMP
@@ -7421,6 +7420,8 @@ int GString::past_ts()
 
 void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, double endenergy, string strfileg, int& tscontinue, double gaddmax, int osteps, int oesteps, double** dqa, double* dqmaga, double** ictan)
 {
+
+	//initialize
   double rn3m6 = sqrt(3*natoms-6);
   int nmax;
   double emax;
@@ -7439,6 +7440,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
   int wstate=icoords[0].grad1.wstate;	
 	int nstates = icoords[0].grad1.nstates;
 	double K = 1.0; //parameter for penalty function
+  double E0 = icoords[0].grad1.E[0];
 
   if (isSSM)
     osteps = STEP_OPT_ITERS;
@@ -7461,7 +7463,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       set_fsm_active(nnR,nnR);
 		if (isMAP_SE)
       set_fsm_active(nnR-1,nnR-1);
-	#if 0
+	#if 1
     for (int i=0;i<nnmax;i++)
 			cout << active[i] << " ";
 		cout << endl;
@@ -7518,6 +7520,16 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       		  }
       		  cout <<endl;
       		}
+      		for (int n=0;n<nnR;n++)
+      		{
+      			printf("node: %i\n",n);
+  					for (int j=0;j<nstates;j++)
+  					{
+  					  printf(" %2.1f",icoords[n].grad1.E[j]-E0);
+  					}
+						cout <<"kcal/mol\t" <<  endl;
+      		}
+      		cout <<endl;
     			check_essm_done(osteps,oesteps,dqa,runNum,K);
     		  printf(" Finished\n");
     		  exit(1);
@@ -7529,7 +7541,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
         }
       }
     } 
-    if((icoords[nnmax-nnP].gradrms<gaddmax && GROWD!=1 && !isMAP_DE && !isMAP_SE) || isFSM)
+    if ((icoords[nnmax-nnP].gradrms<gaddmax && GROWD!=1 && !isMAP_DE && !isMAP_SE) || isFSM)
     {
       if (oi>0 && nn < nnmax && !isSSM)
       {
@@ -7575,7 +7587,8 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 							cout<< "kcal/mol\t" << endl;
 					}
 				}
-      	print_string(nnmax,allcoords,strfileg+endg);
+      	
+				print_string(nnmax,allcoords,strfileg+endg);
 				for (int n=0;n<nnmax;n++)
 				{
 					//if (icoords[n].grad1.dE[wstate2-2] >1.0 || totalgrad>(gaddmax*nnmax))
@@ -7607,7 +7620,6 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 				opt_steps_seam(osteps,ictan);	
 			else
     	  opt_steps(dqa,ictan,osteps,oesteps,0,K);
-			//print_dE();
 		}
 	
 		//check for SE completion
@@ -7698,6 +7710,16 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
         }
         cout <<endl;
       }
+      for (int n=0;n<nnR;n++)
+      {
+      	printf("node: %i\n",n);
+  			for (int j=0;j<nstates;j++)
+  			{
+  			  printf(" %2.1f",icoords[n].grad1.E[j]-E0);
+  			}
+				cout <<"kcal/mol\t" <<  endl;
+      }
+      cout <<endl;
     }
 	
 		//isSE_ESSM growth termination
@@ -8801,11 +8823,13 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
 	//}
 
 	//icoords[nnR-1].grad1.dE[wstate2-2]>5.0)
-	if (icoords[nnR-1].gradrms > CONV_TOL)
+	//if (icoords[nnR-1].gradrms > CONV_TOL)
 	{
 		printf(" Optimizing on penalty function on node %i",nnR-1);
   	icoords[nnR-1].OPTTHRESH =CONV_TOL;
   	K=3.5;
+	  //icoords[nnR-1].make_Hint();
+	  //icoords[nnR-1].DMAX=0.1;
   	double sigma=K;
 		icoords[nnR-1].opt_b("scratch/xyzfile_"+runName0+".xyz",60,1,sigma);
     gradJobCount += icoords[nnR-1].noptdone;
@@ -8813,12 +8837,11 @@ int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,dou
 	}
   string strfileg = "stringfile.xyz"+nstr+"g";
   printf(" writing grown string %s \n",strfileg.c_str());
-  printf(" tgrads: %i",gradJobCount);
+  printf(" tgrads: %i\n\n",gradJobCount);
   icoords[nnR-1].OPTTHRESH =CONV_TOL;
   string strfile = "stringfile.xyz"+nstr;
   print_string(nnR,allcoords,strfileg);
-	printf(" Optimizing to MECI.\n");
-	icoords[nnR-1].DMAX=0.15;
+	icoords[nnR-1].DMAX=0.2;
 	//icoords[nnR-1].make_Hint();
 	icoords[nnR-1].opt_meci(runNum,nnR-1,100);
   printf(" writing string %s \n",strfile.c_str());

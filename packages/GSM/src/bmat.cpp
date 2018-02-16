@@ -17,6 +17,7 @@ using namespace std;
 #define USE_PRIMA 0
 #define USE_NOTBONDS 0
 #define WRITE_HESS 0
+#define PRINT_CONV 1
 
 #define STEPCONTROL 1
 #define STEPCONTROLG 0
@@ -3479,6 +3480,13 @@ void ICoord::update_ic_eigen()
     for (int i=0;i<len;i++)
       dq0[i] = dq0[i]*DMAX/smag;
   }
+	//new CRA
+	//if (smag<DMIN0)
+	//{
+  //  for (int i=0;i<len;i++)
+  //    dq0[i] = dq0[i]*DMIN0/smag;
+
+	//}
 
 //Compute predicted change in energy
   double* dEtmp = new double[len];
@@ -5815,6 +5823,7 @@ void ICoord::create_mwHint_EV(double* Lm, double* Lme)
  */
 double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run)
 {
+	//initialize
 	printf(" on node %i\n",node);
   printout = "";
   int len0 = nbonds+nangles+ntor;
@@ -5827,87 +5836,62 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
   printf(" nstate: %i, wstate: %i, wstate2: %i\n",nstates,wstate,wstate2);
   for (int i=0;i<len;i++)
     dq0[i] = 0.;
-
   pgradrms = 10000;
   double energyp;
   double energyl;
   double gradrmsl;
   double* xyzl = new double[3*natoms];
   for (int j=0;j<3*natoms;j++) xyzl[j] = coords[j];
-
   if (SCALEQN>=SCALEQN0) SCALEQN = SCALEQN/1.2;
   if (SCALEQN<SCALEQN0) SCALEQN = SCALEQN0;
   if (DMAX<DMIN0) DMAX = DMIN0;
   ixflag = 0;
-
   do_bfgs = 0; //resets at each step
   int rflag = 0; //did backconvert work?
   int nrflag = 0;
   int bcp = 0;
   noptdone = 1;
-
 	update_ic();
 	bmatp_create();
 	bmatp_to_U();
 	bmat_create();
 	double energy=0.0;
-	//Form space
-	V0=form_meci_space(run, node);
-	//printf(" Average energy: %1.3f kcal/mol\n",energy);
 	double deltaE;
-  grad_to_q();
-	//print_q();
-  Hintp_to_Hint();
-  energyp = energy;
-  energyl = energy;
-#if 1
+#if PRINT_CONV
   ofstream xyzfile;
   xyzfile.open(xyzfile_string.c_str());
   xyzfile.setf(ios::fixed);
   xyzfile.setf(ios::left);
   xyzfile << setprecision(6);
 #endif
-	for (int i=0;i<nstates-1;i++)
-	{
-		grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
-		printf(" dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
-	}
-	printf("\n");
-	deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
 
   sprintf(sbuff,"\n"); printout += sbuff;
+
+	//main for loop
   for (int n=0;n<OPTSTEPS;n++)
   {
-
+		printf(" iteration: %i \t ",n);
+		//Form space
+    update_ic();
+		bmatp_create();
+		bmatp_to_U();
+		bmat_create();
+		if (n==0)
+			V0=form_meci_space(run, node);
+		else
+			energy=form_meci_space(run, node)-V0;
+		if (n>0)
+    	pgradrms = gradrms;
+  	grad_to_q();
+  	Hintp_to_Hint();
+  	//energyp = energy;
     sprintf(sbuff," Opt step: %2i ",n+1); printout += sbuff;
     sprintf(sbuff," E(M): %1.2f gRMS: %1.4f",energy,gradrms); printout += sbuff;
     sprintf(sbuff," DeltaE: %4.3f",grad1.dE[wstate2-2]); printout += sbuff;
 
-    if (do_bfgs) update_bfgsp(1);
-    save_hess();
-    do_bfgs = 1;
-
-#if 1
-    xyzfile << " " << natoms << endl;
-    xyzfile << " " << energy << endl;
-    for (int i=0;i<natoms;i++) 
-    {
-      xyzfile << "  " << anames[i];
-      xyzfile << " " << coords[3*i+0] << " " << coords[3*i+1] << " " << coords[3*i+2];
-      xyzfile << endl;
-    }
-#endif
-		printf(" iteration: %i \t ",n);
-		
-		//take the combined step
-	  deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
-  	dq0[nicd0-1] = -deltaE/norm_dg; //not sure
-  	printf(" dq0[constraint]: %1.4f ",dq0[nicd0-1]);
-		if (dq0[nicd0-1] < -0.075)
-			dq0[nicd0-1]=-0.075;
-    update_ic_eigen();
-
+		//store energyl and gradrmsl
     if (n==0) gradrmsl = gradrms;
+  	if (n==0) energyl = energy;
     if ( (gradrms<gradrmsl && energy<energyl) ||
           energy<energyl-5.)
     {
@@ -5915,8 +5899,35 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
       energyl = energy;
       for (int j=0;j<3*natoms;j++) xyzl[j] = coords[j];
     }
+
+		//check for convergence
+		for (int i=0;i<nstates-1;i++)
+		{
+			grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
+			//printf(" dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
+		}
+		deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
+
+    if (gradrms<OPTTHRESH && !bcp && deltaE < 0.001)  
+    {
+      sprintf(sbuff," * \n"); printout += sbuff;
+			//printf(" finished!\n");
+      break;
+    }
+
+		//take the combined step
+    if (do_bfgs) update_bfgsp(1);
+    save_hess();
+    do_bfgs = 1;
+	  deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
+  	dq0[nicd0-1] = -deltaE/norm_dg; //not sure
+  	printf(" dq0[constraint]: %1.4f \n",dq0[nicd0-1]);
+		if (dq0[nicd0-1] < -0.075)
+			dq0[nicd0-1]=-0.075;
+    update_ic_eigen();
     rflag = ic_to_xyz_opt();
 	
+		//check if transformation to Cartesian is ok
     if (nrflag > 4)
 		{
 			printf(" nrflag>4)\n");
@@ -5941,22 +5952,14 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
       bcp = 1;
     }
     else bcp = 0;
-    //print_xyz();
-		//print_q();
-    update_ic();
-		bmatp_create();
-		bmatp_to_U();
-		bmat_create();
-    energy = form_meci_space(run,node) - V0;
-		//printf(" Average energy = %1.2f, ",energy);
-		grad_to_q();
-    if (n<OPTSTEPS-1)
+
+		//Step controller
+    if (n<OPTSTEPS-1 && n>0)
     {
       noptdone++;
-
       if (energy > 3000.) { 
-			printf(" energy > 3000!!\n");
-			gradrms = 1.; break; 
+				printf(" energy > 3000!!\n");
+				gradrms = 1.; break; 
 			}
 
 			double correction =gradq[nicd0-1]*dq0[nicd0-1]*627.5;
@@ -5966,16 +5969,13 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
       double ratio = dE/dEpre;
       sprintf(sbuff," ratio: %2.3f ",ratio); printout += sbuff;
 #if 1
-      if (dE > 0.001 && !isTSnode) //only apply this after reaching seam
+      if (dE > 0.001 && !isTSnode && grad1.dE[wstate2-2]<1.0)  //check if E of system increases, only apply this after reaching seam	
       {
-				if (grad1.dE[wstate2-2]<1.0)	
-				{
-        	sprintf(sbuff," dE>0, decreasing DMAX "); printout += sbuff;
-        	if (smag<DMAX)
-        	  DMAX = smag / 1.1;
-        	else
-        	  DMAX = DMAX / 1.2;
-				}
+        sprintf(sbuff," E increasing, decreasing DMAX "); printout += sbuff;
+        if (smag<DMAX)
+          DMAX = smag / 1.1;
+        else
+          DMAX = DMAX / 1.2;
       }
       else if ((ratio < 0.25 || ratio > 1.5) && gradrms>pgradrms*1.35 ) //&& abs(dEpre)>0.05 this included before
       {
@@ -5992,28 +5992,26 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
         if (DMAX > 0.2)
           DMAX = 0.2;
       }
-			
       if (DMAX<DMIN0) DMAX = DMIN0;
 #endif
     }
-		for (int i=0;i<nstates-1;i++)
+		else if (n==0)
 		{
-			grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
-			//printf(" dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
+      noptdone++;
+      energyp = energy;
 		}
-		deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
 
-    if (gradrms<OPTTHRESH && !bcp && deltaE < 0.001)  
+#if PRINT_CONV
+    xyzfile << " " << natoms << endl;
+    xyzfile << " " << energy << endl;
+    for (int i=0;i<natoms;i++) 
     {
-      sprintf(sbuff," * \n"); printout += sbuff;
-    	sprintf(sbuff," Opt step: %2i ",n+2); printout += sbuff;
-    	sprintf(sbuff," E(M): %1.2f gRMS: %1.4f",energy,gradrms); printout += sbuff;
-    	sprintf(sbuff," DeltaE: %4.3f",grad1.dE[wstate2-2]); printout += sbuff;
-			//printf(" finished!\n");
-      break;
+      xyzfile << "  " << anames[i];
+      xyzfile << " " << coords[3*i+0] << " " << coords[3*i+1] << " " << coords[3*i+2];
+      xyzfile << endl;
     }
+#endif
     sprintf(sbuff,"\n"); printout += sbuff;
-    pgradrms = gradrms;
 
   } //loop n over OPTSTEPS
 
@@ -6224,8 +6222,6 @@ double ICoord::constrained_cs(string xyzfile_string, int nsteps, int node,int ru
 		tmp2=energy;	
 		revertOpt2=1;
 	}	
-		
-		
 
   if ((gradrms>gradrmsl*1.75 && !isTSnode && revertOpt) || (tmp2>tmp*10 && grad1.dE[wstate2-2]> dELow*2 && revertOpt2))
   {
@@ -6308,7 +6304,7 @@ double ICoord::form_meci_space(int run, int node)
 	int wstate2 = grad1.wstate2;
 	double energy = calc_BP(run,node);
 	//print_bp();
-	printf(" Forming the 3N-6 dimensional space defined by a MECI\n");
+	printf(" Forming the 3N-6 dimensional space defined by a MECI\t");
 
 	dgrad_to_dgradq();
 	dvec_to_dvecq();
