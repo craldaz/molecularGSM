@@ -11,7 +11,7 @@ using namespace std;
 #define PSPACE 0
 //pspace now is 10. //was 100.
 #define DYNWEIGHT 0
-#define MEMORY 400
+#define MEMORY 1200
 #define DIRECT 1
 
 
@@ -195,7 +195,7 @@ int Molpro::seed()
   for (int i=0;i<nhf_lines;i++)
     inpfile << hf_lines[i] << endl;
 #if !ONLY_RHF
-  inpfile << "{casscf" << endl;
+  inpfile << "{multi" << endl;
   inpfile << "closed," << nclosed << " !core orbs" << endl;
   inpfile << "occ," << nocc << "    !active orbs" << endl;
   inpfile << "wf," << nelec << ",1,0 !nelectrons,symm,singlet" << endl;
@@ -662,7 +662,7 @@ int Molpro::calc_energy()
   inpfile << "}" << endl;
 
   inpfile << endl << "basis=" << basis << endl << endl;
-  inpfile << "{casscf" << endl;
+  inpfile << "{multi" << endl;
   inpfile << "closed," << nclosed << " !core orbs" << endl;
   inpfile << "occ," << nocc << "    !active orbs" << endl;
   inpfile << "wf," << nelec << ",1,0 !nelectrons,symm,singlet" << endl;
@@ -712,7 +712,7 @@ int Molpro::calc_dvec()
   inpfile << endl << "basis=" << basis << endl << endl;
 
   inpfile << " direct " << endl;
-  inpfile << "{casscf" << endl;
+  inpfile << "{multi" << endl;
   inpfile << "closed," << nclosed << " !core orbs" << endl;
   inpfile << "occ," << nocc << "    !active orbs" << endl;
   inpfile << "wf," << nelec << ",1,0 !nelectrons,symm,singlet" << endl;

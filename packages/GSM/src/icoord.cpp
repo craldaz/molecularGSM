@@ -2029,6 +2029,11 @@ double ICoord::calc_BP(int run, int node)
 {
 	double energy = calc_dgrad(run, node);
 	calc_dvec(run, node);
+	
+  int nstates = grad1.nstates;
+  for (int i=0;i<nstates;i++)
+		printf(" E[%i] = %1.4f\n",i,grad1.E[i]);
+
 	for (int i=0;i<nstates-1;i++)
 		grad1.dE[i]=grad1.E[i+1]-grad1.E[i];
 

@@ -276,7 +276,7 @@ int Gradient::external_grad(double* coords, double* grad)
   }
   for (int i=0;i<nstates;i++)
     E[i] = mp1.getE(i+1) * 627.5;
-
+	
 #elif USE_ORCA
   //printf( " grad ORCA \n"); fflush(stdout);
   energy = orca1.grads(coords,grad);
@@ -834,7 +834,7 @@ int Gradient::dvec_calc(double* coords, double* dvec,int run,int rune)
   for (int i=0;i<natoms;i++)
     printf(" %s %4.3f %4.3f %4.3f \n",anames[i].c_str(),coords[3*i+0],coords[3*i+1],coords[3*i+2]);
 #endif
-#if 0
+#if 1
   printf(" dvec (1/Ang): \n");
   for (int i=0;i<natoms;i++)
     printf(" %s %12.10f %12.10f %12.10f \n",anames[i].c_str(),dvec[3*i+0],dvec[3*i+1],dvec[3*i+2]);

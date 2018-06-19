@@ -391,6 +391,13 @@ double QChem::get_energy(string filename) {
       energy=atof(tok_line[8].c_str());
       break;
     }
+		else if (line.find("SCF   energy in the final basis set")!=string::npos)
+		{
+      cout << "  DFT out: " << line << endl;
+      tok_line = StringTools::tokenize(line, " \t");
+      energy=atof(tok_line[8].c_str());
+      break;
+		}
   }
  
 //  printf(" DFT energy: %1.4f \n",energy); 

@@ -3263,7 +3263,7 @@ int ICoord::grad_to_q()
   for (int i=0;i<nicd;i++)
     gradrms+=gradq[i]*gradq[i];
   gradrms = sqrt(gradrms/nicd);
-	//printf(" gradrms = %1.4f\n",gradrms);
+	printf(" gradrms = %1.4f\n",gradrms);
   //print_gradq();
 
 #if 1
@@ -5904,7 +5904,7 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
 		for (int i=0;i<nstates-1;i++)
 		{
 			grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
-			//printf(" dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
+			printf(" dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
 		}
 		deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
 
@@ -6487,7 +6487,8 @@ double ICoord::project_dvecq()
 	 norm=sqrt(norm);
 	//printf("norm %1.4f\n",norm);
 	
-#if 0
+#if 1
+	printf(" printing dvecq\n");
   for (int i=0;i<nicd0;i++)
     printf(" %12.10f",dvecq[i]);
   printf("\n");
@@ -6508,7 +6509,7 @@ double ICoord::project_dvecq()
 	printf("norm: %1.3f\n",norm);
 #endif
 
-#if 0
+#if 1
 	printf(" Normalized dvec_U vector\n");
 	for (int i=0;i<len;i++)
 		printf("%1.2f ",dvec_U[i]);
@@ -6966,7 +6967,7 @@ void ICoord::bp_rot(double* C)
 		 dot_dv+=dvec_U[i]*C[i];
 
 	double dot_bp=sqrt(dot_dv*dot_dv + dot_dg*dot_dg);
-#if 0
+#if 1
 	printf(" Overlap of tan with dgrad =%1.4f\n",dot_dg);
 	printf(" Overlap of tan with dvec =%1.4f\n",dot_dv);
 	printf(" Overlap of tan with BP = %1.4f\n",dot_bp);

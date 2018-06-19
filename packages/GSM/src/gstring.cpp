@@ -383,6 +383,7 @@ void GString::String_Method_Optimization()
   grad1.init(infile0,natoms,anumbers,anames,icoords[1].coords,runNum,runend,ncpu,1,CHARGE);
   newic.grad_init(infile0,ncpu,runNum,runend-1,0,CHARGE);
 #if USE_MOLPRO
+	if (!isMECI)
 		prepare_molpro();
 #else
   for (int n=0;n<nnmax0;n++)
@@ -418,11 +419,12 @@ void GString::String_Method_Optimization()
   	//  icoords[n].V0 = V0;
   	printf(" ---- Done preparing gradients ---- \n\n");
 		icoords[0].make_Hint();
+		icoords[0].OPTTHRESH=CONV_TOL;
 #if !PENALTY
 		icoords[0].opt_meci(runNum,runend-1,STEP_OPT_ITERS);
 #elif PENATLY==1
 		printf(" penalty MECI opt\n");
-		double sigma = 2.0; //arbitrary
+		double sigma = 3.5; //arbitrary
 		icoords[0].opt_penalty(runNum,runend-1,sigma,1,STEP_OPT_ITERS);
 #else
 		double sigma = 0.0;
@@ -794,7 +796,8 @@ void GString::String_Method_Optimization()
 			for (int j=0;j<icoords[0].grad1.nstates;j++)
 				icoords[i].grad1.E[j]=icoords[i].grad1.E[j]+icoords[0].grad1.E[0];
 
-  V_profile[0] = 0.;
+	for (int i=0;i<nnmax;i++)
+  	V_profile[i] = 0.0;
   if (!isSSM && !isRestart && !isMAP_DE && !isMAP_SE)
   {
 #if !USE_MOLPRO
@@ -3581,7 +3584,7 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,in
 							icoords[i].grad1.V0=V0;
   					  icoords[n].V0 = V0;
 						}
-  					printf("  setting V0 to: %8.1f (%12.8f au) \n",V0,V0/627.5);
+  					//printf("  setting V0 to: %8.1f (%12.8f au) \n",V0,V0/627.5);
 						//for (int i=0;i<nnR;i++)	
 						//{
 						// 	V_profile[i] = (icoords[i].grad1.E[wstate-1]+icoords[i].grad1.E[wstate2-1])/2.0;
@@ -4300,12 +4303,15 @@ void GString::ic_reparam(double** dqa, double* dqmaga, int rtype)
 			}
 	
 			#if 1
+			if (isMAP_SE || isMAP_DE)
+			{
       icoords[n].reset(natoms,anames,anumbers,newic.coords);
 			icoords[n].calc_BP(runNum,n);
 			for (int i=0;i<nstates-1;i++)
 			{
 				icoords[n].grad1.dE[i] = icoords[n].grad1.E[i+1] - icoords[n].grad1.E[i];
 				printf(" dE[%i][%i]: %5.4f\t",n,i,icoords[n].grad1.dE[i]); 
+			}
 			}
 		#endif
 			
@@ -5765,11 +5771,14 @@ void GString::get_tangents_1g(double** dqa, double* dqmaga, double** ictan)
 		}
 		else
 		{
-			//printf(" creating tan between node %i and %i\n", nlist[2*n], nlist[2*n+1]);
-    	newic.bmatp_create();
-    	newic.bmatp_to_U();
-			newic.bmat_create(); //new 12/30/2017
-			newic.form_constraint_space(ictan[nlist[2*n]]);
+			printf(" creating tan between node %i and %i\n", nlist[2*n], nlist[2*n+1]);
+			if (!isMAP_SE  && !nlist[2*n]!=nnmax-1)
+			{
+    		newic.bmatp_create();
+    		newic.bmatp_to_U();
+				newic.bmat_create(); //new 12/30/2017
+				newic.form_constraint_space(ictan[nlist[2*n]]);
+			}
 		}
     newic.bmat_create();
 		if (newic.nicd != newic.nicd0-3 && (isMAP_DE || isMAP_SE))
@@ -7385,17 +7394,21 @@ int GString::past_ts()
     cgrad = icoords[nnR-1].gradq[icoords[nnR-1].nicd0-3];
   printf(" cgrad: %4.3f nodemax: %i nnR: %i \n",cgrad,nodemax,nnR);
 
+  //if (cgrad>CTHRESH && !isMAP_SE)
+  //else if (ispast1>0 && cgrad>OTHRESH && !isMAP_SE) 
+  //else if (ispast2>1 && !isMAP_SE) 
+
   if (cgrad>CTHRESH && !isMAP_SE)
   {
     printf(" constraint gradient positive! \n");
     ispast = 2;
   }
-  else if (ispast1>0 && cgrad>OTHRESH && !isMAP_SE) 
+  else if (ispast1>0 && cgrad>OTHRESH) 
   {
     printf(" over the hill(1)! \n");
     ispast = 1;
   }
-  else if (ispast2>1 && !isMAP_SE) 
+  else if (ispast2>1) 
   {
     printf(" over the hill(2)! \n");
     ispast = 1;
@@ -7638,6 +7651,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
           printf("   not yet past TS \n");
         }
       }
+      //if ((pastts && nn>3) || (addednode==0 && nn>2 && !isMAP_SE)) //checks for TS starting with n0-1 (was 0, previously n0)
       if ((pastts && nn>3) || (addednode==0 && nn>2 && !isMAP_SE)) //checks for TS starting with n0-1 (was 0, previously n0)
       {
         printf(" gopt_iter: SSM string done growing \n\n");
@@ -7658,7 +7672,8 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
         nnmax = nnR;
         break;
       }
-      if (fp==-2 && !isMAP_SE)
+      //if (fp==-2 && !isMAP_SE)
+      if (fp==-2)
       {
         printf(" gopt_iters over: all uphill and flattening out \n");
         endearly = 2;
