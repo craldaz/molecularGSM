@@ -96,6 +96,7 @@ class GString {
   double** perp_grads;
 
 	void prepare_molpro();
+	void prepare_tc();
   int climb;
   int find; //eigenvector following TS search
   int TSnode0;

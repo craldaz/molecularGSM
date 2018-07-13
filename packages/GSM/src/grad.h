@@ -16,6 +16,7 @@
 #include "knnr.h"
 #include "orca.h"
 #include "molpro.h"
+#include "terachem.h"
 #include "qchemsf.h"
 
 class Gradient 
@@ -54,6 +55,7 @@ class Gradient
    int read_nstates();
    void read_molpro_settings(int& nstates, int& nclosed, int& nocc, int& nelec, string& basis);
    int read_molpro_init(string* &hf_lines);
+   void read_tc_settings(int& nstates0, int& nclosed, int& nactive, string& basis,string& method);
    int force_init(string ffile);
 
 
@@ -90,6 +92,7 @@ class Gradient
    double** grada; //multistate gradients
    double* E; //for multiple states
    Molpro mp1;
+   TC tc1;
 
 		double dDmw_dR;
 

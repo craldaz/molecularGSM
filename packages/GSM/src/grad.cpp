@@ -82,7 +82,6 @@ void Gradient::update_knnr()
 double Gradient::grads(double* coords, double* grad, double* Ut, int type)
 {
   //printf(" grads(%i) k: %i \n",type,knn_k);
-
 #if USE_KNNR
   if (type==2 && knnr_active==0)
   {
@@ -143,7 +142,7 @@ double Gradient::grads(double* coords, double* grad, double* Ut, int type)
   energy += fdE*627.5;
   //printf(" E+fdE: %12.8f \n",energy);
 
-#if 0
+#if 1
   if (xyz_grad)
   {
     printf(" Grad: \n");
@@ -165,11 +164,8 @@ int Gradient::external_grad(double* coords, double* grad)
 {
 
 #if QCHEM
-//  printf(" gqc"); fflush(stdout);
   energy = qchem1.grads(coords,grad);
-//  printf(" gqce"); fflush(stdout);
 #elif QCHEMSF
-
 	if (wstate<0)
 	{
 		printf("wstate must be greater than 1!\n"); 
@@ -277,18 +273,51 @@ int Gradient::external_grad(double* coords, double* grad)
   for (int i=0;i<nstates;i++)
     E[i] = mp1.getE(i+1) * 627.5;
 	
+
+#elif USE_TC
+  tc1.reset(coords);
+  tc1.grads(wstate,runend,runNum); //grad and energy
+
+  // isn't this a bug if wstate = 2 wstate2 = 3 ? nstates =3 
+  // FIX: print all energies in the first line and read them all at the same time :)
+     //TODO
+  E[0] = tc1.get_energy_grad(wstate,runend,runNum,grada[0]);
+  energy=E[0];
+  for (int i=0;i<N3;i++)
+    grada[0][i] *= ANGtoBOHR;
+  if (wstate2==0)
+  for (int i=0;i<N3;i++)
+    grad[i] = grada[0][i];
+   if (wstate2>0)
+   {
+		 tc1.grads(wstate2,runend,runNum);
+     E[1] = tc1.get_energy_grad(wstate2,runend,runNum,grada[1]);
+     energy += E[1];
+     energy /= 2.; //average energy
+     for (int i=0;i<N3;i++)
+       grada[1][i] *= ANGtoBOHR;
+     if (wstate3==0)
+     for (int i=0;i<N3;i++) 
+       grad[i] = (grada[0][i] + grada[1][i])/2.;
+   }
+   if (wstate3>0)
+   {
+		 tc1.grads(wstate3,runend,runNum);
+     E[2]=tc1.get_energy_grad(wstate3,runend,runNum,grada[2]);
+     energy = 2*energy + E[2];
+     energy /= 3.; //average energy
+     for (int i=0;i<N3;i++)
+       grada[2][i] *= ANGtoBOHR;
+     for (int i=0;i<N3;i++) 
+       grad[i] = (grada[0][i] + grada[1][i] + grada[2][i])/3.;
+   }
+	
 #elif USE_ORCA
-  //printf( " grad ORCA \n"); fflush(stdout);
   energy = orca1.grads(coords,grad);
-  //printf( " done grad ORCA \n"); fflush(stdout);
 #elif USE_GAUSSIAN
-  //printf( " grad gaussian \n"); fflush(stdout);
   energy = gaus1.grads(coords,grad);
-  //printf( " done grad gaussian \n"); fflush(stdout);
 #elif USE_ASE
-  //printf(" grad ase \n"); fflush(stdout);
   energy = ase1.grads(coords,grad);
-  //printf(" done grad ase \n"); fflush(stdout);
 #else
   char* pbsPath;
   pbsPath = getenv ("PBSTMPDIR");
@@ -528,6 +557,71 @@ void Gradient::read_molpro_settings(int& nstates0, int& nclosed, int& nocc, int&
   return;
 }
 
+void Gradient::read_tc_settings(int& nstates0, int& nclosed, int& nactive,  string& basis,string& method)
+{
+  wstate = 1; //default 
+  wstate2 = 0;
+  wstate3 = 0;
+
+  string filename = "TeraChem";
+  printf(" reading file: %s \n",filename.c_str());
+
+  ifstream infile;
+  infile.open(filename.c_str());
+  if (!infile){
+    printf(" Error: couldn't open settings file: %s \n",filename.c_str());
+    exit(-1);
+  }
+  string line;
+  bool success=true;
+  int nf = 0;
+  while (!infile.eof())
+  {
+    success=getline(infile, line);
+    vector<string> tok_line = StringTools::tokenize(line, " ");
+    if (nf==0)
+      method = tok_line[1];
+    else if (nf==1)
+      nstates0 = atoi(tok_line[1].c_str());
+    else if (nf==2)
+    {
+      wstate = atoi(tok_line[1].c_str());
+      if (tok_line.size()>2) wstate2 = atoi(tok_line[2].c_str());
+      if (tok_line.size()>3) wstate3 = atoi(tok_line[3].c_str());
+      printf("  wstate: %i %i %i \n",wstate,wstate2,wstate3);
+    }
+    else if (nf==3)
+      nclosed = atoi(tok_line[1].c_str());
+    else if (nf==4)
+      nactive = atoi(tok_line[1].c_str());
+    else if (nf==5)
+      basis = tok_line[1];
+    nf++;
+  }
+  infile.close();
+  if (method == "FOMO")
+    printf("   settings. nstates/wstate/nclosed/nactive/basis: %2i %2i %2i %2i %s \n",nstates0,wstate,nclosed,nactive,basis.c_str());
+  else if (method == "DFT")
+    printf("   settings. basis: %2i %s \n",basis.c_str());
+  
+  if (wstate2>0 && nstates0<2)
+  {
+    printf("  wstate2: %i nstates: %i. exiting \n",wstate2,nstates0);
+    exit(1);
+  }
+  if (wstate3>0 && nstates0<3)
+  {
+    printf("  wstate3: %i nstates: %i. exiting \n",wstate3,nstates0);
+    exit(1);
+  }
+
+	tc1.wstate=wstate; 
+	tc1.wstate2=wstate2; 
+	tc1.wstate3=wstate3;
+
+  return;
+}
+
 void Gradient::init(string infilename, int natoms0, int* anumbers0, string* anames0, double* coords0, int run, int rune, int ncpu, int knnr_level, int q1)
 {
 
@@ -612,6 +706,15 @@ void Gradient::init(string infilename, int natoms0, int* anumbers0, string* anam
     delete [] hf_lines;
   }
 #endif
+#if USE_TC
+  int nstates0;
+  int nclosed,nactive;
+  string basis;
+  string method;
+  read_tc_settings(nstates0,nclosed,nactive,basis,method);
+  nstates = nstates0;
+  tc1.init(natoms,nstates,nclosed,nactive,anames,coords0,basis,method,run,rune);
+#endif
 #if USE_ORCA
   orca1.init(infilename,natoms,anumbers,anames,run,rune);
   orca1.ncpu = ncpu;
@@ -629,7 +732,7 @@ void Gradient::init(string infilename, int natoms0, int* anumbers0, string* anam
 
   E = new double[nstates];
   for (int i=0;i<nstates;i++) E[i] = 0.;
-#if QCHEMSF || USE_MOLPRO
+#if QCHEMSF || USE_MOLPRO || USE_TC
   grada = new double*[nstates];
   for (int i=0;i<nstates;i++)
     grada[i] = new double[N3];
@@ -672,6 +775,8 @@ void Gradient::init(string infilename, int natoms0, int* anumbers0, string* anam
 #elif USE_ASE
   printf("  grad initiated: ASE mode \n");
 #elif USE_MOLPRO
+  printf("  grad initiated: MOLPRO mode \n");
+#elif USE_TC
   printf("  grad initiated: MOLPRO mode \n");
 #else
   printf("  grad initiated: Mopac mode \n");
@@ -758,36 +863,6 @@ int Gradient::dvec_calc(double* coords, double* dvec,int run,int rune)
 	mp1.runname("mp_"+runName0);
   mp1.calc_dvec();
   error = mp1.getDVec(dvec);
-
-#if 0
-	if (error==1) //use Josh Kamm's BP Dvec method
-	{
-  	string xyzfile_pre = "scratch/xyz"+runName0;
-  	string xyzfile_string = xyzfile_pre+".xyz";
-  	ofstream xyzfile;
-  	xyzfile.open(xyzfile_string.c_str());
-  	xyzfile.setf(ios::fixed);
-  	xyzfile.setf(ios::left);
-  	xyzfile << setprecision(6);
-  	xyzfile << " " << natoms << endl;
-  	xyzfile << " " << " " << endl;
-  	for (int i=0;i<natoms;i++) 
-  	{
-  	  xyzfile << "  " << anames[i];
-  	  xyzfile << " " << coords[3*i+0] << " " << coords[3*i+1] << " " << coords[3*i+2];
-  	  xyzfile << endl;
-  	}
-		xyzfile.close();
-		
-		mp1.bp_calc_dvec(run,xyzfile_pre);
-		error=	mp1.getBPdvec(dvec,xyzfile_pre+".DDvec");
-		if (error==1)
-		{
-			printf(" Exiting.");
-			exit(-1);
-		}
-	}
-#else
 	if (error==1)
 	{
     int runendCopy = runend-1;
@@ -795,12 +870,12 @@ int Gradient::dvec_calc(double* coords, double* dvec,int run,int rune)
     printf(" copying wfn from mp_%s to mp_%s \n",runNameCopy.c_str(),runName0.c_str());
     string cmd = "cp scratch/mp_"+runNameCopy+" scratch/mp_"+runName0;
     system(cmd.c_str());
+    //if using text files
     //cmd = "cp mp_"+runNameCopy+".orb mp_"+runName0+".orb";
     //printf(" copying orbs from mp_%s.orb to mp_%s.orb \n",runNameCopy.c_str(),runName0.c_str());
     //system(cmd.c_str());
 		mp1.calc_dvec();
   	error = mp1.getDVec(dvec);
-		//cout << "error is " << error << endl;
 		if (error==1)
 			{	
 				printf(" Dvec Calculation failed twice!");
@@ -822,18 +897,20 @@ int Gradient::dvec_calc(double* coords, double* dvec,int run,int rune)
 	}
 	for (int i=0;i<N3;i++)
     dvec[i] *= ANGtoBOHR;
-#endif 
+#elif USE_TC
+  tc1.reset(coords);
+  tc1.calc_dvec(rune,run);
+  tc1.get_dvec(rune,run,dvec);
+	for (int i=0;i<N3;i++)
+    dvec[i] *= ANGtoBOHR;
+#elif QCHEMSF
+	qchemsf1.calc_dvec(coords);
+	qchemsf1.get_dvec(dvec);
 #else
-	//printf(" not yet implemented \n");
-	  qchemsf1.calc_dvec(coords);
-		qchemsf1.get_dvec(dvec);
+	printf(" not yet implemented \n");
+  exit(-1);
 #endif
 	
-#if 0
-  printf(" XYZ: \n");
-  for (int i=0;i<natoms;i++)
-    printf(" %s %4.3f %4.3f %4.3f \n",anames[i].c_str(),coords[3*i+0],coords[3*i+1],coords[3*i+2]);
-#endif
 #if 1
   printf(" dvec (1/Ang): \n");
   for (int i=0;i<natoms;i++)
@@ -841,7 +918,6 @@ int Gradient::dvec_calc(double* coords, double* dvec,int run,int rune)
 #endif
 
 	return error;
-
 }
 
 double Gradient::energy_initial(double* coords,int run, int rune,int penalty, double sigma)
@@ -910,6 +986,7 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
   wrote_grad = 0;
   energy = -99.;
 	double alpha = 0.02*627.5; //kcal/mol
+  double deltaE=0.0;
 	//printf(" In Levine penalty fxn\n");
   int do_exact = 1;
   if (do_exact)
@@ -971,12 +1048,19 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
   	  grada[1][i] *= ANGtoBOHR;
   	for (int i=0;i<nstates;i++)
   	  E[i] = mp1.getE(i+1) * 627.5;
-#else
+#elif QCHEMSF
   	qchemsf1.calc_grads(coords);
   	qchemsf1.getGrad(wstate,grada[0]);
     qchemsf1.getGrad(wstate2,grada[1]);
   	for (int i=0;i<nstates;i++)
   	  E[i] = qchemsf1.getE(i);
+#elif USE_TC
+  tc1.reset(coords);
+  tc1.grads(wstate,runend,runNum); //grad and energy
+	tc1.grads(wstate2,runend,runNum);
+#else
+   print(" NOT IMPLEMENTED\n");
+   exit(-1);
 #endif
 
 		if (type==1)
@@ -985,12 +1069,18 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
   		energy = mp1.getE(wstate) * 627.5;
   		energy+= mp1.getE(wstate2) * 627.5; 
 			energy /= 2.0;
-			double deltaE = mp1.getE(wstate2)*627.5 - mp1.getE(wstate)*627.5;
-#else
+			deltaE = mp1.getE(wstate2)*627.5 - mp1.getE(wstate)*627.5;
+#elif QCHEMSF
 			energy = qchemsf1.getE(wstate-1);
 			energy+= qchemsf1.getE(wstate2-1);
 			energy /= 2.0;
-			double deltaE = qchemsf1.getE(wstate2-1)- qchemsf1.getE(wstate-1);
+			deltaE = qchemsf1.getE(wstate2-1)- qchemsf1.getE(wstate-1);
+#elif USE_TC
+      //TODO change to getE after implement
+      E[0] = tc1.get_energy_grad(wstate,runend,runNum,grada[0]);
+      E[1] = tc1.get_energy_grad(wstate2,runend,runNum,grada[1]);
+      energy=(E[0] + E[1])/2.0;
+      deltaE = E[1] - E[0];
 #endif
 			//penalty energy and gradient
 			double G = pow(deltaE,2)/(deltaE+alpha);	
@@ -1001,35 +1091,14 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
   		for (int i=0;i<N3;i++) 
   		  grad[i] += factor*(grada[1][i] - grada[0][i]);
 		}
-		else if (type==2)
-		{
-#if USE_MOLPRO
-			double deltaE = mp1.getE(wstate2)*627.5 - mp1.getE(wstate)*627.5;
-			printf(" dE=%1.4f\n",deltaE);
-#else
-			double deltaE = qchemsf1.getE(wstate2-1)- qchemsf1.getE(wstate-1);
-#endif
-			double alpha_mw = 0.1;
-			double G = pow(deltaE,2)/(deltaE+alpha);	
-			printf(" G=%1.4f\n",G);
-			printf(" sigma=%1.4f\n",sigma);
-			printf(" dmw = %1.4f\n",dmw);
-			printf(" dDmw_dR = %1.4f\n",dDmw_dR);
-			energy = (dmw*dmw)/(dmw +alpha_mw);
-			energy += sigma*G;
-			double factor = sigma*(pow(deltaE,2) + 2*alpha*deltaE)/pow(deltaE+alpha,2);
-			double factor2 = dDmw_dR*dmw*(2.0*(dmw+alpha_mw) - dmw)/pow(dmw+alpha_mw,2);
-  		for (int i=0;i<N3;i++) 
-  		  grad[i] = factor*(grada[1][i] - grada[0][i]);
-  		for (int i=0;i<N3;i++) 
-  		  grad[i] += factor2;
-		}
   	  xyz_grad = 1;
   }
 
-#if 0
+#if 1
   if (xyz_grad)
   {
+    printf( "Energy: %1.4f\n",energy);
+    printf(" dE: %1.4f\n",deltaE);
     printf(" Grad: \n");
     for (int i=0;i<natoms;i++)
       printf(" %s %12.10f %12.10f %12.10f \n",anames[i].c_str(),grad[3*i+0],grad[3*i+1],grad[3*i+2]);

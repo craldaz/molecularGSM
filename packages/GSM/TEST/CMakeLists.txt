@@ -188,11 +188,11 @@ elseif(GSM_ENABLE_MOLPRO)
     #GFSTRINGQ_TEST(ethyleneRotation/molpro/mapDE/ mapDE_ethene_13node)
     #GFSTRINGQ_TEST(ethyleneRotation/molpro/mapSE/ mapSE_ethene)
     #GFSTRINGQ_TEST(pbuchi/molpro/map/ map_pbuchi)
-
-
+elseif (GSM_ENABLE_TC)
+    MESSAGE(STATUS "MOLPRO is enabled.")
+    GFSTRINGQ_TEST(ethyleneRotation/molpro/essm/ ethene_essm)
 else()
     MESSAGE(STATUS "MOPAC is enabled.")
-		#
     GFSTRINGQ_TEST(alanineDipeptideIsomerization/mopac/de-gsm alanine)
     GFSTRINGQ_TEST(ammoniaBorane/mopac/de-gsm ammonia)
 		GFSTRINGQ_TEST(dielsAlder/mopac/de-gsm diels)

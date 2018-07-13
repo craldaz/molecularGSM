@@ -1999,32 +1999,6 @@ int ICoord::read_ics(string filename)
   return nbonds + nangles + ntor;
 }
 
-
-
-#if 0
-      int a3 = -1;
-      for (int k=0;k<nbonds;k++)
-      if (j!=k)
-      {
-       	if (bonds[k][0]==a1)
-          a3 == bonds[k][1];
-        else if (bonds[k][1]==a1)
-          a3 == bonds[k][0];
-       //make sure this isn't on a water
-        if (a3>-1)
-          printf("   possible a3: %2i \n",a3);
-        for (int l=0;l<nwater;l++)
-        if (water[3*l+0]==a3 || water[3*l+1]==a3 || water[3*l+2]==a3)
-          a3 == -1;
-        if (a3>-1) break;
-      }
-#endif
-
-
-
-
-
-
 double ICoord::calc_BP(int run, int node)
 {
 	double energy = calc_dgrad(run, node);
@@ -2055,7 +2029,6 @@ void ICoord::calc_dvec(int run, int node)
 	grad1.dvec_calc(coords, dvec,run,node); 
 	return;
 }
-
 
 void ICoord::copy_CI(ICoord conical)
 {

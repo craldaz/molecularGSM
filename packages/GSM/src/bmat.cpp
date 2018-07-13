@@ -1701,10 +1701,6 @@ void ICoord::make_Hint()
   return;
 }
 
-
-
-
-
 void ICoord::opt_constraint(double* C) 
 {
   int len = nbonds+nangles+ntor;
@@ -1716,9 +1712,6 @@ void ICoord::opt_constraint(double* C)
     printf(" %1.3f",C[i]);
   printf("\n");
 #endif
-
-  //for (int i=0;i<nicd0*nicd0;i++)
-  //  Ut[i] = Ut0[i];
 
   nicd = nicd0;
   nicd--;
@@ -2188,7 +2181,10 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
           Hintp_to_Hint();
           do_bfgs = 0;
           OPTSTEPS++;
-          energy = grad1.grads(coords, grad, Ut, 1) - V0;
+			    if (penalty)
+			    	energy = grad1.levine_penalty(coords,grad,Ut,penalty,sigma,dmw)-V0;
+			    else
+            energy = grad1.grads(coords, grad, Ut, 1) - V0;
         }
       }
       else if (ratio < 0.25)
