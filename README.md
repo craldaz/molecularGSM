@@ -1,11 +1,13 @@
 ## Overview
 The growing string method (GSM) is a reaction path and transition state finding method developed in c++.
-GSM can be interfaced with other packages including ZStruct2 and Metal-Ligand Binding. 
+GSM can be interfaced with packages ZStruct2 and Metal-Ligand Binding. 
 
 For more information, check out the wiki page:
 https://github.com/ZimmermanGroup/molecularGSM/wiki
 
-Sample tutorial files can be found under the tutorial folder:
+Example calculations can be found in the src/GSM/TEST folder.
+
+A discussion can be found:
 https://github.com/ZimmermanGroup/molecularGSM/tree/master/tutorial
 
 ## Installation
