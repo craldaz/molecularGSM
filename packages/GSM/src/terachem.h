@@ -40,8 +40,8 @@ class TC
    string basis;
 
    int nclosed;
-   int nactive;
    int nstates;
+   int nactive;
    double* E;
 
   public:
@@ -52,8 +52,9 @@ class TC
 	 int wstate2; 
 	 int wstate3; 
    string method; //for TeraChem
+   bool docoupling;
 
-   void grads(int state,int runend,int runnum);
+   void grads(int runend,int runnum);
    void calc_dvec(int runend,int runnum);
    void get_dvec(int runend,int runnum,double* dvec);
    double calc_energy();
@@ -68,7 +69,9 @@ class TC
    void reset(double* xyz1);
    double energy0;
    double energy;
-   double get_energy_grad(int choosestate,int runend,int runnum, double* grad);
+   double get_grad(int choosestate,int runend,int runnum, double* grad);
+   double getE(int choosestate);
+   int readE();
 
 };
 

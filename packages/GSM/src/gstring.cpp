@@ -750,7 +750,7 @@ void GString::String_Method_Optimization()
   printf(" recomputing energies for kNNR nodes \n");
   printf(" WARNING: doesn't skip already computed nodes \n");
 #ifdef _OPENMP
-#if QCHEM || QCHEMSF || USE_ORCA
+#if QCHEM || QCHEMSF || USE_ORCA || USE_TC
  #pragma omp parallel for
 #endif
 #endif
@@ -2199,6 +2199,10 @@ void GString::starting_string(double* dq, int nnodes)
   return;
 }
 
+/**
+ * Adds a node between n1 and n3. In SE, n2 is nnmax-1
+ * arbitrarily because the added node is not "between" any node. 
+ */
 int GString::addNode(int n1, int n2, int n3)
 {
   printf(" adding node: %i between %i %i \n",n2,n1,n3);
@@ -2299,7 +2303,7 @@ int GString::addNode(int n1, int n2, int n3)
     newic.bmat_create();
     if (nnmax-nn!=1)
       newic.dq0[newic.nicd0-1] = -dqmag/(nnmax-nn);
-    else 
+    else
       newic.dq0[newic.nicd0-1] = -dqmag/2;
     if (isSSM)
       newic.dq0[newic.nicd0-1] = -dqmag; //CPMZ check
@@ -3116,6 +3120,7 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,in
 {
   printf("\n"); fflush(stdout);
 
+  //parameters
   int nbonds = newic.nbonds;
   int nangles = newic.nangles;
   int ntor = newic.ntor;
@@ -3210,7 +3215,7 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,in
 #endif
 
 #ifdef _OPENMP
-#if QCHEM || QCHEMSF || USE_ORCA
+#if QCHEM || QCHEMSF || USE_ORCA || USE_TC
  #pragma omp parallel for
 #endif
 #endif
@@ -3257,11 +3262,11 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,in
   		string runName0 = StringTools::int2str(runNum,4,"0")+"."+StringTools::int2str(n,4,"0");
       if (!(find && n==TSnode))
       {
-#if !HESS_TANG 
+#if !HESS_TANG || USE_MOLPRO || QCHEMSF
 				printf(" Hi\n");
        	icoords[n].opt_constraint(ictan[n]); //|| USE_MOLPRO || QCHEMSF
 #endif
-       	icoords[n].opt_constraint(ictan[n]); //|| USE_MOLPRO || QCHEMSF
+       	//icoords[n].opt_constraint(ictan[n]); //
         if (growing) icoords[n].stage1opt = 1;
         else icoords[n].stage1opt = 0;
 
@@ -3557,6 +3562,7 @@ void GString::add_angles(int nadd, int* newangles)
   return;
 }
 
+    
 
 void GString::ic_reparam_g(double** dqa, double* dqmaga) 
 {
@@ -3701,18 +3707,10 @@ void GString::ic_reparam_g(double** dqa, double* dqmaga)
 
       newic.bmat_create();
       for (int j=0;j<newic.nicd0;j++) newic.dq0[j]=0.;
-			
       newic.dq0[newic.nicd] = rpmove[n];
-					
       newic.ic_to_xyz();
 
       icoords[n].reset(natoms,anames,anumbers,newic.coords);
-			//icoords[n].calc_BP(runNum,n);
-			//for (int i=0;i<nstates-1;i++)
-			//{
-			//	icoords[n].grad1.dE[i] = icoords[n].grad1.E[i+1] - icoords[n].grad1.E[i];
-			//	printf(" dE[%i][%i]: %5.4f\t",n,i,icoords[n].grad1.dE[i]); 
-			//}
     }//loop n over nodes
   } // loop i over reparam steps
 
@@ -3982,7 +3980,6 @@ void GString::ic_reparam(double** dqa, double* dqmaga, int rtype)
       for (int j=0;j<newic.nicd0;j++) newic.dq0[j]=0.;
       newic.dq0[newic.nicd] = rpmove[n];
       newic.ic_to_xyz();
-			printf(" nicd=%i\n",newic.nicd);
 			if (newic.nicd != newic.nicd0-3 && (isMAP_DE || isMAP_SE))
 			{
 				printf(" Error: wrong dimensions\n");
@@ -5384,7 +5381,7 @@ void GString::get_tangents_1(double** dqa, double* dqmaga, double** ictan)
   return;
 }
 
-//works for DE_ESSM
+///Finds the tangents during the growth phase. Tangents referenced to left or right during growing phase
 void GString::get_tangents_1g(double** dqa, double* dqmaga, double** ictan)
 {
   int nbonds = newic.nbonds;
@@ -5428,7 +5425,6 @@ void GString::get_tangents_1g(double** dqa, double* dqmaga, double** ictan)
   if (nnR==0) nlist[2*ncurrent+1]++;
   ncurrent++;
 
-	
   for (int n=0;n<ncurrent;n++)
   {
     newic.reset(natoms,anames,anumbers,icoords[nlist[2*n+1]].coords);
@@ -5528,7 +5524,7 @@ void GString::get_tangents_1e(double** dqa, double* dqmaga, double** ictan)
   for (int n=0;n<nnmax;n++)
     printf(" %1.1f",V_profile[n]);
   printf("\n");
-	
+
   int TSnode = TSnode0;
 
   //printf(" gt1el"); fflush(stdout);
@@ -7188,6 +7184,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       {
         addednode = add_seam_node(nnmax-nnP,nnmax-nnP-1,nnR-1);
         nnP++;
+				get_tangents_1g(dqa,dqmaga,ictan);//experimental 7/18
 			}
 		}
 	
@@ -7242,6 +7239,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
         }
       }
     } 
+
     if ((icoords[nnmax-nnP].gradrms<gaddmax && GROWD!=1 && !isMAP_DE && !isMAP_SE) || isFSM)
     {
       if (oi>0 && nn < nnmax && !isSSM)
@@ -7267,12 +7265,12 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 				}
 				get_tangents_1g(dqa,dqmaga,ictan);
 				//experimental
-				for (int n=0;n<nnmax;n++)
+				for (int n=n0;n<nnmax;n++)
 				{
 					active[n]=-2;
-					if ((icoords[n].grad1.dE[wstate2-2] >1.0 && icoords[n].gradrms> gaddmax)||(icoords[n].grad1.dE[wstate2-2]>2.5 && icoords[n].gradrms>gaddmax/2.) || ( icoords[n].grad1.dE[wstate2-2]>5. && icoords[nnR-1].gradrms>gaddmax/3.))
+          //icoords[n].gradrms> gaddmax)||(icoords[n].grad1.dE[wstate2-2]>2.5 && icoords[n].gradrms>gaddmax/2.) || ( icoords[n].grad1.dE[wstate2-2]>5. && icoords[nnR-1].gradrms>gaddmax/3.))
+					if (icoords[n].grad1.dE[wstate2-2] >1.0 && icoords[n].gradrms>CONV_TOL*5)
 						active[n]=1;
-				 				
 				}
 				opt_steps_seam(osteps,ictan);
 				for (int n=0;n<nnmax;n++)
@@ -7290,7 +7288,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
 				}
       	
 				print_string(nnmax,allcoords,strfileg+endg);
-				for (int n=0;n<nnmax;n++)
+				for (int n=n0+1;n<nnmax;n++)
 				{
 					if ((icoords[n].grad1.dE[wstate2-2]>1. && icoords[n].gradrms>gaddmax) || (icoords[n].grad1.dE[wstate2-2]>2.5 && icoords[n].gradrms>gaddmax/2.) )
 						break;
@@ -7373,8 +7371,8 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
     totalgrad = 0.;
     gradrms = 0.;
     for (int i=1;i<nnmax-1;i++)
-    if (active[i]>-1 || isSSM || isFSM || isMAP_SE)
-    {
+    if (active[i]>-1 || isSSM || isFSM || isMAP_SE || isMAP_DE)
+    { 
       if (icoords[i].gradrms<1000.)
       {
         totalgrad += icoords[i].gradrms*rn3m6;
@@ -7387,6 +7385,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       gradrms = sqrt(gradrms/(nnR-1));
     else
       gradrms = sqrt(gradrms/(nn-2));
+   
     emaxp = emax;
     emax = -10000;
     nmax = 1;
@@ -7399,6 +7398,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
     }
 
 		//print dE
+		if (icoords[0].grad1.nstates>1)
 	  if (isSE_ESSM || isSSM)
     {
       for (int n=0;n<nnR;n++)
@@ -7583,7 +7583,7 @@ void GString::print_em()
 {
   int nstates = icoords[0].grad1.nstates;
   double E0 = icoords[0].grad1.E[0];
-	printf(" E0 = %1.4f\n",E0);
+	//printf(" E0 = %1.4f\n",E0);
   if (nstates>1)
 	for (int n=0;n<nnmax;n++)
 	{
@@ -9066,10 +9066,10 @@ void GString::opt_steps_seam(int osteps,double** ictan)
   int ntor = newic.ntor;
   int size_ic = newic.nbonds+newic.nangles+newic.ntor;
   int len_d = newic.nicd0;
-	//cout << " active: " << endl;
-  //for (int n=n0+1;n<nnmax-1;n++)
-  //{
-		//cout << active[n] << " ";
+	cout << " active: " << endl;
+  for (int n=0;n<nnmax;n++)
+  {
+	cout << active[n] << " ";}
 	//cout << " active: " << endl;
   //for (int n=n0+1;n<nnmax-1;n++)
   //{
@@ -9080,9 +9080,17 @@ void GString::opt_steps_seam(int osteps,double** ictan)
     //  active[n] = -2; //will be incremented back to -1
   //}
 		cout << endl;
-
+#ifdef _OPENMP
+#if USE_TC
+ #pragma omp parallel for
+#endif
+#endif
   for (int n=n0+1;n<nnmax;n++)
   {
+#ifdef _OPENMP
+  if (omp_get_num_threads()>1 && active[n]>0)
+    printf(" tid: %i/%i node: %i status: %i \n",omp_get_thread_num()+1,omp_get_num_threads(),n,active[n]);
+#endif
     if (active[n]>0 && n!=nnmax-1)
     {	
   			string runName0 = StringTools::int2str(runNum,4,"0")+"."+StringTools::int2str(n,4,"0");

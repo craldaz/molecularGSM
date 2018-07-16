@@ -2053,7 +2053,6 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
 		energy = grad1.levine_penalty(coords,grad,Ut,penalty,sigma,dmw)-V0; //penalty 2 is min dist
 	else
  		energy = grad1.grads(coords, grad, Ut, 1) - V0;
-	printf(" Energy=%1.4f\n",energy);
   if (energy > 1000.) { sprintf(sbuff,"SCF failed \n"); printout+=sbuff; return 10000.; }
   energyp = energy;
   energyl = energy;
@@ -2266,8 +2265,6 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0,in
   }
 
   int OPTSTEPS = nsteps;
-  //printf("  \n"); 
-  
   int len0 = nbonds+nangles+ntor;
   int len = nicd0;
   for (int i=0;i<len;i++)
@@ -2332,6 +2329,7 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0,in
 	else
  		energy = grad1.grads(coords, grad, Ut, 1) - V0;
 
+  //printf(" V0=%1.4f\n",V0);
   energyp = energy;
   energyl = energy;
 #if 0
@@ -2380,7 +2378,7 @@ double ICoord::opt_c(string xyzfile_string, int nsteps, double* C, double* C0,in
     }
 #endif
 
-#if HESS_TANG && !USE_MOLPRO && !QCHEMSF
+#if HESS_TANG && !USE_MOLPRO && !QCHEMSF 
     update_ic_eigen_h(Cn,Cn);  
 #else
     update_ic_eigen();
@@ -2653,7 +2651,6 @@ double ICoord::opt_r(string xyzfile_string, int nsteps, double* C, double* C0, d
   do_bfgs = 0; //resets at each step
   int rflag = 0; //did backconvert work?
   int nrflag = 0;
-
   double energy = grad1.grads(coords, grad, Ut, 1) - V0;
   if (energy > 1000.) return 10000.;
 
@@ -3259,7 +3256,7 @@ int ICoord::grad_to_q()
   for (int i=0;i<nicd;i++)
     gradrms+=gradq[i]*gradq[i];
   gradrms = sqrt(gradrms/nicd);
-	printf(" gradrms = %1.4f\n",gradrms);
+	//printf(" gradrms = %1.4f\n",gradrms);
   //print_gradq();
 
 #if 1
@@ -5900,7 +5897,7 @@ double ICoord::combined_step(string xyzfile_string, int nsteps, int node,int run
 		for (int i=0;i<nstates-1;i++)
 		{
 			grad1.dE[i] = grad1.E[i+1] - grad1.E[i];
-			printf(" dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
+			//printf(" dE[%i][%i]: %5.4f kcal/mol",node,i,grad1.dE[i]); 
 		}
 		deltaE = grad1.dE[wstate2-2]/627.5; //kcal2Hartree
 
@@ -6483,7 +6480,7 @@ double ICoord::project_dvecq()
 	 norm=sqrt(norm);
 	//printf("norm %1.4f\n",norm);
 	
-#if 1
+#if 0
 	printf(" printing dvecq\n");
   for (int i=0;i<nicd0;i++)
     printf(" %12.10f",dvecq[i]);
@@ -6505,7 +6502,7 @@ double ICoord::project_dvecq()
 	printf("norm: %1.3f\n",norm);
 #endif
 
-#if 1
+#if 0
 	printf(" Normalized dvec_U vector\n");
 	for (int i=0;i<len;i++)
 		printf("%1.2f ",dvec_U[i]);
@@ -6514,10 +6511,7 @@ double ICoord::project_dvecq()
 #endif
 		
 	return norm;
-
 }
-
-
 
 void ICoord::constrain_ss_bp(double* C) 
 {

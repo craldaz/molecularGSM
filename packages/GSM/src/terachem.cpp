@@ -23,6 +23,7 @@ void TC::init(int natoms0,int nstates0, int nclosed0, int nactive0, string* anam
   nactive = nactive0;
   basis = basis0;
   method = method0;
+  docoupling = false;
   ncpu = 1;
 
   anames = new string[natoms+1];
@@ -30,6 +31,12 @@ void TC::init(int natoms0,int nstates0, int nclosed0, int nactive0, string* anam
   dvec = new double[3*natoms];
 	dgrad = new double[3*natoms];
   grad = new double[3*natoms];
+  for (int i=0;i<3*natoms;i++)
+    grad[i] = 0.;
+
+  E = new double[nstates];
+  for (int i=0;i<nstates;i++)
+    E[i] = 0.;
 
   for (int i=0;i<natoms0;i++)
   {
@@ -64,7 +71,8 @@ void TC::init(int natoms0,int nstates0, int nclosed0, int nactive0, string* anam
 }
 
 
-void TC::grads(int state,int runend,int runnum)
+//void TC::grads(int state,int runend,int runnum)
+void TC::grads(int runend,int runnum)
 {
   int badgeom = check_array(3*natoms,xyz);
   if (badgeom)
@@ -73,23 +81,16 @@ void TC::grads(int state,int runend,int runnum)
     exit(-1);
   }
 
-  if (ncpu<1) ncpu = 1;
-
-  for (int i=0;i<3*natoms;i++)
-    grad[i] = 0.;
-
-  int num,k,c;
-  double V = -1.;
-
   string nstr=StringTools::int2str(runNum,4,"0");
   string runends=StringTools::int2str(runend,2,"0");
-  string wstr=StringTools::int2str(state,1,"0");
-  string endstr = nstr+"."+runends +"."+wstr;
+  string wstr=StringTools::int2str(wstate,1,"0");
+  if (wstate2>0)
+     wstr = wstr+" " + StringTools::int2str(wstate2,1,"0");
+  string endstr = nstr+"."+runends;// +"."+wstr;
   string molname = "scratch/structure"+endstr;
 
   ofstream geomfile(molname.c_str());
   //cout << " geomfile " << molname << endl;
-
   geomfile << natoms << endl << endl;
   for(int j=0;j<natoms;j++)
   {
@@ -107,12 +108,14 @@ void TC::grads(int state,int runend,int runnum)
     string nactstr = StringTools::int2str(nactive,1,"0");
     string nststr = StringTools::int2str(nstates,1,"0");
     string nclstr = StringTools::int2str(nclosed,1,"0");
-    cmd = "./grad.py  --method "+ method +" --fname " + endstr + " --active " + nactstr + " --nstates " + nststr + " --closed " + nclstr + " --basis " + basis + " --gradient --wstate " + wstr+ " > " + gradfile;
+    if (docoupling == false)
+        cmd = "./grad.py  --method "+ method +" --fname " + endstr + " --active " + nactstr + " --nstates " + nststr + " --closed " + nclstr + " --basis " + basis + " --gradient --wstate " + wstr;
+    else
+        cmd = "./grad.py  --method "+ method +" --fname " + endstr + " --active " + nactstr + " --nstates " + nststr + " --closed " + nclstr + " --basis " + basis + " --coupling --gradient --wstate " + wstr;
   }
   else if (method == "DFT")
     cmd = "./grad.py  --method "+ method +" --fname " + endstr + " --basis " + basis + " --gradient --wstate " + wstr+ " > " + gradfile;
  
-  //cout << cmd << endl;
   system(cmd.c_str());
   system("wait");
 
@@ -132,17 +135,12 @@ void TC::calc_dvec(int runend,int runnum)
 
   if (ncpu<1) ncpu = 1;
 
-  for (int i=0;i<3*natoms;i++)
-    grad[i] = 0.;
-
-  int num,k,c;
-  double V = -1.;
   cout << " Wstates are " << wstate << " " << wstate2 << endl;
   string nstr=StringTools::int2str(runNum,4,"0");
   string runends=StringTools::int2str(runend,2,"0");
   string wstr1=StringTools::int2str(wstate,1,"0");
   string wstr2=StringTools::int2str(wstate2,1,"0");
-  string endstr = nstr+"."+runends +"."+wstr1 +wstr2;
+  string endstr = nstr+"."+runends;//+"."+wstr1 +wstr2;
   string molname = "scratch/structure"+endstr;
 
   ofstream geomfile(molname.c_str());
@@ -166,7 +164,7 @@ void TC::calc_dvec(int runend,int runnum)
     string nactstr = StringTools::int2str(nactive,1,"0");
     string nststr = StringTools::int2str(nstates,1,"0");
     string nclstr = StringTools::int2str(nclosed,1,"0");
-    cmd = "./grad.py  --method "+ method +" --fname " + endstr + " --active " + nactstr + " --nstates " + nststr + " --closed " + nclstr + " --basis " + basis + " --coupling --wstate " + wstr1 + " " + wstr2 + " > " + gradfile;
+    cmd = "./grad.py  --method "+ method +" --fname " + endstr + " --active " + nactstr + " --nstates " + nststr + " --closed " + nclstr + " --basis " + basis + " --coupling --wstate " + wstr1 + " " + wstr2;
   }
   else if (method == "DFT")
 	{
@@ -174,7 +172,7 @@ void TC::calc_dvec(int runend,int runnum)
      exit(-1);
   }
  
-  //cout << cmd << endl;
+  cout << cmd << endl;
   system(cmd.c_str());
   system("wait");
 
@@ -185,13 +183,16 @@ void TC::calc_dvec(int runend,int runnum)
   return;
 }
 
-double TC::get_energy_grad(int choosestate,int runend,int runnum, double* grad)
+double TC::get_grad(int choosestate,int runend,int runnum, double* grad)
 {
   string nstr=StringTools::int2str(runNum,4,"0");
   string runends=StringTools::int2str(runend,2,"0");
   string wstr=StringTools::int2str(choosestate,1,"0");
   string endstr = nstr+"."+runends +"."+wstr;
   string file = "scratch/GRAD"+endstr;
+
+  for (int i=0;i<3*natoms;i++)
+    grad[i] = 0.;
 
   ifstream gradfile;
   gradfile.open(file.c_str());
@@ -204,15 +205,23 @@ double TC::get_energy_grad(int choosestate,int runend,int runnum, double* grad)
 
   string line;
   bool success = true;
+
   success=getline(gradfile, line);
-  double V;
-  if (success)
+  int length=StringTools::cleanstring(line);
+  vector<string> tok_line = StringTools::tokenize(line, " \t[]");
+
+  int error=0;
+  if (tok_line.size()<nstates)
   {
-    V= atof(line.c_str());
-    //printf(" found E: %7.5f \n",V);
+     error=1;
+     printf(" missing nstates!\n"); fflush(stdout);
+     for (int n=0;n<nstates;n++)
+        E[n] = 0.0;
   }
   else
-    return 0.0;
+    for (int n=0;n<nstates;n++)
+       E[n] = atof(tok_line[n].c_str());
+
 
   for (int i=0;i<natoms;i++)
   {
@@ -221,6 +230,7 @@ double TC::get_energy_grad(int choosestate,int runend,int runnum, double* grad)
       printf(" missing data in GRAD(1) \n"); fflush(stdout);
       nscffail+=1;
       grad[3*i+0] = grad[3*i+1] = grad[3*i+2] = 1.;
+      error=1;
       break;
     }
     success=getline(gradfile, line);
@@ -231,6 +241,7 @@ double TC::get_energy_grad(int choosestate,int runend,int runnum, double* grad)
       printf(" missing data in GRAD(2) \n"); fflush(stdout);
       nscffail+=1;
       grad[3*i+0] = grad[3*i+1] = grad[3*i+2] = 1.;
+      error=1;
     }
     else
     {
@@ -241,11 +252,10 @@ double TC::get_energy_grad(int choosestate,int runend,int runnum, double* grad)
   } //loop i over natoms
 
 #if 0
-  cout << " gradient: " << endl;
+  cout << " gradient:  (1/Bohr) \n" << endl;
   for (int i=0;i<natoms;i++) 
     cout << grad[3*i+0] << " " << grad[3*i+1] << " " << grad[3*i+2] << endl;
 #endif
-
   if (nscffail>25)
   {
     printf("\n\n Too many SCF failures: %i, exiting \n",nscffail);
@@ -254,8 +264,9 @@ double TC::get_energy_grad(int choosestate,int runend,int runnum, double* grad)
 
   gradfile.close();
 
-  return V*627.5; 
+  return error; 
 }
+
 
 void TC::get_dvec(int runend,int runnum, double* dvec)
 {
@@ -274,6 +285,9 @@ void TC::get_dvec(int runend,int runnum, double* dvec)
     nscffail+=1;
     return;
   }
+
+  for (int i=0;i<3*natoms;i++)
+    dvec[i] = 0.;
 
   string line;
   bool success = true;
@@ -315,7 +329,7 @@ void TC::get_dvec(int runend,int runnum, double* dvec)
     }
   } //loop i over natoms
 
-#if 1
+#if 0
   cout << " dvec: " << endl;
   for (int i=0;i<natoms;i++) 
     cout << dvec[3*i+0] << " " << dvec[3*i+1] << " " << dvec[3*i+2] << endl;
@@ -368,4 +382,14 @@ void TC::reset(double* xyz1)
   for (int i=0;i<3*natoms;i++)
     xyz[i] = xyz1[i];
   return;
+}
+
+double TC::getE(int n)
+{
+  if (n<1) 
+  {
+    printf(" n must be greater than 0 \n");
+    return -1.;
+  }
+  return E[n-1];
 }

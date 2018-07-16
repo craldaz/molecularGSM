@@ -1,0 +1,6 @@
+method: FOMO
+nstates: 2
+wstate:   1	 
+nclosed: 20
+nactive: 6
+basis: 6-31G

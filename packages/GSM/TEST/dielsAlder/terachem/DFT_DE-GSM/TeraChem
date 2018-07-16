@@ -1,0 +1,6 @@
+method: DFT
+nstates: 1
+wstate:   1	 
+nclosed: 22
+nactive: 2
+basis: 6-31G
