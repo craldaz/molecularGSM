@@ -6824,7 +6824,7 @@ void ICoord::constrain_ss(double* C)
 #endif
 
 	nicd-=2;
-	//printf(" nicd0=%i, nicd=%i\n",nicd0,nicd);
+	printf(" nicd0=%i, nicd=%i\n",nicd0,nicd);
 	if (nicd != (nicd0-3))
 	{
 		printf(" nicd does not equal nicd0-3\n");

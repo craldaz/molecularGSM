@@ -5455,7 +5455,7 @@ void GString::get_tangents_1g(double** dqa, double* dqmaga, double** ictan)
 		else
 		{
 			printf(" creating tan between node %i and %i\n", nlist[2*n], nlist[2*n+1]);
-			if (!isMAP_SE  && !nlist[2*n]!=nnmax-1)
+			//if (!isMAP_SE  && !nlist[2*n]!=nnmax-1)
 			{
     		newic.bmatp_create();
     		newic.bmatp_to_U();
@@ -5464,7 +5464,7 @@ void GString::get_tangents_1g(double** dqa, double* dqmaga, double** ictan)
 			}
 		}
     newic.bmat_create();
-		if (newic.nicd != newic.nicd0-3 && (isMAP_DE || isMAP_SE))
+		if (newic.nicd != newic.nicd0-3 && (isMAP_DE))
 		{
 			printf(" Error: wrong dimensions\n");
 			cout << newic.nicd << endl;
