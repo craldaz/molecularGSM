@@ -7239,7 +7239,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
         }
       }
     } 
-
+    //DE-GSM add P node?
     if ((icoords[nnmax-nnP].gradrms<gaddmax && GROWD!=1 && !isMAP_DE && !isMAP_SE) || isFSM)
     {
       if (oi>0 && nn < nnmax && !isSSM)
@@ -9170,7 +9170,7 @@ void GString::print_string(int nodes, double** allcoords0, string xyzstring)
 			if (icoords[0].grad1.wstate2>0)
   	  	xyzfilec<< icoords[n].grad1.dE[icoords[0].grad1.wstate2-2] << endl;      
 			else
-  	  	xyzfilec<< icoords[n].grad1.dE[icoords[0].grad1.nstates-2] << endl;      
+  	  	xyzfilec<< icoords[n].grad1.dE[icoords[0].grad1.wstate-1] << endl;      
 		}
 		xyzfilec <<"max-step"<< endl; //excited state
   	for (int n=0;n<nodes;n++)
@@ -9179,7 +9179,7 @@ void GString::print_string(int nodes, double** allcoords0, string xyzstring)
 			if (icoords[0].grad1.wstate2>0)
 				xyzfilec << icoords[n].grad1.E[icoords[0].grad1.wstate2-1] - E0 <<endl;	
 			else
-				xyzfilec << icoords[n].grad1.E[icoords[0].grad1.nstates-1] - E0 <<endl;	
+				xyzfilec << icoords[n].grad1.E[icoords[0].grad1.wstate] - E0 <<endl;	
 		}
 		xyzfilec << "rms-step" <<endl; //ground-state
   	for (int n=0;n<nodes;n++)
@@ -9188,7 +9188,7 @@ void GString::print_string(int nodes, double** allcoords0, string xyzstring)
 			if (icoords[0].grad1.wstate2>0)
 				xyzfilec << icoords[n].grad1.E[icoords[n].grad1.wstate2-2] - E0 <<endl;	
 			else
-				xyzfilec << icoords[n].grad1.E[icoords[n].grad1.nstates-2] - E0 <<endl;	
+				xyzfilec << icoords[n].grad1.E[icoords[n].grad1.wstate-1] - E0 <<endl;	
 		}
 	}
 	
