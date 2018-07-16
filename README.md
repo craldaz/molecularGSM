@@ -6,6 +6,7 @@ For more information, check out the wiki page:
 https://github.com/ZimmermanGroup/molecularGSM/wiki
 
 Example calculations can be found in the src/GSM/TEST folder.
+Example calculations can be enabled by modifying the src/GSM/TEST/CMakeLists.txt file.
 
 A discussion can be found:
 https://github.com/ZimmermanGroup/molecularGSM/tree/master/tutorial
@@ -57,4 +58,6 @@ To run gsm, copy the executable to the working directory (where the input files 
 
 ##CTest
 
-There are five test examples: alanine dipeptide isomerization, ammonia borane reactions, diels alder reaction, ethylene rotation, and methanol formaldehyde reaction. After building the executable you can use type $ ctest to run the tests. When each test is complete, the output will be compared with the standard output in each test directory. If the difference in coordinates of a each atom is more than 0.001, the test will fail.
+There are five test examples: alanine dipeptide isomerization, ammonia borane reactions, diels alder reaction, ethylene rotation, and methanol formaldehyde reaction.
+After building the executable you can use type $ ctest to run the tests. When each test is complete, the output will be compared with the standard output in each test
+directory. If the difference in coordinates of a each atom is more than 0.001, the test will fail. (THIS NEEDS FIXING).
