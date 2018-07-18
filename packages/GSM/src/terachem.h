@@ -53,6 +53,7 @@ class TC
 	 int wstate3; 
    string method; //for TeraChem
    bool docoupling;
+   bool readOrb;
 
    void grads(int runend,int runnum);
    void calc_dvec(int runend,int runnum);

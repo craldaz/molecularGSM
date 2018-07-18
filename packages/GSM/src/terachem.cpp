@@ -82,11 +82,11 @@ void TC::grads(int runend,int runnum)
   }
 
   string nstr=StringTools::int2str(runNum,4,"0");
-  string runends=StringTools::int2str(runend,2,"0");
+  string runends=StringTools::int2str(runend,4,"0");
   string wstr=StringTools::int2str(wstate,1,"0");
   if (wstate2>0)
      wstr = wstr+" " + StringTools::int2str(wstate2,1,"0");
-  string endstr = nstr+"."+runends;// +"."+wstr;
+  string endstr = nstr+"_"+runends;// +"."+wstr;
   string molname = "scratch/structure"+endstr;
 
   ofstream geomfile(molname.c_str());
@@ -108,14 +108,22 @@ void TC::grads(int runend,int runnum)
     string nactstr = StringTools::int2str(nactive,1,"0");
     string nststr = StringTools::int2str(nstates,1,"0");
     string nclstr = StringTools::int2str(nclosed,1,"0");
-    if (docoupling == false)
+    if (docoupling == false && readOrb == false)
         cmd = "./grad.py  --method "+ method +" --fname " + endstr + " --active " + nactstr + " --nstates " + nststr + " --closed " + nclstr + " --basis " + basis + " --gradient --wstate " + wstr;
-    else
+    else if (docoupling == true && readOrb == false)
         cmd = "./grad.py  --method "+ method +" --fname " + endstr + " --active " + nactstr + " --nstates " + nststr + " --closed " + nclstr + " --basis " + basis + " --coupling --gradient --wstate " + wstr;
+    else if (docoupling == true && readOrb == true)
+        cmd = "./grad.py  --method "+ method +" --fname " + endstr + " --active " + nactstr + " --nstates " + nststr + " --closed " + nclstr + " --basis " + basis + " --coupling --gradient --wstate " + wstr + " --readOrb";
+    else if (docoupling == false && readOrb == true)
+        cmd = "./grad.py  --method "+ method +" --fname " + endstr + " --active " + nactstr + " --nstates " + nststr + " --closed " + nclstr + " --basis " + basis + " --gradient --wstate " + wstr + " --readOrb";
   }
   else if (method == "DFT")
-    cmd = "./grad.py  --method "+ method +" --fname " + endstr + " --basis " + basis + " --gradient --wstate " + wstr+ " > " + gradfile;
- 
+  { 
+    if (readOrb==true)
+        cmd = "./grad.py  --method "+ method +" --fname " + endstr + " --basis " + basis + " --gradient --wstate " + wstr + " --readOrb";
+    else
+        cmd = "./grad.py  --method "+ method +" --fname " + endstr + " --basis " + basis + " --gradient --wstate " + wstr;
+  }
   system(cmd.c_str());
   system("wait");
 
@@ -186,9 +194,9 @@ void TC::calc_dvec(int runend,int runnum)
 double TC::get_grad(int choosestate,int runend,int runnum, double* grad)
 {
   string nstr=StringTools::int2str(runNum,4,"0");
-  string runends=StringTools::int2str(runend,2,"0");
+  string runends=StringTools::int2str(runend,4,"0");
   string wstr=StringTools::int2str(choosestate,1,"0");
-  string endstr = nstr+"."+runends +"."+wstr;
+  string endstr = nstr+"_"+runends +"."+wstr;
   string file = "scratch/GRAD"+endstr;
 
   for (int i=0;i<3*natoms;i++)
@@ -271,10 +279,10 @@ double TC::get_grad(int choosestate,int runend,int runnum, double* grad)
 void TC::get_dvec(int runend,int runnum, double* dvec)
 {
   string nstr=StringTools::int2str(runNum,4,"0");
-  string runends=StringTools::int2str(runend,2,"0");
+  string runends=StringTools::int2str(runend,4,"0");
   string wstr1=StringTools::int2str(wstate,1,"0");
   string wstr2=StringTools::int2str(wstate2,1,"0");
-  string endstr = nstr+"."+runends +"."+wstr1+wstr2;
+  string endstr = nstr+"_"+runends +"."+wstr1+wstr2;
   string file = "scratch/COUP"+endstr;
 
   ifstream coupfile;

@@ -366,7 +366,7 @@ void GString::String_Method_Optimization()
 #endif
 
 	//molpro setup
-#if USE_MOLPRO
+#if USE_MOLPRO || USE_TC
   newic.grad1.seedType = 1;
 	if (restart_wfn)
 		newic.grad1.seedType=3; //restarting from wfn
@@ -382,12 +382,9 @@ void GString::String_Method_Optimization()
   string nstr = StringTools::int2str(runNum,4,"0");
   grad1.init(infile0,natoms,anumbers,anames,icoords[1].coords,runNum,runend,ncpu,1,CHARGE);
   newic.grad_init(infile0,ncpu,runNum,runend-1,0,CHARGE);
-#if USE_MOLPRO
+#if USE_MOLPRO || USE_TC
 	if (!isMECI)
-		prepare_molpro();
-#elif USE_TC
-  if (!isMECI)
-    prepare_tc();
+		prepare_orbitals();
 #else
   for (int n=0;n<nnmax0;n++)
     icoords[n].grad_init(infile0,ncpu,runNum,runend+n,0,CHARGE); //level 3 is exact kNNR only, 0 is QM grad always
@@ -2213,7 +2210,7 @@ int GString::addNode(int n1, int n2, int n3)
     exit(1);
   }
 
-#if USE_MOLPRO
+#if USE_MOLPRO || USE_TC
   if (n2>n1) icoords[n2].grad1.seedType = -1;
   if (n2<n1) icoords[n2].grad1.seedType = -2;
 #endif
@@ -8269,7 +8266,7 @@ void GString::add_last_node(int type)
   {
     printf(" already created node, opting \n");
   }
-#if USE_MOLPRO
+#if USE_MOLPRO || USE_TC
 	icoords[nnR].grad1.seedType=-1;
 #endif
   string nstr = StringTools::int2str(runNum,4,"0");
@@ -8331,7 +8328,7 @@ void GString::add_last_seam_node(int type)
   {
     printf(" already created node, opting \n");
   }
-#if USE_MOLPRO
+#if USE_MOLPRO || USE_TC
 	icoords[nnR].grad1.seedType=-1;
 #endif
   string nstr = StringTools::int2str(runNum,4,"0");
@@ -8460,8 +8457,7 @@ void GString::trim_string(int nextmin)
   return;
 }
 
-
-void GString::prepare_molpro()
+void GString::prepare_orbitals()
 {
   //molpro gradients will call seed() for initial orbitals
   //seedType=3 skip seeding or copying because already have wfn
@@ -8475,7 +8471,7 @@ void GString::prepare_molpro()
 	{
   for (int n=0;n<nnmax0;n++)
   {
-    printf("\n Node %2i \n",n); fflush(stdout);
+    printf("\n Node %2i ",n); fflush(stdout);
     icoords[n].grad1.seedType = 0; //seedType set later
     if (isRestart) icoords[n].grad1.seedType = 3;
     if (n==0) icoords[n].grad1.seedType = 1; //seed from INIT1
@@ -8488,76 +8484,22 @@ void GString::prepare_molpro()
 			icoords[n].grad1.seedType = 3; 		
 
  	  icoords[n].grad_init(infile0,ncpu,runNum,n,0,0);
-    printf(" Em[%i]:",n);
-    printf(" %2.1f",icoords[n].grad1.E[0]);
-    printf(" %2.1f\n",icoords[n].grad1.E[1]);
+    //printf(" Em[%i]:",n);
+    //printf(" %2.1f",icoords[n].grad1.E[0]);
+    //printf(" %2.1f\n",icoords[n].grad1.E[1]);
 
-		//calculate initial energy and/or gradient
-		//restart_wfn means already have the wfn files
-		//if (restart_wfn && n==0 && !isRestart) 
-		//{
-  	//	printf("  wstate: %i, wstate2: %i\n",wstate,wstate2);
-		//	if (isMAP_DE)
-		//		printf(" Calc'd in starting_seam\n");
-		//		//V0=icoords[n].grad1.grads(coords[0], grads[0], icoords[0].Ut, 3); 
-		//	else if (isSE_ESSM)
-		//		V0 = icoords[n].grad1.energy_initial(coords[n],runNum,n,1,0.);
-		//	else if (isSSM)
-		//		V0 = icoords[n].grad1.energy_initial(coords[n],runNum,n,0,0.);
-		//	else  //DE-GSM
-		//		V0 = icoords[n].grad1.energy_initial(coords[n],runNum,n,0,0.);
-  	// 	printf("  setting V0 to: %8.1f (%12.8f au) \n",V0,V0/627.5);
-		//	//need to fix for 3 states
-		//	printf(" icoords[0].grad1.E[wstate]=%1.4f\n",icoords[0].grad1.E[nstates-2]); 
-		//	printf(" icoords[0].grad1.E[wstate2]=%1.4f\n",icoords[0].grad1.E[nstates-1]);
-		// 	 	
-		//}
 		if (restart_wfn && n==nnmax-1 && !isRestart && isMAP_DE) 
 		{
 			icoords[n].grad1.seedType = 3;	
-			//V_profile[nnmax0-1] =icoords[nnmax-1].grad1.grads(coords[nnmax-1],grads[nnmax-1],icoords[nnmax-1].Ut,3) -V0;
 		}
     if (n==1 && !isRestart) icoords[n].grad1.seedType = -1; //copy from previous node
     if (n==nnmax0-2 && !isRestart) icoords[n].grad1.seedType = -2; //copy from "next" node
+    printf(" SeedType = %i\n",icoords[n].grad1.seedType);
   }
-		print_em();
-	}
-
-}
-
-void GString::prepare_tc()
-{
-	int wstate2 = grad1.wstate2;
-	int nstates = grad1.nstates;
-	int wstate = grad1.wstate;
-
-	if (!isMECI && !isPRODUCT)
-	{
-  for (int n=0;n<nnmax0;n++)
-  {
-    printf("\n Node %2i \n",n); fflush(stdout);
-    icoords[n].grad1.seedType = 0; //seedType set later
-    if (isRestart) icoords[n].grad1.seedType = 3;
-    if (n==0) icoords[n].grad1.seedType = 1; //seed from INIT1
-    if (n==nnmax0-1) icoords[n].grad1.seedType = 2; //seed from INIT2
-	
-	 	//skip seeding or copying because single-ended
-		if ((isSSM) && (n==nnmax0-1)) icoords[n].grad1.seedType = 3; 
-		
-		if (restart_wfn && (n==0 || n==nnmax0-1))
-			icoords[n].grad1.seedType = 3; 		
-
- 	  icoords[n].grad_init(infile0,ncpu,runNum,n,0,0);
-    printf(" Em[%i]:",n);
-    printf(" %2.1f",icoords[n].grad1.E[0]);
-    printf(" %2.1f\n",icoords[n].grad1.E[1]);
-		if (restart_wfn && n==nnmax-1 && !isRestart && isMAP_DE) 
-			icoords[n].grad1.seedType = 3;	
-    if (n==1 && !isRestart) icoords[n].grad1.seedType = -1; //copy from previous node
-    if (n==nnmax0-2 && !isRestart) icoords[n].grad1.seedType = -2; //copy from "next" node
-  }
+		//print_em();
 	}
 }
+
 
 int GString::check_essm_done(int osteps,int oesteps, double** dqa,int runNum,double K)
 {
@@ -8799,7 +8741,7 @@ int GString::add_seam_node(int n1,int n2,int n3)
     exit(1);
   }
 
-#if USE_MOLPRO
+#if USE_MOLPRO || USE_TC
 	if (n2>n1) icoords[n2].grad1.seedType = -1;	
   if (n2<n1) icoords[n2].grad1.seedType = -2;
 #endif

@@ -276,6 +276,26 @@ int Gradient::external_grad(double* coords, double* grad)
 
 #elif USE_TC
   tc1.reset(coords);
+  if (gradcalls==0 && seedType<1)
+  {
+    //copy wfn 
+    int runendCopy = runend;
+    if (seedType==0) 
+    {
+      printf(" ERROR: seedType not set! \n");
+      exit(1);
+    }
+    if (seedType==-1) runendCopy--;
+    if (seedType==-2) runendCopy++;
+
+		if (seedType==-1 || seedType==-2)
+		{
+     string runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(runendCopy,4,"0");
+   	 printf(" copying ORBKEY from ORBFILE%s to ORBFILE%s \n",runNameCopy.c_str(),runName0.c_str());
+   	 string cmd = "cp scratch/ORBFILE"+runNameCopy+" scratch/ORBFILE"+runName0;
+   	 system(cmd.c_str());
+		}
+  }
   tc1.grads(runend,runNum); //grad and energy
   int error = tc1.get_grad(wstate,runend,runNum,grada[0]);
   if (error)
@@ -715,6 +735,13 @@ void Gradient::init(string infilename, int natoms0, int* anumbers0, string* anam
   read_tc_settings(nstates0,nclosed,nactive,basis,method);
   nstates = nstates0;
   tc1.init(natoms,nstates,nclosed,nactive,anames,coords0,basis,method,run,rune);
+  if (seedType==3)
+  {
+    printf("   assuming wfn already seeded in scratch \n");
+    tc1.readOrb = true;
+  }
+  if (seedType>0 && seedType!=3)
+    tc1.readOrb = false;
 #endif
 #if USE_ORCA
   orca1.init(infilename,natoms,anumbers,anames,run,rune);
@@ -778,7 +805,7 @@ void Gradient::init(string infilename, int natoms0, int* anumbers0, string* anam
 #elif USE_MOLPRO
   printf("  grad initiated: MOLPRO mode \n");
 #elif USE_TC
-  printf("  grad initiated: MOLPRO mode \n");
+  printf("  grad initiated: TeraChem mode \n");
 #else
   printf("  grad initiated: Mopac mode \n");
 #endif
@@ -1059,6 +1086,26 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
 #elif USE_TC
   tc1.reset(coords);
   tc1.docoupling=false;
+  if (gradcalls==0 && seedType<1)
+  {
+    //copy wfn 
+    int runendCopy = runend;
+    if (seedType==0) 
+    {
+      printf(" ERROR: seedType not set! \n");
+      exit(1);
+    }
+    if (seedType==-1) runendCopy--;
+    if (seedType==-2) runendCopy++;
+
+		if (seedType==-1 || seedType==-2)
+		{
+   	 string runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(runendCopy,4,"0");
+   	 printf(" copying ORBKEY from ORBFILE%s to ORBFILE%s \n",runNameCopy.c_str(),runName0.c_str());
+   	 string cmd = "cp scratch/ORBFILE"+runNameCopy+" scratch/ORBFILE"+runName0;
+   	 system(cmd.c_str());
+		}
+  }
   tc1.grads(runend,runNum); //grad and energy
 	//tc1.grads(wstate2,runend,runNum);
   int error = tc1.get_grad(wstate,runend,runNum,grada[0]);
