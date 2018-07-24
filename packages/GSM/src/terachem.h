@@ -31,7 +31,6 @@ class TC
    string fileloc;
    double* xyz;
     double* grad;
-    double* dvec;
     double* dgrad;
 
    int natoms;
@@ -73,6 +72,7 @@ class TC
    double get_grad(int choosestate,int runend,int runnum, double* grad);
    double getE(int choosestate);
    int readE();
+    double* dvec;
 
 };
 

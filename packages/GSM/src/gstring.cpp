@@ -180,8 +180,8 @@ void GString::String_Method_Optimization()
 	//initialize active
   for (int i=0;i<nnmax;i++)
     active[i] = -1;
-  active[0] = 0;
-  active[nnmax-1] = 0;
+  active[0] = -2;
+  active[nnmax-1] = -2;
 
 	//initialize icoords
   int N3 = natoms*3;
@@ -391,7 +391,7 @@ void GString::String_Method_Optimization()
 #endif
 
 //do I need this?
-#if USE_MOLPRO || QCHEMSF
+#if USE_MOLPRO || QCHEMSF 
   printf("\n MOLPRO/QCHEMSF mode: turning off H-follow (t/ol) in opt \n");
   printf("\n MOLPRO/QCHEMSF mode: turning off r in opt \n");
   for (int n=0;n<nnmax0;n++)
@@ -436,6 +436,302 @@ void GString::String_Method_Optimization()
 		icoords[0].opt_penalty(runNum,runend-1,sigma,2,STEP_OPT_ITERS);
 #endif
 	
+		printf(" Finished\n");
+		exit(-1);
+	}
+	if (isPRODUCT)
+	{
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("########### Starting PRODUCT  program #########################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+		printf("###############################################################\n");
+  	double*	dgrad = new double[size_ic+100];
+  	for (int i=0;i<size_ic+100;i++) dgrad[i]=0.;
+  	double* dvec = new double[size_ic+100];
+  	for (int i=0;i<size_ic+100;i++) dvec[i]=0.;
+ 		double* sab = new double[3*natoms];
+ 		for (int i=0;i<3*natoms;i++) sab[i] =0.;
+  	double* tmp = new double[3*natoms];
+  	for (int i=0;i<3*natoms;i++) tmp[i] =0.;
+		int nstates = grad1.nstates;
+		int wstate2 = grad1.wstate2;
+
+		printf("wstates: %i %i\n", grad1.wstate,grad1.wstate2);
+		grad1.seedType=3;
+  	for (int n=0;n<nnmax0;n++)
+		{
+			icoords[n].grad1.seedType = 3; 		
+ 	  	icoords[n].grad_init(infile0,ncpu,runNum,n,0,0);
+		}
+	  icoords[0].reset(natoms,anames,anumbers,coords[0]);
+  	//V0=grad1.grads(coords[0], grads[0], icoords[0].Ut, 3);
+  	V0=icoords[0].calc_BP(runNum,0);
+		printf(" V0=%1.6f\n",V0);
+
+	  #if 0
+	  printf(" Grads\n");
+	  for (int j=0;j<2;j++)
+	  {for (int i=0;i<3*natoms;i++)
+	    printf(" %1.3f", grad1.grada[j][i]);
+	    printf(" \n");
+	  }
+	  #endif
+	  printf(" Calculating dgrad[%i]\n",1);
+	  for (int i=0;i<3*natoms;i++)
+	    dgrad[i]= 0.5*(icoords[0].grad1.grada[0][i]- icoords[0].grad1.grada[1][i]);
+	  printf(" Calculating sab[%i]\n",1); ///need to initialize
+	  for (int i=0;i<3*natoms;i++)
+	    sab[i]= 0.5*(icoords[0].grad1.grada[1][i]+icoords[0].grad1.grada[0][i]);
+	  //printf(" Calculating dvec[%i]\n",1);
+	  //grad1.dvec_calc(coords[0],dvec,runNum,1); //
+	  for (int i=0;i<3*natoms;i++)
+      dvec[i]=icoords[0].dvec[i];
+		
+	  for (int i=0;i<nstates-1;i++)
+	  {
+	    icoords[0].grad1.dE[i] = (icoords[0].grad1.E[i+1] - icoords[0].grad1.E[i])/627.5;
+	    printf(" dE[%i]: %5.4f\t Hartree",i,icoords[0].grad1.dE[i]);
+	  }
+	  printf("\n");
+	
+	  for (int i=0;i<3*natoms;i++)
+	    tmp[i] = dvec[i]*icoords[0].grad1.dE[wstate2-2];
+		
+	  printf(" Multiplying dvec by delta E to get NACM\n");
+	  for (int i=0;i<3*natoms;i++)
+	    dvec[i] = dvec[i]*icoords[0].grad1.dE[wstate2-2];
+	
+		double beta = rot_angle(dgrad,dvec);
+	  printf(" beta = %1.6f\n",beta);
+	  for (int i=0;i<3*natoms;i++)
+	    dvec[i] = dvec[i]*cos(beta) - dgrad[i]*sin(beta);
+	
+	  for (int i=0;i<3*natoms;i++)
+	    dgrad[i] = dgrad[i]*cos(beta) + tmp[i]*sin(beta);
+
+	  double norm_rnacm=0.0;
+	  double norm_rdgrad=0.0;
+	  for (int i=0;i<3*natoms;i++)
+	    norm_rnacm+=dvec[i]*dvec[i];
+	  norm_rnacm=sqrt(norm_rnacm);
+	  printf(" norm y %2.5f",norm_rnacm);
+	  for (int i=0;i<3*natoms;i++)
+	    norm_rdgrad+=dgrad[i]*dgrad[i];
+	  norm_rdgrad=sqrt(norm_rdgrad);
+	  printf(" norm x %2.5f\n",norm_rdgrad);
+	
+	  double pitch = calc_pitch(dgrad,dvec);
+	  printf(" pitch = %1.5f\n",pitch);
+	  double asymmetry =calc_asymmetry(dgrad,dvec);
+		if (asymmetry<0.0)
+		{
+			double* tmp_vec=new double[3*natoms];
+			for (int i=0;i<3*natoms;i++)
+			{
+				tmp_vec[i]=dgrad[i];
+				dgrad[i]=dvec[i];
+				dvec[i] = tmp_vec[i];
+			}
+  		asymmetry =calc_asymmetry(dgrad,dvec);
+		}
+	
+		double rmag=0.2;
+		printf(" rmag=%1.2f\n",rmag);
+	  double* r = new double[natoms*3];
+	  double dtheta = 2*3.14159/40.;
+	  double* theta=new double[40];
+	  theta[0]=0.0;
+	  for (int i=1;i<40;i++)
+	    theta[i]=theta[i-1]+dtheta;
+	  for (int i=0;i<40;i++)
+	    printf(" theta[%i]=%1.4f\n",i,theta[i]);
+	
+	  double* EmodelA= new double[40];
+	  double* EmodelB= new double[40];
+	  double sab_x = 0.;
+	  double sab_y = 0.;
+	  double dotx=0.;
+	  double doty=0.;
+	
+	  for (int i=0;i<3*natoms;i++)
+	  {
+	    dotx+=sab[i]*dgrad[i]/norm_rdgrad;
+	    doty+=sab[i]*dvec[i]/norm_rnacm;
+	  }
+	  sab_x = dotx/pitch;
+	  sab_y = doty/pitch;
+		if (sab_x < 0.0 && sab_y > 0.0)
+		{
+			for (int i=0;i<3*natoms;i++)
+				dgrad[i] = -dgrad[i];
+			dotx=0.;
+			doty=0.;
+  		for (int i=0;i<3*natoms;i++)
+  		{
+  		  dotx+=sab[i]*dgrad[i]/norm_rdgrad;
+  		  doty+=sab[i]*dvec[i]/norm_rnacm;
+  		}
+  		sab_x = dotx/pitch;
+  		sab_y = doty/pitch;
+		}
+		else if (sab_x > 0.0 && sab_y < 0.0)
+		{
+			for (int i=0;i<3*natoms;i++)
+				dvec[i] = -dvec[i];
+			dotx=0.;
+			doty=0.;
+  		for (int i=0;i<3*natoms;i++)
+  		{
+  		  dotx+=sab[i]*dgrad[i]/norm_rdgrad;
+  		  doty+=sab[i]*dvec[i]/norm_rnacm;
+  		}
+  		sab_x = dotx/pitch;
+  		sab_y = doty/pitch;
+		}
+		printf(" printing dvec\n");
+		for (int i=0;i<3*natoms;i++)
+			printf("%1.3f\t",dvec[i]);	
+		printf("\n");
+		printf(" printing dgrad\n");
+		for (int i=0;i<3*natoms;i++)
+			printf("%1.3f\t",dgrad[i]);	
+		printf("\n");
+	
+	  double sigma =sqrt(sab_x*sab_x + sab_y*sab_y);
+	  double tmp2= sab_y/sab_x;
+	  double theta_s = atan(tmp2);
+	  printf(" asymmetry = %1.5f, sigma = %1.5f, theta_s = %1.5f, sx = %1.2f, sy = %1.2f\n",asymmetry,sigma,theta_s,sab_x,sab_y);
+	  for (int i=0;i<40;i++)
+	  {
+	    double factorA = sigma*cos(theta[i] - theta_s) +  sqrt(1+asymmetry*cos(2*theta[i]));
+	    double factorB = sigma*cos(theta[i] - theta_s) -  sqrt(1+asymmetry*cos(2*theta[i]));
+	    EmodelA[i] = (grad1.E[0] + grad1.E[1])/(2) + pitch*rmag*factorA;
+	    EmodelB[i] =  (grad1.E[0] + grad1.E[1])/(2)+ pitch*rmag*factorB;
+	  }
+		#if 1
+			printf(" E_A\n");
+			for (int i=0;i<40;i++)
+				printf(" %2.8f\n",EmodelA[i]-V0);
+			printf(" E_B\n");
+			for (int i=0;i<40;i++)
+				printf(" %2.8f\n",EmodelB[i]-V0);
+		#endif
+	
+	    int* min = new int[3];
+	    int counter =0;
+			
+			//print xyzs
+			for (int i=0;i<40;i++)
+			{
+		    for (int j=0;j<3*natoms;j++)
+		     	newic.coords[j]=icoords[0].coords[j]+rmag*cos(theta[i])*dgrad[j]/norm_rdgrad + rmag*sin(theta[i])*dvec[j]/norm_rnacm;
+				newic.print_xyz();	
+				newic.reset(natoms,anames,anumbers,icoords[0].coords);
+			}
+			
+			//determine minima
+	    for (int i=1;i<39;i++)
+	    {
+	      if (EmodelB[i]<EmodelB[i-1] && EmodelB[i+1]> EmodelB[i])
+	      {
+	        printf(" Minimum at theta = %1.5f\n",theta[i]);
+	        min[counter]=i;
+	        counter++;
+	      }
+	    }
+	    //check endpoints
+	    if (EmodelB[0]<EmodelB[39] && EmodelB[1]>EmodelB[0])
+	    {
+	        printf(" Minimum at node 0; theta = 0");
+	        min[counter]=0;
+	        counter++;
+	    }
+	    if (EmodelB[39]<EmodelB[38] && EmodelB[0]>EmodelB[39])
+	    {
+	        printf(" Minimum at node 39; theta = %1.4f",theta[39]);
+	        min[counter]=39;
+	        counter++;
+	    }
+			
+			//determine maxima
+	    for (int i=1;i<39;i++)
+	    {
+	      if (EmodelB[i]>EmodelB[i-1] && EmodelB[i+1]<EmodelB[i])
+	      {
+	        printf(" Maximum at theta = %1.5f\n",theta[i]);
+	        min[counter]=i;
+	        counter++;
+	      }
+	    }
+	    //check endpoints
+	    if (EmodelB[0]>EmodelB[39] && EmodelB[1]<EmodelB[0])
+	    {
+	        printf(" Maximum at node 0; theta = 0");
+	        min[counter]=0;
+	        counter++;
+	    }
+	    if (EmodelB[39]>EmodelB[38] && EmodelB[0]<EmodelB[39])
+	    {
+	        printf(" Maximum at node 39; theta = %1.4f",theta[39]);
+	        min[counter]=39;
+	        counter++;
+	    }
+
+			//print geometries of x-section just in case
+			printf(" Print geoms of min and max geoms\n");
+	    for (int k=1;k<counter+1;k++)
+	    {
+	      for (int i=0;i<3*natoms;i++)
+	       	icoords[k].coords[i]=icoords[0].coords[i]+rmag*cos(theta[min[k-1]])*dgrad[i]/norm_rdgrad + rmag*sin(theta[min[k-1]])*dvec[i]/norm_rnacm;
+				icoords[k].print_xyz();
+				icoords[k].reset(natoms,anames,anumbers,icoords[0].coords);
+			}
+
+	    printf(" Take step along min theta\n");
+	    for (int k=1;k<counter+1;k++)
+	    {
+	      for (int i=0;i<3*natoms;i++)
+	       	icoords[k].coords[i]=icoords[0].coords[i]+rmag*cos(theta[min[k-1]])*dgrad[i]/norm_rdgrad + rmag*sin(theta[min[k-1]])*dvec[i]/norm_rnacm;
+				icoords[k].update_ic();
+	      cout << natoms << endl;
+	      cout << min[k] << endl;
+	      for (int i=0;i<natoms;i++)
+	        cout <<" " <<  anames[i] << " " << icoords[k].coords[3*i+0] <<" " << icoords[k].coords[3*i+1] << " " << icoords[k].coords[3*i+2] << endl;
+				icoords[k].grad1.wstate2=0;
+				icoords[k].grad1.mp1.wstate2=0;
+				icoords[k].grad1.mp1.wstate=grad1.wstate;
+	
+    		string runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(0,4,"0");
+  			string runName = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(k,4,"0");
+        #if USE_MOLPRO
+    		   printf(" copying wfn from mp_%s to mp_%s \n",runNameCopy.c_str(),runName.c_str());
+    		   string cmd = "cp scratch/mp_"+runNameCopy+" scratch/mp_"+runName;
+    		   system(cmd.c_str());
+        #elif USE_TC
+   	       printf(" copying ORBKEY from ORBFILE%s to ORBFILE%s \n",runNameCopy.c_str(),runName.c_str());
+           icoords[k].grad1.tc1.readOrb=true;
+   	       string cmd = "cp scratch/ORBFILE"+runNameCopy+" scratch/ORBFILE"+runName;
+   	       system(cmd.c_str());
+        #endif
+
+				printf("wstates: %i %i\n", icoords[k].grad1.wstate,icoords[k].grad1.wstate2);
+				icoords[k].bmatp_create();
+				icoords[k].bmatp_to_U();
+				icoords[k].bmat_create();
+				icoords[k].make_Hint();
+				double energy=icoords[k].opt_b("scratch/product"+runName+".xyz",STEP_OPT_ITERS,0,0.0);
+				icoords[k].print_xyz_save("product"+runName+".xyz");
+				printf(" opt_energy is %1.4f\n", energy);
+	    }
+	    printf(" Sucessfully found product(s)");
+	
+		//icoords[1].model_CI(runNum,1);
 		printf(" Finished\n");
 		exit(-1);
 	}
@@ -605,7 +901,12 @@ void GString::String_Method_Optimization()
   for (int i=0;i<nnmax;i++) icoords[i].optCG = 0;
   string strfileg = "stringfile.xyz"+nstr+"g";
   oi = 0; //now class variable
-  int osteps = 2;
+  //int osteps = 2;
+
+	for (int n=0;n<nnmax;n++)
+		icoords[n].OPTTHRESH=CONV_TOL; 
+
+  int osteps=STEP_OPT_ITERS;
   if (isFSM)
   {
     osteps = STEP_OPT_ITERS;
@@ -3287,13 +3588,11 @@ void GString::opt_steps(double** dqa, double** ictan, int osteps, int oesteps,in
 						}
 						V_profile[n] = icoords[n].opt_c("scratch/xyzfile_"+runName0+".xyz",osteps*exsteps,C,C0,1,sigma);
 					}
-					else if (penalty==2)
-					{
-					 double sigma=get_sigma(n,K);
-					 V_profile[n] = icoords[n].opt_c("scratch/xyzfile_"+runName0+".xyz",osteps*exsteps,C,C0,1,sigma);
-					}
 					else 
-					 V_profile[n] = icoords[n].opt_c("scratch/xyzfile_"+runName0+".xyz",osteps*exsteps,C,C0,0,0);
+          {
+						 printf(" icoords[%i].gradrms] =%1.4f, icoords[%i].OPTHRESH=%1.4f\n",n-1,icoords[n-1].gradrms,n,icoords[n].OPTTHRESH);
+					   V_profile[n] = icoords[n].opt_c("scratch/xyzfile_"+runName0+".xyz",osteps*exsteps,C,C0,0,0);
+          }
 				}
       }
       else
@@ -7229,7 +7528,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
     		  printf(" Finished\n");
     		  exit(1);
 				}
-        else
+        else //continue opting because single ended
         {
           set_fsm_active(nnR-1,nnR-1); 
           icoords[nnR-1].OPTTHRESH = CONV_TOL;
@@ -7373,6 +7672,7 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       if (icoords[i].gradrms<1000.)
       {
         totalgrad += icoords[i].gradrms*rn3m6;
+        printf("%1.4f\n",totalgrad);
         gradrms += icoords[i].gradrms*icoords[i].gradrms;
       }
     }
@@ -7423,22 +7723,28 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
     {
       for (int n=0;n<nnmax;n++)
       {
-        printf("node: %i\n",n);
-        for (int i=0;i<nstates-1;i++)
-        {
-          icoords[n].grad1.dE[i] = icoords[n].grad1.E[i+1] - icoords[n].grad1.E[i];
-          printf(" dE[%i]:  %5.4f\t ",i,icoords[n].grad1.dE[i]);
-        }
-        cout <<endl;
+  				if (active[n]>-1 || active[n]==-2)
+					{
+             printf("node: %i\n",n);
+             for (int i=0;i<nstates-1;i++)
+             {
+               icoords[n].grad1.dE[i] = icoords[n].grad1.E[i+1] - icoords[n].grad1.E[i];
+               printf(" dE[%i]:  %5.4f\t ",i,icoords[n].grad1.dE[i]);
+             }
+             cout <<endl;
+          }
       }
       for (int n=0;n<nnmax;n++)
       {
-      	printf("node: %i\n",n);
-  			for (int j=0;j<nstates;j++)
-  			{
-  			  printf(" %2.1f",icoords[n].grad1.E[j]-E0);
-  			}
-				cout <<"kcal/mol\t" <<  endl;
+  			if (active[n]>-1 || active[n]==-2)
+				{
+      	    printf("node: %i\n",n);
+  			    for (int j=0;j<nstates;j++)
+  			    {
+  			      printf(" %2.1f",icoords[n].grad1.E[j]-E0);
+  			    }
+				    cout <<"kcal/mol\t" <<  endl;
+        }
       }
       cout <<endl;
     }
@@ -7628,8 +7934,10 @@ void GString::opt_iters(int max_iter, double& totalgrad, double& gradrms, double
 
     totalgrad = 0.;
     gradrms = 0.;
+    printf(" %1.4f\n",rn3m6);
     for (int i=n0+1;i<nnmax-1;i++)
     {
+      printf("%1.4f\n",icoords[i].gradrms);
       totalgrad += icoords[i].gradrms*rn3m6;
       gradrms += icoords[i].gradrms*icoords[i].gradrms;
     }
@@ -9080,6 +9388,7 @@ void GString::print_string(int nodes, double** allcoords0, string xyzstring)
 	
 	xyzfilec << "[Molden Format]" <<endl;
 	xyzfilec << "[Geometries] (XYZ)" <<endl;
+	double E0=icoords[0].grad1.E[0];
   for (int n=0;n<nodes;n++)
   if (active[n]>-1 || active[n]==-2 || isFSM || isSSM)
   {
@@ -9093,7 +9402,6 @@ void GString::print_string(int nodes, double** allcoords0, string xyzstring)
   }
 	xyzfilec << "[GEOCONV]" << endl;
 	xyzfilec << "energy" <<endl;
-	double E0=icoords[0].grad1.E[0];
   for (int n=0;n<nodes;n++)
 	if (active[n]>-1 || active[n]==-2 || isSSM)
 	{
@@ -9112,7 +9420,7 @@ void GString::print_string(int nodes, double** allcoords0, string xyzstring)
 			if (icoords[0].grad1.wstate2>0)
   	  	xyzfilec<< icoords[n].grad1.dE[icoords[0].grad1.wstate2-2] << endl;      
 			else
-  	  	xyzfilec<< icoords[n].grad1.dE[icoords[0].grad1.wstate-1] << endl;      
+  	  	xyzfilec<< icoords[n].grad1.dE[icoords[0].grad1.wstate-2] << endl;      
 		}
 		xyzfilec <<"max-step"<< endl; //excited state
   	for (int n=0;n<nodes;n++)
@@ -9121,7 +9429,7 @@ void GString::print_string(int nodes, double** allcoords0, string xyzstring)
 			if (icoords[0].grad1.wstate2>0)
 				xyzfilec << icoords[n].grad1.E[icoords[0].grad1.wstate2-1] - E0 <<endl;	
 			else
-				xyzfilec << icoords[n].grad1.E[icoords[0].grad1.wstate] - E0 <<endl;	
+				xyzfilec << icoords[n].grad1.E[icoords[0].grad1.nstates-1] - E0 <<endl;	
 		}
 		xyzfilec << "rms-step" <<endl; //ground-state
   	for (int n=0;n<nodes;n++)
@@ -9130,7 +9438,7 @@ void GString::print_string(int nodes, double** allcoords0, string xyzstring)
 			if (icoords[0].grad1.wstate2>0)
 				xyzfilec << icoords[n].grad1.E[icoords[n].grad1.wstate2-2] - E0 <<endl;	
 			else
-				xyzfilec << icoords[n].grad1.E[icoords[n].grad1.wstate-1] - E0 <<endl;	
+				xyzfilec << icoords[n].grad1.E[icoords[n].grad1.nstates-2] - E0 <<endl;	
 		}
 	}
 	

@@ -292,6 +292,7 @@ int Gradient::external_grad(double* coords, double* grad)
 		{
      string runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(runendCopy,4,"0");
    	 printf(" copying ORBKEY from ORBFILE%s to ORBFILE%s \n",runNameCopy.c_str(),runName0.c_str());
+     tc1.readOrb=true;
    	 string cmd = "cp scratch/ORBFILE"+runNameCopy+" scratch/ORBFILE"+runName0;
    	 system(cmd.c_str());
 		}
@@ -1102,6 +1103,7 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
 		{
    	 string runNameCopy = StringTools::int2str(runNum,4,"0")+"_"+StringTools::int2str(runendCopy,4,"0");
    	 printf(" copying ORBKEY from ORBFILE%s to ORBFILE%s \n",runNameCopy.c_str(),runName0.c_str());
+     tc1.readOrb=true;
    	 string cmd = "cp scratch/ORBFILE"+runNameCopy+" scratch/ORBFILE"+runName0;
    	 system(cmd.c_str());
 		}
@@ -1115,7 +1117,7 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
   for (int i=0;i<N3;i++)
     grada[1][i] *= ANGtoBOHR;
   for (int i=0;i<nstates;i++)
-    E[i] = tc1.getE(i+1)*627;5;
+    E[i] = tc1.getE(i+1)*627.5;
 #else
    printf(" NOT IMPLEMENTED\n");
    exit(-1);

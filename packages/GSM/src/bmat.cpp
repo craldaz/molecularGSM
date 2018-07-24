@@ -2044,12 +2044,7 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
 	//		C+= amasses[i];	
 	grad1.dDmw_dR=0.0;
 
-	if (penalty==2)
-	{
-		V0 = grad1.levine_penalty(coords,grad,Ut,penalty,sigma,dmw); //penalty 2 is min dist
-		energy = 0.0;
-	}
-	else if (penalty==1)
+  if (penalty==1)
 		energy = grad1.levine_penalty(coords,grad,Ut,penalty,sigma,dmw)-V0; //penalty 2 is min dist
 	else
  		energy = grad1.grads(coords, grad, Ut, 1) - V0;
@@ -2107,24 +2102,6 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
     nretry = 0;
     rflag = ic_to_xyz_opt();
     update_ic();
-		if (penalty==2)
-		{	
-			dmw =0.0;
-			double tmp=0.0;
-			for (int i=0;i<natoms;i++)
-			{
-				for (int j=0;j<3;j++)
-				{
-					tmp=(coords[3*i+j]-ref[3*i+j]);
-					dmw += amasses[i]*tmp*tmp;
-				}
-			}
-			dmw = sqrt(dmw);
-			grad1.dDmw_dR=0.0;
-			for (int i=0;i<natoms;i++)
-				for (int j=0;j<3;j++)
-					grad1.dDmw_dR += (1.0/dmw)*(coords[3*i+j] - ref[3*i+j])*amasses[i];
-		}
 
     if (rflag)
     {
@@ -2151,7 +2128,7 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
     if (n<OPTSTEPS-1)
     {
       noptdone++;
-			if (penalty)
+			if (penalty==1)
 				energy = grad1.levine_penalty(coords,grad,Ut,penalty,sigma,dmw)-V0;
 			else
  				energy = grad1.grads(coords, grad, Ut, 1) - V0;
@@ -2180,7 +2157,7 @@ double ICoord::opt_b(string xyzfile_string, int nsteps,int penalty,double sigma)
           Hintp_to_Hint();
           do_bfgs = 0;
           OPTSTEPS++;
-			    if (penalty)
+			    if (penalty==1)
 			    	energy = grad1.levine_penalty(coords,grad,Ut,penalty,sigma,dmw)-V0;
 			    else
             energy = grad1.grads(coords, grad, Ut, 1) - V0;
