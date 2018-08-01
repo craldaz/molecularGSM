@@ -617,10 +617,10 @@ void GString::String_Method_Optimization()
 		#if 1
 			printf(" E_A\n");
 			for (int i=0;i<40;i++)
-				printf(" %2.8f\n",EmodelA[i]-V0);
+				printf(" %2.8f\n",EmodelA[i]);
 			printf(" E_B\n");
 			for (int i=0;i<40;i++)
-				printf(" %2.8f\n",EmodelB[i]-V0);
+				printf(" %2.8f\n",EmodelB[i]);
 		#endif
 	
 	    int* min = new int[3];
