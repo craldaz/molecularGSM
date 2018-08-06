@@ -7755,7 +7755,8 @@ void GString::growth_iters(int max_iter, double& totalgrad, double& gradrms, dou
       printf("%i %1.4f\n",nnR-1,icoords[nnR-1].grad1.dE[wstate2-2]);
       printf("%i %1.4f\n",nnR-2,icoords[nnR-2].grad1.dE[wstate2-2]);
 			//turn this off 11/18/2017
-      //nnR-=1;
+		  //turn back on 08/06/2018
+      nnR-=1;
       int done=check_essm_done(osteps,oesteps,dqa,runNum,K);
       if (done)
       {
