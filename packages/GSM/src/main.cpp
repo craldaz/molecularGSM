@@ -2,7 +2,7 @@
 #include <fstream>
 #include <stdio.h>
 
-#include "gstring.h"
+#include "base.h"
 
 
 using namespace std;
@@ -36,9 +36,12 @@ int main(int argc, char* argv[]){
   int nnprocs = atoi(nprocs.c_str());
   printf(" Number of QC processors: %i \n",nnprocs);
   int name = atoi(xyzfile.c_str());
-  GString gstr;
-  gstr.init(inpfile, name, nnprocs);
-  gstr.String_Method_Optimization();
+
+  Base base;
+  base.init(inpfile,name,nnprocs);
+  //GString gstr;
+  //gstr.init(inpfile, name, nnprocs);
+  //gstr.String_Method_Optimization();
 
 
   return 0;
