@@ -14,7 +14,7 @@
 
 #include "GitSHA1.h"
 #include "constants.h"
-//#include "mecp.h"
+#include "mecp.h"
 #include "gstring.h"
 
 using namespace std;
