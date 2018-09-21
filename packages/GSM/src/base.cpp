@@ -16,6 +16,18 @@ void Base::init(string infilename, int run, int nprocs)
   structure_init(xyzfile);
  
   //initialize ISOMER if necessary
+  string isomerfile = "ISOMERS"+nstr;
+  struct stat sts;
+  if (stat(isomerfile.c_str(), &sts) != -1)
+    printf(" using ISOMERS file: %s \n",isomerfile.c_str());
+  else
+    isomerfile = "scratch/ISOMERS"+nstr;
+  int nfound = isomer_init(isomerfile);
+
+  if (isMECP)
+  {
+  isomer_init(isomerfile);
+  }
 
    return;
 }
@@ -394,3 +406,116 @@ void Base::structure_init(string xyzfile)
  
   return;
 }
+
+int Base::isomer_init(string isofilename)
+{
+
+  printf(" reading isomers \n");
+  if (bondfrags == 1)
+    printf("  WARNING: ignoring BONDS in ISOMERS file because BOND_FRAGMENTS == 1 \n");
+
+  nfound = 0;
+
+  nadd = 0;
+  nbrk = 0;
+  nangle = 0;
+  ntors = 0;
+
+  int maxab = 10;
+  bond = new int[2*maxab];
+  add = new int[2*maxab]; 
+  brk = new int[2*maxab];
+  angles = new int[3*maxab];
+  anglet = new double[3*maxab];
+  tors = new int[4*maxab];
+  tort = new double[4*maxab];
+  for (int i=0;i<2*maxab;i++) bond[i] = -1;
+  for (int i=0;i<2*maxab;i++) add[i] = -1;
+  for (int i=0;i<2*maxab;i++) brk[i] = -1;
+  for (int i=0;i<3*maxab;i++) angles[i] = -1;
+  for (int i=0;i<3*maxab;i++) anglet[i] = 999.;
+  for (int i=0;i<4*maxab;i++) tors[i] = -1;
+  for (int i=0;i<4*maxab;i++) tort[i] = 999.;
+
+  ifstream output(isofilename.c_str(),ios::in);
+  if (!output)
+  {
+    printf(" couldn't find ISOMERS file: %s \n",isofilename.c_str());
+    return 0;
+  }
+
+  string line;
+  vector<string> tok_line;
+  while(!output.eof())
+  {
+    getline(output,line);
+    //cout << " RR " << line << endl;
+    if (line.find("BOND")!=string::npos && bondfrags==0)
+    {
+      tok_line = StringTools::tokenize(line, " \t");
+      bond[2*nbond] = atoi(tok_line[1].c_str()) -1;
+      bond[2*nbond+1] = atoi(tok_line[2].c_str()) -1;
+      printf(" bond for coordinate system: %i %i \n",bond[2*nbond]+1,bond[2*nbond+1]+1);
+      nbond++;
+      if (nbond>maxab) break;
+    }
+    if (line.find("ADD")!=string::npos)
+    {
+      tok_line = StringTools::tokenize(line, " \t");
+      add[2*nadd] = atoi(tok_line[1].c_str()) -1;
+      add[2*nadd+1] = atoi(tok_line[2].c_str()) -1;
+      printf(" adding bond: %i %i \n",add[2*nadd]+1,add[2*nadd+1]+1);
+      //if (!geoms[id].bond_exists(add[nfound][2*nadd],add[nfound][2*nadd+1]))
+        nadd++;
+      if (nadd>maxab) break;
+    }
+    if (line.find("BREAK")!=string::npos)
+    {
+      tok_line = StringTools::tokenize(line, " \t");
+      brk[2*nbrk] = atoi(tok_line[1].c_str()) -1;
+      brk[2*nbrk+1] = atoi(tok_line[2].c_str()) -1;
+      printf(" breaking bond: %i %i \n",brk[2*nbrk]+1,brk[2*nbrk+1]+1);
+      //if (geoms[id].bond_exists(brk[nfound][2*nbrk],brk[nfound][2*nbrk+1]))
+        nbrk++;
+      if (nbrk>maxab) break;
+    }
+    if (line.find("ANGLE")!=string::npos)
+    {
+      tok_line = StringTools::tokenize(line, " \t");
+      angles[3*nangle+0] = atoi(tok_line[1].c_str()) -1;
+      angles[3*nangle+1] = atoi(tok_line[2].c_str()) -1;
+      angles[3*nangle+2] = atoi(tok_line[3].c_str()) -1;
+      anglet[nangle] = atof(tok_line[4].c_str());
+      printf(" angle: %i %i %i align to %4.3f \n",angles[3*nangle+0]+1,angles[3*nangle+1]+1,angles[3*nangle+2]+1,anglet[nangle]);
+      nangle++;
+      if (nangle>maxab) break;
+    }
+    if (line.find("TORSION")!=string::npos)
+    {
+      tok_line = StringTools::tokenize(line, " \t");
+      tors[4*ntors+0] = atoi(tok_line[1].c_str()) -1;
+      tors[4*ntors+1] = atoi(tok_line[2].c_str()) -1;
+      tors[4*ntors+2] = atoi(tok_line[3].c_str()) -1;
+      tors[4*ntors+3] = atoi(tok_line[4].c_str()) -1;
+      tort[ntors] = atof(tok_line[5].c_str());
+      printf(" tor: %i %i %i %i align to %4.3f \n",tors[4*ntors+0]+1,tors[4*ntors+1]+1,tors[4*ntors+2]+1,tors[4*ntors+3]+1,tort[ntors]);
+      ntors++;
+      if (ntors>maxab) break;
+    }
+  }
+  if (nadd > 0 || nbrk > 0 || nangle > 0 || ntors > 0) nfound++;
+
+  printf(" found %i isomer",nfound);
+  if (nfound!=1) printf("s");
+  printf("\n\n");
+
+#if DRIVE_ADD_TETRA
+  //printf("\n now adding tetrahedral destinations as drivers \n");
+  //Note: implemented in break_planes_ssm()
+#endif
+
+
+  return nfound;
+}
+
+

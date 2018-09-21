@@ -86,10 +86,25 @@ class Base
   double** perp_grads;
   double* V_profile;
 
+ // isomer_init
+  int nfound;
+  int nbond;
+  int nadd;
+  int nbrk;
+  int nangle;
+  int ntors;
+  int* bond;
+  int* add;
+  int* brk;
+  int* angles;
+  double* anglet;
+  int* tors;
+  double* tort;
+
+
 
  //**** Initialize functions *****
   void structure_init(string xyzfile);
-
 
   public:
     void driver();
