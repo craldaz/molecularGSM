@@ -2,26 +2,14 @@
 #define MECP_H
 
 
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <cstdlib>
-#include <ctime>
-#include <sys/time.h>
+#include "base.h"
 
-#include "constants.h"
 
-class Mecp
+class Mecp : public Base
 {
 
  private:
-
-
- public:
-
+    void mecp_opt(); 
 
 };
 

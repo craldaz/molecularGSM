@@ -11,11 +11,14 @@
 #include <cstdlib>
 #include <ctime>
 #include <sys/time.h>
+#include <sys/stat.h>
 
 #include "GitSHA1.h"
+#include "icoord.h"
+#include "utils.h"
+#include "stringtools.h"
+#include "pTable.h"
 #include "constants.h"
-#include "mecp.h"
-#include "gstring.h"
 
 using namespace std;
 
