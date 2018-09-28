@@ -64,7 +64,7 @@ class Gradient
    int hessian(double* H);
    double grads(double* coords, double* grad, double* Ut, int type);
    void add_force(double* coords, double* grad);
-   void init(string infilename, int natoms, int* anumbers, string* anames, double* coords, int run, int rune, int ncpu, int use_knnr, int q1);
+   void init(int natoms, int* anumbers, string* anames, double* coords, int run, int rune, int ncpu, int use_knnr, int q1);
    void update_knnr();
    void freemem();
    void write_xyz_grad(double* coords, double* grad, string filename);

@@ -380,14 +380,14 @@ void GString::String_Method_Optimization()
 
   printf("\n\n ---- Now preparing gradients ---- \n");
   string nstr = StringTools::int2str(runNum,4,"0");
-  grad1.init(infile0,natoms,anumbers,anames,icoords[1].coords,runNum,runend,ncpu,1,CHARGE);
-  newic.grad_init(infile0,ncpu,runNum,runend-1,0,CHARGE);
+  grad1.init(natoms,anumbers,anames,icoords[1].coords,runNum,runend,ncpu,1,CHARGE);
+  newic.grad_init(ncpu,runNum,runend-1,0,CHARGE);
 #if USE_MOLPRO || USE_TC
 	if (!isMECI)
 		prepare_orbitals();
 #else
   for (int n=0;n<nnmax0;n++)
-    icoords[n].grad_init(infile0,ncpu,runNum,runend+n,0,CHARGE); //level 3 is exact kNNR only, 0 is QM grad always
+    icoords[n].grad_init(ncpu,runNum,runend+n,0,CHARGE); //level 3 is exact kNNR only, 0 is QM grad always
 #endif
 
 //do I need this?
@@ -413,7 +413,7 @@ void GString::String_Method_Optimization()
 
 		icoords[0].grad1.seedType=3;
 		icoords[0].optCG=0;
-		icoords[0].grad_init(infile0,ncpu,runNum,0,0,0);
+		icoords[0].grad_init(ncpu,runNum,0,0,0);
 		//V0 = icoords[0].grad1.energy_initial(coords[0],runNum,0,0,0.);
   	//for (int n=0;n<nnmax0;n++)
   	//  icoords[n].V0 = V0;
@@ -467,7 +467,7 @@ void GString::String_Method_Optimization()
   	for (int n=0;n<nnmax0;n++)
 		{
 			icoords[n].grad1.seedType = 3; 		
- 	  	icoords[n].grad_init(infile0,ncpu,runNum,n,0,0);
+ 	  	icoords[n].grad_init(ncpu,runNum,n,0,0);
 		}
 	  icoords[0].reset(natoms,anames,anumbers,coords[0]);
   	//V0=grad1.grads(coords[0], grads[0], icoords[0].Ut, 3);
@@ -3034,7 +3034,7 @@ void GString::scan_r(int weig)
   int size_ic = nbonds+nangles+ntor;
   int len_d = newic.nicd0;
 
-  grad1.init(infile0,natoms,anumbers,anames,icoords[0].coords,runNum,runend,ncpu,3,CHARGE);
+  grad1.init(natoms,anumbers,anames,icoords[0].coords,runNum,runend,ncpu,3,CHARGE);
 
   double* C0 = new double[size_ic];
   double* C = new double[size_ic];
@@ -3172,8 +3172,8 @@ void GString::opt_tr()
   double* C = new double[size_ic];
   double* D = new double[size_ic];
 
-  newic.grad_init(infile0,ncpu,runNum,runend-1,1,CHARGE);
-  grad1.init(infile0,natoms,anumbers,anames,icoords[0].coords,runNum,runend,ncpu,3,CHARGE);
+  newic.grad_init(ncpu,runNum,runend-1,1,CHARGE);
+  grad1.init(natoms,anumbers,anames,icoords[0].coords,runNum,runend,ncpu,3,CHARGE);
 
 //  newic.reset(pTSnodecoords);
 #if 1
@@ -8792,7 +8792,7 @@ void GString::prepare_orbitals()
 		if (restart_wfn && (n==0 || n==nnmax0-1))
 			icoords[n].grad1.seedType = 3; 		
 
- 	  icoords[n].grad_init(infile0,ncpu,runNum,n,0,0);
+ 	  icoords[n].grad_init(ncpu,runNum,n,0,0);
     //printf(" Em[%i]:",n);
     //printf(" %2.1f",icoords[n].grad1.E[0]);
     //printf(" %2.1f\n",icoords[n].grad1.E[1]);

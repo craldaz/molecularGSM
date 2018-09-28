@@ -17,12 +17,12 @@ void QChem::alloc(int natoms0)
   return;
 }
 
+
 void QChem::init(int natoms0, int* anumbers0, string* anames0, int run, int rune)
 {
   gradcalls = 0;
   nscffail = 0;
   firstrun = 1;
-
   natoms = natoms0;
   anumbers = new int[natoms+1];
   anames = new string[natoms+1];
@@ -36,27 +36,33 @@ void QChem::init(int natoms0, int* anumbers0, string* anames0, int run, int rune
   runend = rune;
   string nstr = StringTools::int2str(run,4,"0");
 
+//  ifstream infile;
+//  infile.open(infilename.c_str());
+//  if (!infile){
+//    cout << "!!!!!Error opening inputfile!!!!" << endl;
+//    exit(-1);
+//  }
 
 #if QCHEM
   printf("  Q-Chem initialized \n");
 #endif
 
   // pass infile to stringtools and get the line containing tag
-  string tag="QCHEM Scratch Info";
-  bool found=StringTools::findstr(infile, tag);
+//  string tag="QCHEM Scratch Info";
+//  bool found=StringTools::findstr(infile, tag);
 
-  if (!found){
-    cout << "!!!!Could not find tag for QCHEM Info!!!!" << endl;
-    exit(-1);
-  }
+//  if (!found){
+//    cout << "!!!!Could not find tag for QCHEM Info!!!!" << endl;
+//    exit(-1);
+//  }
 
-  string line, templine;
+//  string line, templine;
 
-  // parse the input section here
+// parse the input section here
 
-  getline(infile, line);
-  templine=StringTools::newCleanString(line);
-  scrBaseDir=StringTools::trimRight(templine);
+//  getline(infile, line);
+//  templine=StringTools::newCleanString(line);
+  scrBaseDir="$QCSCRATCH/";
   if (scrBaseDir.find("$")!=string::npos)
   {
     scrBaseDir.resize(scrBaseDir.size()-1);
@@ -77,9 +83,9 @@ void QChem::init(int natoms0, int* anumbers0, string* anames0, int run, int rune
   }
   //cout <<"  -scratch base directory set to: " << scrBaseDir << endl;
 
-  getline(infile, line);
-  templine=StringTools::newCleanString(line);
-  runName=StringTools::trimRight(templine);
+//  getline(infile, line);
+//  templine=StringTools::newCleanString(line);
+  runName="GSM_go1q";
   runName+=nstr;
   string runends = StringTools::int2str(runend,3,"0");
   runName+="."+runends;
@@ -91,7 +97,7 @@ void QChem::init(int natoms0, int* anumbers0, string* anames0, int run, int rune
 
   scrdir=scrBaseDir+runName;
 
-  infile.close();
+//  infile.close();
   //cout << "  -Finished initializing QCHEM info" << endl;
  
 

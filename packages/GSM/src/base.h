@@ -36,12 +36,10 @@ class Base
       int runNum;
       int runend;
       string runends;
-      string infile0;
       int nn;
       int nnR;
       int nnP;
       int nnmax;
-      int nnmax0; //input value of nnmax
       int ncpu;
   int tstype;
   double prodelim;
@@ -105,6 +103,7 @@ class Base
 
 
   public:
+    int nnmax0; //input value of nnmax
     int isomer_init(string isofilename);
     void parameter_init(string infilename);
  //**** Initialize functions *****

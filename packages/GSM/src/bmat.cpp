@@ -113,11 +113,11 @@ int ICoord::bmat_alloc() {
   return 0;
 }
 
-int ICoord::grad_init(string infilename, int ncpu, int run, int rune, int knnr_level, int q1) 
+int ICoord::grad_init(int ncpu, int run, int rune, int knnr_level, int q1) 
 {
   runends = StringTools::int2str(run,4,"0");
   runend2 = StringTools::int2str(run,4,"0")+"."+StringTools::int2str(rune,4,"0");
-  grad1.init(infilename,natoms,anumbers,anames,coords,run,rune,ncpu,knnr_level,q1);
+  grad1.init(natoms,anumbers,anames,coords,run,rune,ncpu,knnr_level,q1);
   g_inited = 1;
   //printf(" knnr_level: %i \n",knnr_level);
 

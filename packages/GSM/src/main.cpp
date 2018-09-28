@@ -39,8 +39,13 @@ int main(int argc, char* argv[]){
   int name = atoi(xyzfile.c_str());
 
   Base base;
+  printf("Starting base.parameter_init()\n");
   base.parameter_init(inpfile);
-  Mecp mecp(name,nnprocs);
+  
+  printf("Starting mecp(name,nnprocs)\n");
+  Mecp mecp(name,nnprocs,base.nnmax0);
+
+  printf("Starting mecp.driver()\n");
   mecp.driver();
     
   //GString gstr;

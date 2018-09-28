@@ -3,7 +3,7 @@
 
 void Mecp::calc_V0()
 {
-  printf("Hello\n");
+  //printf("Hello\n");
     V0 = icoords[0].grad1.grads(coords[0], grads[0], icoords[0].Ut, 3);
   printf("  setting V0 to: %8.1f (%12.8f au) \n",V0,V0/627.5);
 }
@@ -11,11 +11,13 @@ void Mecp::calc_V0()
 void Mecp::driver()
 {
     //preopt if turned on
-    init()
+   
+    //init() // init for qchem
     for (int n=0;n<nnmax0;n++)
     {
- 	    icoords[n].grad_init(infile0,ncpu,runNum,n,0,0); //TODO take infile0 out of everything called by grad_init
+        icoords[n].grad_init(ncpu,runNum,n,0,0); //TODO take infile0 out of everything called by grad_init
     }
+    //printf("Hello Actual\n");
     calc_V0(); //TODO eventually we need to both singlet and triplet (this will be calculator dependent, e.g. qchem)
     //if MECP 
       //set variables, parameters, etc
@@ -23,8 +25,12 @@ void Mecp::driver()
 
 }
 
-Mecp::Mecp(int run, int nprocs) //TODO put parameters here
-{
+Mecp::Mecp(int run, int nprocs,int NNODES)/*, float DQMAG_SSM_MAX, float DQMAG_SSM_MIN,
+          int MAX_OPT_ITERS, int STEP_OPT_ITERS, int INITIAL_OPT,
+          float SSM_DQMAX, float CONV_TOL, float ADD_NODE_TOL,
+          int BOND_FRAGMENTS, int NNODES)*/ //TODO put parameters here
+{ 
+  
   //read xyz file
   isSSM=1;
   string nstr=StringTools::int2str(run,4,"0");

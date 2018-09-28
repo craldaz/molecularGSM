@@ -298,7 +298,7 @@ class ICoord {
   int ic_to_xyz();
   int ic_to_xyz_opt();
 //  int qchem_init(string infilename, int ncpu, int run, int rune);
-  int grad_init(string infilename, int ncpu, int run, int rune, int use_knnr, int q1);
+  int grad_init(int ncpu, int run, int rune, int use_knnr, int q1);
   string runends;
   string runend2;
 

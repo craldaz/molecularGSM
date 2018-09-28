@@ -64,6 +64,7 @@ class QChem {
    double grads(double* coords, double* grads);
    void alloc(int natoms);
    void init(int natoms, int* anumbers, string* anames, int run, int rune);
+   // std::string&, int&, int*&, std::string*&, int&, int&)'
    void freemem();
    void write_xyz_grad(double* coords, double* grad, string filename);
 

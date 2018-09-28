@@ -644,7 +644,7 @@ void Gradient::read_tc_settings(int& nstates0, int& nclosed, int& nactive,  stri
   return;
 }
 
-void Gradient::init(string infilename, int natoms0, int* anumbers0, string* anames0, double* coords0, int run, int rune, int ncpu, int knnr_level, int q1)
+void Gradient::init(int natoms0, int* anumbers0, string* anames0, double* coords0, int run, int rune, int ncpu, int knnr_level, int q1)
 {
 
 #if QCHEM && QCHEMSF
@@ -698,12 +698,12 @@ void Gradient::init(string infilename, int natoms0, int* anumbers0, string* anam
   runends = nstr;
 
 #if QCHEM
-  qchem1.init(infilename,natoms,anumbers,anames,run,rune);
+  qchem1.init(natoms,anumbers,anames,run,rune);
   qchem1.ncpu = ncpu;
 #endif
 #if QCHEMSF
   nstates = read_nstates();
-  qchemsf1.init(infilename,natoms,anumbers,anames,run,rune);
+  qchemsf1.init(natoms,anumbers,anames,run,rune);
   qchemsf1.ncpu = ncpu;
 #endif
 #if USE_MOLPRO
@@ -745,16 +745,16 @@ void Gradient::init(string infilename, int natoms0, int* anumbers0, string* anam
     tc1.readOrb = false;
 #endif
 #if USE_ORCA
-  orca1.init(infilename,natoms,anumbers,anames,run,rune);
+  orca1.init(natoms,anumbers,anames,run,rune);
   orca1.ncpu = ncpu;
 #endif
 #if USE_GAUSSIAN
-  gaus1.init(infilename,natoms,anumbers,anames,run,rune);
+  gaus1.init(natoms,anumbers,anames,run,rune);
   gaus1.CHARGE = CHARGE;
   gaus1.ncpu = ncpu;
 #endif
 #if USE_ASE
-  ase1.init(infilename,natoms,anumbers,anames,run,rune);
+  ase1.init(natoms,anumbers,anames,run,rune);
   ase1.CHARGE = CHARGE;
   ase1.ncpu = ncpu;
 #endif
