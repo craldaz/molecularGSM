@@ -17,7 +17,7 @@ void QChem::alloc(int natoms0)
   return;
 }
 
-void QChem::init(string infilename, int natoms0, int* anumbers0, string* anames0, int run, int rune)
+void QChem::init(int natoms0, int* anumbers0, string* anames0, int run, int rune)
 {
   gradcalls = 0;
   nscffail = 0;
@@ -36,16 +36,6 @@ void QChem::init(string infilename, int natoms0, int* anumbers0, string* anames0
   runend = rune;
   string nstr = StringTools::int2str(run,4,"0");
 
-  //cout << "  -Initializing QCHEM info ..." << endl;
-  //cout << "  -opening inpfile to read qchem parameters" << endl;
-  ifstream infile;
-  infile.open(infilename.c_str());
-  if (!infile){
-    cout << "!!!!!Error opening inputfile!!!!" << endl;
-    exit(-1);
-  }
-
-  //cout <<"  -reading file..." << endl;
 
 #if QCHEM
   printf("  Q-Chem initialized \n");

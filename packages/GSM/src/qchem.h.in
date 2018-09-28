@@ -63,7 +63,7 @@ class QChem {
    int read_hess(double* hess);
    double grads(double* coords, double* grads);
    void alloc(int natoms);
-   void init(string infilename, int natoms, int* anumbers, string* anames, int run, int rune);
+   void init(int natoms, int* anumbers, string* anames, int run, int rune);
    void freemem();
    void write_xyz_grad(double* coords, double* grad, string filename);
 

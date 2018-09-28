@@ -22,11 +22,10 @@
 
 using namespace std;
 
-// This file is the new "driver" class
 
 class Base 
 {
-  private:
+  protected:
      //MECP mecp;
     //MECI meci;
     //GString gstr;
@@ -59,7 +58,6 @@ class Base
    // ==> Method parameters
       int isMECP;
   int isRestart;
-  int isSSM; //shooting string flag
   int hessSSM; //starting SSM hessian given
   int isFSM; //freezing string flag
   int isMECI; //MECI opt
@@ -83,7 +81,6 @@ class Base
   string* anames;               //array of atomic symbols (for creating input QC file)
   int* frozen;
   double** coords;
-  ICoord* icoords;
   double** tangents;
   double** grads;
   double** perp_grads;
@@ -106,14 +103,15 @@ class Base
 
 
 
- //**** Initialize functions *****
-  void structure_init(string xyzfile);
 
   public:
-    void driver();
-    void init(string infilename, int run, int nprocs);
     int isomer_init(string isofilename);
     void parameter_init(string infilename);
+ //**** Initialize functions *****
+  void structure_init(string xyzfile);
+  void initialize_icoords();
+  ICoord* icoords;
+  int isSSM; //shooting string flag
 };
 
 #endif

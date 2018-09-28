@@ -7,9 +7,12 @@
 
 class Mecp : public Base
 {
-
  private:
-    void mecp_opt(); 
+    double V0;
+ public:
+    void driver();
+    void calc_V0(); 
+    Mecp(int name,int nprocs);
 
 };
 

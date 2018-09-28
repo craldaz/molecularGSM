@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "base.h"
+#include "mecp.h"
 
 
 using namespace std;
@@ -38,7 +39,10 @@ int main(int argc, char* argv[]){
   int name = atoi(xyzfile.c_str());
 
   Base base;
-  base.init(inpfile,name,nnprocs);
+  base.parameter_init(inpfile);
+  Mecp mecp(name,nnprocs);
+  mecp.driver();
+    
   //GString gstr;
   //gstr.init(inpfile, name, nnprocs);
   //gstr.String_Method_Optimization();

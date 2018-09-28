@@ -1,49 +1,19 @@
 #include "base.h"
 
-void Base::init(string infilename, int run, int nprocs)
+
+
+void Base::initialize_icoords()
 {
-
-  string nstr=StringTools::int2str(run,4,"0");
-  string xyzfile = "scratch/initial"+nstr+".xyz";
-  ncpu = nprocs;
-  runNum = run;
-  runends = nstr;
-
-  //parameter init from infileq
-  parameter_init(infilename);
-
-  //read xyz file
-  structure_init(xyzfile);
- 
-  //initialize ISOMER if necessary
-  string isomerfile = "ISOMERS"+nstr;
-  struct stat sts;
-  if (stat(isomerfile.c_str(), &sts) != -1)
-    printf(" using ISOMERS file: %s \n",isomerfile.c_str());
-  else
-    isomerfile = "scratch/ISOMERS"+nstr;
-  int nfound = isomer_init(isomerfile);
-
-  if (isMECP)
-  {
-  isomer_init(isomerfile);
-  }
-
-   return;
+  icoords = new ICoord[nnmax+1];
+  for (int i=0;i<nnmax;i++)
+    icoords[i].alloc(natoms);
+  for (int i=0;i<nnmax;i++)
+    icoords[i].gradrms = 1.;
+  for (int i=1;i<nnmax-1;i++)
+    icoords[i].reset(natoms,anames,anumbers,coords[0]);
+  icoords[0].reset(natoms,anames,anumbers,coords[0]);
+  icoords[nnmax-1].reset(natoms,anames,anumbers,coords[nnmax-1]);
 }
-
-void Base::driver()
-{
-
-    //preopt if turned on
-    printf("Hello\n");
-    //if MECP 
-      //set variables, parameters, etc
-      //do opt,etc
-
-   return;
-}
-
 
 void Base::parameter_init(string infilename)
 {
@@ -56,11 +26,11 @@ void Base::parameter_init(string infilename)
   prodelim = 1000.;
   lastOpt = 0; //default do not optimize last SSM node 
   initialOpt = 0; //default do not optimize first node 
-  DQMAG_SSM_MAX = 0.8; 
-  DQMAG_SSM_MIN = 0.2; 
-  QDISTMAX = 5.0;
+  DQMAG_SSM_MAX = 0.8;  //TODO
+  DQMAG_SSM_MIN = 0.2;  //TODO
+  QDISTMAX = 5.0;  
   PEAK4_EDIFF = 2.0;
-  isRestart = 0;
+  isRestart = 0; 
   isSSM = 0;
   isFSM = 0;
 	isMECI =0;
@@ -101,13 +71,13 @@ void Base::parameter_init(string infilename)
     templine=StringTools::newCleanString(tok_line[0]);
     tagname=StringTools::trimRight(templine);
     // these variables are denoted by strings with same name
-    if (tagname=="MAX_OPT_ITERS") {
+    if (tagname=="MAX_OPT_ITERS") { //TODO
       MAX_OPT_ITERS=atoi(tok_line[1].c_str());
       stillreading=true;
       cout <<"  -MAX_OPT_ITERS: " << MAX_OPT_ITERS << endl;
     }
     if (tagname=="STEP_OPT_ITERS") {
-      STEP_OPT_ITERS = atoi(tok_line[1].c_str());
+      STEP_OPT_ITERS = atoi(tok_line[1].c_str()); //TODO
       stillreading = true;
       cout <<"  -STEP_OPT_ITERS: " << STEP_OPT_ITERS << endl;
     }
@@ -136,12 +106,12 @@ void Base::parameter_init(string infilename)
       stillreading = true;
       cout <<"  -FINAL_OPT: " << lastOpt << endl;
     }
-    if (tagname=="INITIAL_OPT") {
+    if (tagname=="INITIAL_OPT") { //TODO
       initialOpt = atoi(tok_line[1].c_str());
       stillreading = true;
       cout <<"  -INITIAL_OPT: " << initialOpt << endl;
     }
-    if (tagname=="SSM_DQMAX") {
+    if (tagname=="SSM_DQMAX") { //TODO
       DQMAG_SSM_MAX = atof(tok_line[1].c_str());
       DQMAG_SSM_MIN = DQMAG_SSM_MAX/4.;
       stillreading = true;
@@ -223,12 +193,12 @@ void Base::parameter_init(string infilename)
       }
       stillreading=true;
     }
-    if (tagname=="CONV_TOL") {
+    if (tagname=="CONV_TOL") {//TODO
       CONV_TOL=atof(tok_line[1].c_str());
       stillreading=true;
       cout <<"  -CONV_TOL = " << CONV_TOL << endl;
     }
-    if (tagname=="ADD_NODE_TOL"){
+    if (tagname=="ADD_NODE_TOL"){ //TODO
       ADD_NODE_TOL=atof(tok_line[1].c_str());
       stillreading=true;
       cout <<"  -ADD_NODE_TOL = " << ADD_NODE_TOL << endl;
@@ -238,7 +208,7 @@ void Base::parameter_init(string infilename)
       stillreading = true;
       cout <<"  -SCALING = " << SCALING << endl;
     }
-    if (tagname=="BOND_FRAGMENTS"){
+    if (tagname=="BOND_FRAGMENTS"){//TODO
       bondfrags = atoi(tok_line[1].c_str());
       stillreading = true;
       cout <<"  -BOND_FRAGMENTS = " << bondfrags << endl;
@@ -253,7 +223,7 @@ void Base::parameter_init(string infilename)
       stillreading = true;
       cout <<"  -CLIMB_TS = " << use_exact_climb << endl;
     }
-    if (tagname=="nnodes" || tagname=="NNODES"){
+    if (tagname=="nnodes" || tagname=="NNODES"){ //TODO
       nnmax = atoi(tok_line[1].c_str());
       stillreading = true;
       cout <<"  -NNODES = " << nnmax << endl;
@@ -352,10 +322,10 @@ void Base::structure_init(string xyzfile)
   printf("Opening xyz file \n");
   infile.open(xyzfile.c_str());
 
-
+  printf(" Here %i\n",isSSM);
   for (int i=0;i<2;i++)
   {
-    if ((isSSM || isMAP_SE || isMECI || isPRODUCT) && i==1) break;
+    if ((isSSM) && i==1) break;
     success=getline(infile, line);
     success=getline(infile, line);
     for (int j=0;j<natoms;j++)
@@ -381,7 +351,7 @@ void Base::structure_init(string xyzfile)
     }
   }
 
-  if (isSSM || isMAP_SE || isMECI || isPRODUCT)
+  if (isSSM)
   for (int i=0;i<3*natoms;i++)
     coords[nnmax-1][i] = coords[0][i];
 

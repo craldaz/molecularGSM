@@ -83,6 +83,7 @@ if(GSM_ENABLE_QCHEM)
     GFSTRINGQ_TEST(alanineDipeptideIsomerization/qchem/de-gsm alanine)
     GFSTRINGQ_TEST(ammoniaBorane/qchem/de-gsm ammonia)
     GFSTRINGQ_TEST(dielsAlder/qchem/de-gsm diels)
+    GFSTRINGQ_TEST(ethyleneRotation/qchem/se-gsm ethylene_segsm)
 		##don't run ethylene because it crashes
     GFSTRINGQ_TEST(ethyleneRotation/qchem/de-gsm ethylene)
     GFSTRINGQ_TEST(methanolFormaldehydeHydTransfer/qchem/de-gsm methanol)
