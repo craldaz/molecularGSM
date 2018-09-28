@@ -246,6 +246,8 @@ double QChem::grads(double* coords, double* grad)
   // system command here to process XYZ
   //cout << "about to call ./gscreate" << endl;
   nstr=StringTools::int2str(runNum,4,"0");
+
+  //TODO for multistate need another gscreate which calls qcin2 that has triplet multiplicity
   string cmd = "./gscreate "+nstr+runends;
   system(cmd.c_str());
   if (!firstrun)

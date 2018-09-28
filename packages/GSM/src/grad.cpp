@@ -165,6 +165,11 @@ int Gradient::external_grad(double* coords, double* grad)
 
 #if QCHEM
   energy = qchem1.grads(coords,grad);
+  //sstate, tstate specifies how many singlet and triplets (analogous to nstate)
+  //sweight, tweight specifies what states to do gradients/average (analogous to wstate)
+   //TODO check variables are read
+  //TODO if sstate and tstate are > 0 (they should be 0 by default) then do multistate stuff
+    //see qchem TODO
 #elif QCHEMSF
 	if (wstate<0)
 	{
@@ -1175,3 +1180,5 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
 
   return energy;
 }
+
+//TODO create a "read_qchem_init" function here for multistate problems

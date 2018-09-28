@@ -15,13 +15,13 @@ void Mecp::driver()
     //init() // init for qchem
     for (int n=0;n<nnmax0;n++)
     {
-        icoords[n].grad_init(ncpu,runNum,n,0,0); //TODO take infile0 out of everything called by grad_init
+        icoords[n].grad_init(ncpu,runNum,n,0,0); 
+        //TODO  read multistate file called QCHEM that specifies tstates and sstates , etc.  for icoords[n].grad1
     }
-    //printf("Hello Actual\n");
+ 
+     //
+
     calc_V0(); //TODO eventually we need to both singlet and triplet (this will be calculator dependent, e.g. qchem)
-    //if MECP 
-      //set variables, parameters, etc
-      //do opt,etc
 
 }
 

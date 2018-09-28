@@ -83,11 +83,13 @@ class Gradient
    double energy0;
    double energy;
 
-  //for molpro
+  //for multistate
    int nstates;
    int wstate;
    int wstate2;
    int wstate3;
+   //TODO put s/t crossing stuff here
+
 	 double* dE;
    double** grada; //multistate gradients
    double* E; //for multiple states
