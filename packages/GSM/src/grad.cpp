@@ -167,9 +167,26 @@ int Gradient::external_grad(double* coords, double* grad)
   energy = qchem1.grads(coords,grad);
   //sstate, tstate specifies how many singlet and triplets (analogous to nstate)
   //sweight, tweight specifies what states to do gradients/average (analogous to wstate)
-   //TODO check variables are read
+   //TODO check variables are read  
+   //KD: This looks ok^^^^
   //TODO if sstate and tstate are > 0 (they should be 0 by default) then do multistate stuff
+  //This also looks ok ^^^^ Just need to code in implementing multistate calcs
     //see qchem TODO
+   
+  int sstates=1;
+  int tstates=0;
+  read_qchem_settings(sstates,tstates);
+  if ((sstates > 0) && (tstates > 0))
+  {
+    //Do multistate stuff 
+    printf("Initiating Multistate stuff\n");
+    printf("You still need to write this code\n");
+  }
+  else
+  {
+   //continue with regular QCHEM?
+   printf("Doing regular QCHEM stuff");
+  }
 #elif QCHEMSF
 	if (wstate<0)
 	{
@@ -1181,4 +1198,91 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
   return energy;
 }
 
+
 //TODO create a "read_qchem_init" function here for multistate problems
+// read_qchem_settings function here for multistate
+
+
+void Gradient::read_qchem_settings(int& sstates, int& tstates)
+{
+  swstate = 1; //default 
+  swstate2 = 0;
+  swstate3 = 0;
+
+  twstate = 1;
+  twstate2 = 0;
+  twstate3 = 0;
+
+  string filename = "QCHEM";
+  printf(" reading file: %s \n",filename.c_str());
+
+
+  ifstream infile;
+  infile.open(filename.c_str());
+  if (!infile){
+    printf(" Error: couldn't open settings file: %s \n",filename.c_str());
+    exit(-1);
+  }
+  string line;
+  bool success=true;
+  int nf = 0;
+  while (!infile.eof())
+  {
+    success=getline(infile, line);
+    vector<string> tok_line = StringTools::tokenize(line, " ");
+    //cout << "RR0: " << line << endl; fflush(stdout);
+
+    if (nf==0)
+      sstates = atoi(tok_line[1].c_str());
+    else if (nf==1)
+    {
+      swstate = atoi(tok_line[1].c_str());
+      if (tok_line.size()>2) swstate2 = atoi(tok_line[2].c_str());
+      if (tok_line.size()>3) swstate3 = atoi(tok_line[3].c_str());
+      printf("  swstate: %i %i %i \n",swstate,swstate2,swstate3);
+    }
+    else if (nf==2)
+      tstates = atoi(tok_line[1].c_str());
+    else if (nf==3)
+      twstate = atoi(tok_line[1].c_str());
+      if (tok_line.size()>2) twstate2 = atoi(tok_line[2].c_str());
+      if (tok_line.size()>3) twstate3 = atoi(tok_line[3].c_str());
+      printf("  twstate: %i %i %i \n",twstate,twstate2,twstate3);
+    nf++;
+  }
+  infile.close();
+
+  printf("   settings. sstates/swstate/tstates/twstate: %2i %2i %2i %2i \n",sstates,swstate,tstates,twstate);
+  
+  if (swstate2>0 && sstates<2)
+  {
+    printf("  swstate2: %i sstates: %i. exiting \n",swstate2,sstates);
+    exit(1);
+  }
+  if (swstate3>0 && sstates<3)
+  {
+    printf("  swstate3: %i sstates: %i. exiting \n",swstate3,sstates);
+    exit(1);
+  }
+  if (twstate2>0 && tstates<2)
+  {
+    printf("  twstate2: %i tstates: %i. exiting \n",twstate2,tstates);
+    exit(1);
+  }
+  if (twstate3>0 && tstates<2)
+  {
+    printf("  twstate3: %i tstates: %i. exiting \n",twstate3,tstates);
+    exit(1);
+  }
+
+	qchem1.swstate=swstate; 
+	qchem1.swstate2=swstate2; 
+	qchem1.swstate3=swstate3;
+        qchem1.twstate=twstate;
+        qchem1.twstate2=twstate2;
+        qchem1.twstate3=twstate3;
+
+  return;
+}
+
+

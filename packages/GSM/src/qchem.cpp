@@ -248,8 +248,13 @@ double QChem::grads(double* coords, double* grad)
   nstr=StringTools::int2str(runNum,4,"0");
 
   //TODO for multistate need another gscreate which calls qcin2 that has triplet multiplicity
+  //
   string cmd = "./gscreate "+nstr+runends;
   system(cmd.c_str());
+
+//  string cmd = "./gscreate2 "+nstr+runends; //  
+//  system(cmd.c_str());                      //
+
   if (!firstrun)
   {
     cmd = "mv "+qcoutfile+" "+qcoutfile+"_prev";

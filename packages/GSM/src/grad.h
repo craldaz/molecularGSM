@@ -57,7 +57,8 @@ class Gradient
    int read_molpro_init(string* &hf_lines);
    void read_tc_settings(int& nstates0, int& nclosed, int& nactive, string& basis,string& method);
    int force_init(string ffile);
-
+   
+   void read_qchem_settings(int& sstates, int& tstates);
 
   public:
 
@@ -88,7 +89,16 @@ class Gradient
    int wstate;
    int wstate2;
    int wstate3;
-   //TODO put s/t crossing stuff here
+   //TODo put s/t crossing stuff here
+   int sstates;
+   int tstates;
+   int swstate;
+   int swstate2;
+   int swstate3;
+   int twstate;
+   int twstate2;
+   int twstate3;
+
 
 	 double* dE;
    double** grada; //multistate gradients

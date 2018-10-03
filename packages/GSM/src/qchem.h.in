@@ -74,6 +74,17 @@ class QChem {
    double energy0;
    double energy;
 
+   // multistate stuff
+   int sstates;
+   int swstate;
+   int swstate2;
+   int swstate3;
+   int tstates;
+   int twstate;
+   int twstate2;
+   int twstate3;
+
+
 };
 
 #endif

@@ -26,8 +26,8 @@ void Base::parameter_init(string infilename)
   prodelim = 1000.;
   lastOpt = 0; //default do not optimize last SSM node 
   initialOpt = 0; //default do not optimize first node 
-  DQMAG_SSM_MAX = 0.8;  //TODO
-  DQMAG_SSM_MIN = 0.2;  //TODO
+  DQMAG_SSM_MAX = 0.8;  
+  DQMAG_SSM_MIN = 0.2;  
   QDISTMAX = 5.0;  
   PEAK4_EDIFF = 2.0;
   isRestart = 0; 
@@ -71,13 +71,13 @@ void Base::parameter_init(string infilename)
     templine=StringTools::newCleanString(tok_line[0]);
     tagname=StringTools::trimRight(templine);
     // these variables are denoted by strings with same name
-    if (tagname=="MAX_OPT_ITERS") { //TODO
+    if (tagname=="MAX_OPT_ITERS") { 
       MAX_OPT_ITERS=atoi(tok_line[1].c_str());
       stillreading=true;
       cout <<"  -MAX_OPT_ITERS: " << MAX_OPT_ITERS << endl;
     }
     if (tagname=="STEP_OPT_ITERS") {
-      STEP_OPT_ITERS = atoi(tok_line[1].c_str()); //TODO
+      STEP_OPT_ITERS = atoi(tok_line[1].c_str());
       stillreading = true;
       cout <<"  -STEP_OPT_ITERS: " << STEP_OPT_ITERS << endl;
     }
@@ -106,12 +106,12 @@ void Base::parameter_init(string infilename)
       stillreading = true;
       cout <<"  -FINAL_OPT: " << lastOpt << endl;
     }
-    if (tagname=="INITIAL_OPT") { //TODO
+    if (tagname=="INITIAL_OPT") {
       initialOpt = atoi(tok_line[1].c_str());
       stillreading = true;
       cout <<"  -INITIAL_OPT: " << initialOpt << endl;
     }
-    if (tagname=="SSM_DQMAX") { //TODO
+    if (tagname=="SSM_DQMAX") {
       DQMAG_SSM_MAX = atof(tok_line[1].c_str());
       DQMAG_SSM_MIN = DQMAG_SSM_MAX/4.;
       stillreading = true;
@@ -193,12 +193,12 @@ void Base::parameter_init(string infilename)
       }
       stillreading=true;
     }
-    if (tagname=="CONV_TOL") {//TODO
+    if (tagname=="CONV_TOL") {
       CONV_TOL=atof(tok_line[1].c_str());
       stillreading=true;
       cout <<"  -CONV_TOL = " << CONV_TOL << endl;
     }
-    if (tagname=="ADD_NODE_TOL"){ //TODO
+    if (tagname=="ADD_NODE_TOL"){
       ADD_NODE_TOL=atof(tok_line[1].c_str());
       stillreading=true;
       cout <<"  -ADD_NODE_TOL = " << ADD_NODE_TOL << endl;
@@ -208,7 +208,7 @@ void Base::parameter_init(string infilename)
       stillreading = true;
       cout <<"  -SCALING = " << SCALING << endl;
     }
-    if (tagname=="BOND_FRAGMENTS"){//TODO
+    if (tagname=="BOND_FRAGMENTS"){
       bondfrags = atoi(tok_line[1].c_str());
       stillreading = true;
       cout <<"  -BOND_FRAGMENTS = " << bondfrags << endl;
@@ -223,7 +223,7 @@ void Base::parameter_init(string infilename)
       stillreading = true;
       cout <<"  -CLIMB_TS = " << use_exact_climb << endl;
     }
-    if (tagname=="nnodes" || tagname=="NNODES"){ //TODO
+    if (tagname=="nnodes" || tagname=="NNODES"){
       nnmax = atoi(tok_line[1].c_str());
       stillreading = true;
       cout <<"  -NNODES = " << nnmax << endl;
