@@ -33,14 +33,18 @@ class QChem {
   private:
   
   int nscffail;
+  int nscffail_t;
   int firstrun;
 
    int runNum;
    int runend;
   string qcinfile;   
+  string qcinfile_t;
   string inpfile;  
   string qcoutfile;
+  string qcoutfile_t;
   string qcoutfileh;
+  string qcoutfileh_t;
   string scrdir;  
   string scrBaseDir;
   string runName;
@@ -89,7 +93,7 @@ class QChem {
 
    //TODO
    double getE(int wstate);
-   void multigrad(X,X);
+   void multigrad(double* coords, double* grad);
 
 };
 

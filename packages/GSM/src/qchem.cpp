@@ -20,6 +20,7 @@ void QChem::alloc(int natoms0)
 
 void QChem::init(int natoms0, int* anumbers0, string* anames0, int run, int rune)
 {
+  E = new double[10];
   gradcalls = 0;
   nscffail = 0;
   firstrun = 1;
@@ -121,8 +122,11 @@ void QChem::init(int natoms0, int* anumbers0, string* anames0, int run, int rune
 //  fileloc = "scratch/";
   nstr=StringTools::int2str(run,4,"0");
   qcinfile=fileloc+"qcin"+nstr+runends;
+  qcinfile_t=fileloc+"qcin_t"+nstr+runends; //
   qcoutfile=fileloc+"qcout"+nstr+runends;
+  qcoutfile_t=fileloc+"qcout_t"+nstr+runends; //
   qcoutfileh="scratch/hess"+nstr+".xyz";
+  qcoutfileh_t="scratch/hess_t"+nstr+".xyz"; //
 //  cout << " qcinfile: " << qcinfile << endl;
 //  cout << " qcoutfile: " << qcoutfile << endl;
 
@@ -209,6 +213,270 @@ int QChem::read_hess(double* hess)
   //ignore gradient stuff for now
   //the order of E will also determine the order of grad[0], etc
 
+void QChem::multigrad(double* coords, double* grad)
+{
+  //printf(" qcg"); fflush(stdout);
+  
+  int badgeom = check_array(3*natoms,coords);
+  if (badgeom)
+  {
+    printf(" ERROR: Geometry contains NaN, exiting! \n");
+    exit(-1);
+  }
+
+  if (ncpu<1) ncpu = 1;
+
+  //cout << "started QChem::multigrad" << endl;
+  for (int i=0;i<3*natoms;i++)
+  { 
+    grad[i] = 0.;
+  }
+ 
+  int num,k,c;
+  double V = -1.;
+  double V_t = -1.;
+
+#if 0
+  string rmqcin="rm -f ";
+  string rmqcin_t="rm -f ";
+  rmqcin=rmqcin+qcinfile;
+  rmqcin_t=rmqcin_t+qcinfile_t;
+  system(rmqcin.c_str());
+  system(rmqcin_t.c_str());
+#endif
+
+  string runends=StringTools::int2str(runend,3,"0");
+  string nstr=StringTools::int2str(runNum,4,"0");
+  string molname = fileloc+"molecule"+nstr+runends;
+//  string molname = scrBaseDir+"molecule"+nstr;
+//  string molname = "scratch/molecule"+nstr;
+  ofstream geomfile(molname.c_str());
+//  cout << " geomfile " << molname << endl;
+
+  // print the molecule coordinate section
+  for(int j=0;j<natoms;j++)
+  {
+    geomfile << setw(2) << anames[j];
+    geomfile << setw(16)<< coords[3*j+0];
+    geomfile << setw(16)<< coords[3*j+1];
+    geomfile << setw(16)<< coords[3*j+2] << endl;
+  }
+  geomfile.close();
+ 
+  // system command here to process XYZ
+  //cout << "about to call ./gscreate" << endl;
+  nstr=StringTools::int2str(runNum,4,"0");
+
+  string cmd = "./gscreate2 "+nstr+runends;
+  system(cmd.c_str());
+
+  if (!firstrun)
+  {
+    cmd = "mv "+qcoutfile+" "+qcoutfile+"_prev";
+    cmd = "mv "+qcoutfile_t+" "+qcoutfile_t+"_prev";
+    system(cmd.c_str());
+    system(cmd.c_str());
+  }
+  else firstrun = 0;
+
+  string calc_command;
+  string calc_command_t; //for triplet
+  nstr=StringTools::int2str(ncpu,4,"0");
+  string nstrc = StringTools::int2str(ncpu,1,"0");
+  if (ncpu==1)
+    calc_command="cd "+fileloc+"; qchem -save ";
+  else
+#if THREADS_ON
+    calc_command="cd "+fileloc+"; qchem -nt "+nstrc+" -save ";
+#else
+    calc_command="cd "+fileloc+"; qchem -np "+nstrc+" -save ";
+#endif
+  calc_command_t=calc_command; //for triplet
+  calc_command=calc_command+qcinfile;
+  calc_command_t=calc_command_t+qcinfile_t; //for triplet
+  calc_command=calc_command+" "+qcoutfile;
+  calc_command_t=calc_command_t+" "+qcoutfile_t; //for triplet
+  calc_command=calc_command+" "+runName+" ";
+  calc_command_t=calc_command_t+" "+runName+" "; //for triplet
+  int length2=StringTools::cleanstring(calc_command);
+  int length2_t=StringTools::cleanstring(calc_command_t); //for triplet
+  
+  //cout << calc_command.c_str() << endl;
+  system(calc_command.c_str());
+  system(calc_command_t.c_str()); //for triplet
+  //fflush(stdout);
+
+
+  string gradfile = "scratch/GRAD"+nstr;
+  string gradfile_t = "scratch/GRAD_t"+nstr; //for triplet
+#if COPY_GRAD
+  string gradcopy_command;
+  string gradcopy_command_t;
+  gradcopy_command="cp ";
+  gradcopy_command_t="cp ";
+#if 0
+  if (ncpu>1)
+    gradcopy_command=gradcopy_command+scrdir+".0";
+    gradcopy_command_t=gradcopy_command_t+scrdir+".0";
+  else
+#endif
+    gradcopy_command=gradcopy_command+scrdir;
+    gradcopy_command_t=gradcopy_command_t+scrdir;
+  nstr=StringTools::int2str(runNum,4,"0");
+  gradcopy_command=gradcopy_command+"/GRAD scratch/GRAD"+nstr;
+  gradcopy_command_t=gradcopy_command_t+"/GRAD_t scratch/GRAD_t"+nstr
+//  cout << " gradcopy_command: " << gradcopy_command << endl;
+  int length=StringTools::cleanstring(gradcopy_command);
+  int length_t=StringTools::cleanstring(gradcopy_command_t);
+  system(gradcopy_command_t.c_str());
+  system(gradcopy_command.c_str());
+  fflush(stdout);
+#else
+  gradfile=scrdir+"/GRAD";
+  gradfile_t=scrdir+"/GRAD_t"; //for triplet
+#endif
+  //printf(" qcg1"); fflush(stdout);
+  //sleep(1);
+  FILE *goutfile;
+  FILE *goutfile_t;
+  
+  string makegrad_t = "touch " + gradfile_t;
+  system(makegrad_t.c_str());
+
+  string qcoutfilename = qcoutfile;
+  ifstream qcfile;
+  qcfile.open(qcoutfilename.c_str());
+
+  string test = "SCF failed to converge";
+
+  string line;
+  int getgrad = 1;
+  if (!qcfile)
+  {
+    printf(" failed to open qcout file for singlet\n");
+    getgrad = 0;
+  }
+  while (getline(qcfile, line) && getgrad)
+  {
+    if (StringTools::contains(line, test))
+    {
+      cout << " SCF failed,";
+     // cout << " skipping node for now " << endl;
+      getgrad = 0;
+      V = 999;
+    }
+
+  } 
+  //for triplet
+  
+  string qcoutfilename_t = qcoutfile_t;
+  ifstream qcfile_t;
+  qcfile_t.open(qcoutfilename_t.c_str());
+  
+  string line_t;
+  int getgrad_t = 1;
+  if(!qcfile_t)
+  {
+    printf(" failed to open qcout file for triplet \n");
+    getgrad_t = 0;
+  }
+  while (getline(qcfile_t, line_t) && getgrad_t)
+  {
+    if (StringTools::contains(line_t,test))
+    {
+      cout << " SCF failed,";
+      getgrad_t = 0;
+      V_t = 999;
+    }
+
+  }
+
+
+  //printf(" qcg2"); fflush(stdout);
+  if (getgrad)
+  {
+    int success = scangradient(gradfile, grad, natoms);
+
+    goutfile = fopen(gradfile.c_str(),"r");
+    if(goutfile == NULL)
+    {
+      //printf("\n Error opening QChem output file: GRADxx ");
+      nscffail++;
+      V = 999.;
+    }
+    else if (success>-1)
+    {
+  //    V = scanenergy(goutfile);
+      V = get_energy(qcoutfilename);
+      fclose(goutfile);
+    }
+    else if (success==-1)
+    {
+      nscffail++;
+      V = 999.;
+    }
+  } //if getgrad
+  else
+    nscffail++;
+
+  if (nscffail>25)
+  {
+    printf("\n\n Too many SCF failures: %i, exiting \n",nscffail);
+    exit(1);
+  }
+  //printf(" done with Q-Chem \n");  
+
+  gradcalls++;
+
+
+// for triplet
+  if (getgrad_t)
+  {
+    int success_t = scangradient(gradfile_t, grad, natoms);
+    
+    goutfile_t = fopen(gradfile_t.c_str(),"r");
+    if (goutfile==NULL)
+    {
+      nscffail_t++;
+      V_t = 999.;
+    }
+    else if (success_t > -1)
+    {
+      V_t = get_energy(qcoutfilename_t);
+      fclose(goutfile_t);
+    }
+    else if (success_t==-1)
+    {
+      nscffail_t++;
+      V_t = 999.;
+    }
+  }
+  else
+    nscffail_t++;
+
+  if (nscffail_t>25)
+  {
+    printf("\n\n Too many SCF failures: %i, exiting \n", nscffail_t);
+    exit(1);
+  }
+
+  if (V < V_t)
+  {
+    E[0] = V;
+    E[1] = V_t;
+  }
+  else
+  {
+    E[0] = V_t;
+    E[1] = V;
+  }
+
+  qcfile.close();
+  qcfile_t.close();
+}
+
+// END OF MULTIGRAD
+
 
 double QChem::grads(double* coords, double* grad)
 {
@@ -259,12 +527,8 @@ double QChem::grads(double* coords, double* grad)
   nstr=StringTools::int2str(runNum,4,"0");
 
   //TODO for multistate need another gscreate which calls qcin2 that has triplet multiplicity
-  //
   string cmd = "./gscreate "+nstr+runends;
   system(cmd.c_str());
-
-//  string cmd = "./gscreate2 "+nstr+runends; //  
-//  system(cmd.c_str());                      //
 
   if (!firstrun)
   {
@@ -375,7 +639,6 @@ double QChem::grads(double* coords, double* grad)
     printf("\n\n Too many SCF failures: %i, exiting \n",nscffail);
     exit(1);
   }
-  //printf(" done with Q-Chem \n");  
 
   gradcalls++;
 
