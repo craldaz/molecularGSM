@@ -164,14 +164,8 @@ int Gradient::external_grad(double* coords, double* grad)
 {
 
 #if QCHEM
-  energy = qchem1.grads(coords,grad);
   //sstate, tstate specifies how many singlet and triplets (analogous to nstate)
   //sweight, tweight specifies what states to do gradients/average (analogous to wstate)
-   //TODO check variables are read  
-   //KD: This looks ok^^^^
-  //TODO if sstate and tstate are > 0 (they should be 0 by default) then do multistate stuff
-  //This also looks ok ^^^^ Just need to code in implementing multistate calcs
-    //see qchem TODO
    
   int sstates=1;
   int tstates=0;
@@ -181,11 +175,14 @@ int Gradient::external_grad(double* coords, double* grad)
     //Do multistate stuff 
     printf("Initiating Multistate stuff\n");
     printf("You still need to write this code\n");
+    //TODO multigrad here. 
+    //TODO average E of singlet triplet here using qchems getE
   }
   else
   {
-   //continue with regular QCHEM?
-   printf("Doing regular QCHEM stuff");
+    //continue with regular QCHEM
+    printf("Doing regular QCHEM stuff");
+    energy = qchem1.grads(coords,grad);
   }
 #elif QCHEMSF
 	if (wstate<0)
@@ -1199,10 +1196,6 @@ double Gradient::levine_penalty(double* coords, double* grad, double* Ut, int ty
 }
 
 
-//TODO create a "read_qchem_init" function here for multistate problems
-// read_qchem_settings function here for multistate
-
-
 void Gradient::read_qchem_settings(int& sstates, int& tstates)
 {
   swstate = 1; //default 
@@ -1221,7 +1214,7 @@ void Gradient::read_qchem_settings(int& sstates, int& tstates)
   infile.open(filename.c_str());
   if (!infile){
     printf(" Error: couldn't open settings file: %s \n",filename.c_str());
-    exit(-1);
+    return;
   }
   string line;
   bool success=true;

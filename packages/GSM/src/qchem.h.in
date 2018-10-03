@@ -83,7 +83,13 @@ class QChem {
    int twstate;
    int twstate2;
    int twstate3;
+   double* E; //E[0],E[1]
+  
+   //E[0] should be lower than E[1]
 
+   //TODO
+   double getE(int wstate);
+   void multigrad(X,X);
 
 };
 

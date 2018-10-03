@@ -89,7 +89,6 @@ class Gradient
    int wstate;
    int wstate2;
    int wstate3;
-   //TODo put s/t crossing stuff here
    int sstates;
    int tstates;
    int swstate;

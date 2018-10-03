@@ -199,6 +199,17 @@ int QChem::read_hess(double* hess)
   return success;
 }
 
+//TODO define multigrad()
+//same as grad except calls gscreate
+//which call qstart1 and qstart2
+//call qchem on singlet and triplet
+//save singlet energy as temporary variable
+//save triplet energy as another variable
+//if singlet E < tripletE: set E[0] = singletE, etc.
+  //ignore gradient stuff for now
+  //the order of E will also determine the order of grad[0], etc
+
+
 double QChem::grads(double* coords, double* grad)
 {
   //printf(" qcg"); fflush(stdout);
