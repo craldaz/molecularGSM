@@ -1,4 +1,5 @@
 #include "qchem.h"
+#include <sstream>
 
 using namespace std;
 
@@ -122,11 +123,8 @@ void QChem::init(int natoms0, int* anumbers0, string* anames0, int run, int rune
 //  fileloc = "scratch/";
   nstr=StringTools::int2str(run,4,"0");
   qcinfile=fileloc+"qcin"+nstr+runends;
-  qcinfile_t=fileloc+"qcin_t"+nstr+runends; //
   qcoutfile=fileloc+"qcout"+nstr+runends;
-  qcoutfile_t=fileloc+"qcout_t"+nstr+runends; //
   qcoutfileh="scratch/hess"+nstr+".xyz";
-  qcoutfileh_t="scratch/hess_t"+nstr+".xyz"; //
 //  cout << " qcinfile: " << qcinfile << endl;
 //  cout << " qcoutfile: " << qcoutfile << endl;
 
@@ -214,6 +212,7 @@ int QChem::read_hess(double* hess)
   //the order of E will also determine the order of grad[0], etc
 
 //TODO maybe scrap this function
+/*
 void QChem::multigrad(double* coords, double* grad)
 {
   //printf(" qcg"); fflush(stdout);
@@ -476,6 +475,8 @@ void QChem::multigrad(double* coords, double* grad)
   qcfile_t.close();
 }
 
+*/
+
 // END OF MULTIGRAD
 
 //TODO a new function calcgrad(coords,multiplicity)
@@ -486,6 +487,236 @@ void QChem::multigrad(double* coords, double* grad)
  * system calls qchem
  */
 
+
+double QChem::calc_grad(double* coords,double* grad, int spin)
+{
+  //printf(" qcg"); fflush(stdout);
+
+  int badgeom = check_array(3*natoms,coords);
+  if (badgeom)
+  {
+    printf(" ERROR: Geometry contains NaN, exiting! \n");
+    exit(-1);
+  }
+
+  if (ncpu<1) ncpu = 1;
+
+  //cout << "started QChem::grads" << endl;
+  for (int i=0;i<3*natoms;i++)
+    grad[i] = 0.;
+
+  int num,k,c;
+  double V = -1.;
+
+#if 0
+  string rmqcin="rm -f ";
+  rmqcin=rmqcin+qcinfile;
+  system(rmqcin.c_str());
+#endif
+
+  string runends=StringTools::int2str(runend,3,"0");
+  string nstr=StringTools::int2str(runNum,4,"0");
+  string molname = fileloc+"molecule"+nstr+runends;
+//  string molname = scrBaseDir+"molecule"+nstr;
+//  string molname = "scratch/molecule"+nstr;
+  ofstream geomfile(molname.c_str());
+//  cout << " geomfile " << molname << endl;
+
+  // print the molecule coordinate section
+  for(int j=0;j<natoms;j++)
+  {
+    geomfile << setw(2) << anames[j];
+    geomfile << setw(16)<< coords[3*j+0];
+    geomfile << setw(16)<< coords[3*j+1];
+    geomfile << setw(16)<< coords[3*j+2] << endl;
+  }
+  geomfile.close();
+ 
+  // system command here to process XYZ
+  //cout << "about to call ./gscreate" << endl;
+  nstr=StringTools::int2str(runNum,4,"0");
+  
+  //To pass spin to gscreate
+  string spinstr;
+  stringstream temp;
+  temp << spin;
+  spinstr=temp.str();
+
+  //TODO pass spin to gscreate:
+  string cmd = "./gscreate2 "+spinstr+" "+nstr+runends;
+  system(cmd.c_str());
+
+  if (!firstrun)
+  {
+    cmd = "mv "+qcoutfile+" "+qcoutfile+"_prev";
+    system(cmd.c_str());
+  }
+  else firstrun = 0;
+
+  string calc_command;
+  nstr=StringTools::int2str(ncpu,4,"0");
+  string nstrc = StringTools::int2str(ncpu,1,"0");
+  if (ncpu==1)
+    calc_command="cd "+fileloc+"; qchem -save ";
+  else
+#if THREADS_ON
+    calc_command="cd "+fileloc+"; qchem -nt "+nstrc+" -save ";
+#else
+    calc_command="cd "+fileloc+"; qchem -np "+nstrc+" -save ";
+#endif
+  calc_command=calc_command+qcinfile;
+  calc_command=calc_command+" "+qcoutfile;
+  calc_command=calc_command+" "+runName+" ";
+  int length2=StringTools::cleanstring(calc_command);
+  
+  //cout << calc_command.c_str() << endl;
+  system(calc_command.c_str());
+  //fflush(stdout);
+}
+
+
+double QChem::get_grad(double* grad)
+{
+  double V = -1.;
+  string nstr=StringTools::int2str(runNum,4,"0");
+  string gradfile = "scratch/GRAD"+nstr;
+#if COPY_GRAD
+  string gradcopy_command;
+  gradcopy_command="cp ";
+#if 0
+  if (ncpu>1)
+    gradcopy_command=gradcopy_command+scrdir+".0";
+  else
+#endif
+    gradcopy_command=gradcopy_command+scrdir;
+  nstr=StringTools::int2str(runNum,4,"0");
+  gradcopy_command=gradcopy_command+"/GRAD scratch/GRAD"+nstr;
+  //cout << " gradcopy_command: " << gradcopy_command << endl;
+  int length=StringTools::cleanstring(gradcopy_command);
+  system(gradcopy_command.c_str());
+  fflush(stdout);
+#else
+  gradfile=scrdir+"/GRAD";
+#endif
+
+  //printf(" qcg1"); fflush(stdout);
+  //sleep(1);
+  FILE *goutfile;
+
+  string qcoutfilename = qcoutfile;
+  ifstream qcfile;
+  qcfile.open(qcoutfilename.c_str());
+
+  string test = "SCF failed to converge";
+
+  string line;
+  int getgrad = 1;
+  if (!qcfile)
+  {
+    printf(" failed to open qcout file \n");
+    getgrad = 0;
+  }
+  while (getline(qcfile, line) && getgrad)
+  {
+    if (StringTools::contains(line, test))
+    {
+      cout << " SCF failed,";
+     // cout << " skipping node for now " << endl;
+      getgrad = 0;
+      V = 999;
+    }
+  }
+
+
+  //printf(" qcg2"); fflush(stdout);
+  if (getgrad)
+  {
+    int success = scangradient(gradfile, grad, natoms);
+
+    goutfile = fopen(gradfile.c_str(),"r");
+    if(goutfile == NULL)
+    {
+      //printf("\n Error opening QChem output file: GRADxx ");
+      nscffail++;
+      V = 999.;
+    }
+    else if (success>-1)
+    {
+  //    V = scanenergy(goutfile);
+      V = get_energy(qcoutfilename);
+      fclose(goutfile);
+    }
+    else if (success==-1)
+    {
+      nscffail++;
+      V = 999.;
+    }
+  } //if getgrad
+  else
+    nscffail++;
+
+  if (nscffail>25)
+  {
+    printf("\n\n Too many SCF failures: %i, exiting \n",nscffail);
+    exit(1);
+  }
+
+  gradcalls++;
+
+  qcfile.close();
+
+  //printf(" qcge"); fflush(stdout);
+
+  return V * 627.5;
+}
+
+// END GET GRAD
+
+
+// getE for multistate
+
+double QChem::getE()
+{
+  double V;
+  string oname=qcoutfile;
+  ifstream output(oname.c_str(),ios::in);
+  if (!output)
+  {
+    printf(" error opening Q-Chem file: %s \n",oname.c_str());
+    return 1000.;
+  }
+  string line;
+  vector<string> tok_line;
+  V = 0;
+  while (!output.eof())
+  {
+    getline(output,line);
+    if (line.find("Total energy in the final basis set")!=string::npos)
+    {
+      tok_line = StringTools::tokenize(line, " \t");
+      V = atof(tok_line[8].c_str());
+      break;
+    }
+  
+    else if (line.find("SCF   energy in the final basis set")!=string::npos)
+    {
+      tok_line = StringTools::tokenize(line, " \t");
+      V = atof(tok_line[8].c_str());
+      break;
+    }
+  }
+  
+  if (abs(V)<0.00001 || ( V!=V ))
+  {
+      return 10000.;
+  }
+
+  output.close(); 
+
+  return V;
+}
+
+//
 
 double QChem::grads(double* coords, double* grad)
 {
@@ -535,7 +766,6 @@ double QChem::grads(double* coords, double* grad)
   //cout << "about to call ./gscreate" << endl;
   nstr=StringTools::int2str(runNum,4,"0");
 
-  //TODO for multistate need another gscreate which calls qcin2 that has triplet multiplicity
   string cmd = "./gscreate "+nstr+runends;
   system(cmd.c_str());
 

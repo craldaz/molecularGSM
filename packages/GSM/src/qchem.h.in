@@ -93,8 +93,10 @@ class QChem {
 
    //TODO
    double getE(int wstate);
-   void multigrad(double* coords, double* grad);
-
+   //void multigrad(double* coords, double* grad);
+   double calc_grad(double* coords,double* grad, int spin);
+   double get_grad(double* grad);
+   double getE();
 };
 
 #endif

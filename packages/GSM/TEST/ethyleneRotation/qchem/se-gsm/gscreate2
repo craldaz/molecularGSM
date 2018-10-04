@@ -9,6 +9,6 @@ file=molecule
 
 #cat qstart tmp.geom qend > qcin
 #cat qstart molecule$1 qend > scratch/qcin$1
-cat qstart $QCSCRATCH/molecule$1 qend > $QCSCRATCH/qcin$1
-cat qstart_t $QCSCRATCH/molecule$1 qend > $QCSCRATCH/qcin_t$1
+sed "s/SPIN/$1/g" qstart_multi > temp_qstart
+cat temp_qstart $QCSCRATCH/molecule$2 qend > $QCSCRATCH/qcin$2
 #rm tmp.geom tmp.geom2 tmp.link tmp.mole

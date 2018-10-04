@@ -173,27 +173,66 @@ int Gradient::external_grad(double* coords, double* grad)
   if ((sstates > 0) && (tstates > 0))
   {
     //Do multistate stuff 
-    printf("Initiating Multistate stuff\n");
-    printf("You still need to write this code\n");
     //qchem1.multigrad(coords,grad);
 
+    int tmpCt=0;
+    double tmpEs;
     double tmpEt;
     double** tmp_grada = new double*[2];
     for (int i=0;i<2;i++)
+    {
         tmp_grada[i] = new double[N3];
-    //TODO new functions 
-    //for swstate
-    //calc_grad(coords,multiplicity=0)
-    //get_grads(tmp_grada[0]) //overwrite make sure to get it before overwrite
-    //getE(tmpEs);
+    }
+    if (swstate <= 0) // singlets
+    {
+        printf("wstate must be greater than 1!\n");
+        exit(-1);
+    }
+    else
+    {
+        qchem1.calc_grad(coords,tmp_grada[tmpCt],1);
+        qchem1.get_grad(tmp_grada[tmpCt]);
+        tmpCt++;
+        tmpEs=qchem1.getE();
+    }
 
-     //
-     //for twstate
-     //calc_grad(coords,multipliplicity=2) //does not parse anything
-     //get_grads(tmp_grada[1]) //overwrite make sure to get it before overwrite
-     //getE(tmpEt);
-     //logic for setting E and grada
-         
+    if (twstate <= 0) // triplets
+    {
+        printf("wstate must be greater than 1!\n");
+    }
+    else
+    {
+        qchem1.calc_grad(coords,tmp_grada[tmpCt],3);
+        qchem1.get_grad(tmp_grada[tmpCt]);
+        tmpCt++;
+        tmpEt=qchem1.getE();
+    }
+    
+    if (tmpEs < tmpEt)
+    {
+        E[0] = tmpEs;
+        E[1] = tmpEt;
+        for (int i=0; i<N3; i++)
+        {
+          grada[0][i] = tmp_grada[0][i];
+          grada[1][i] = tmp_grada[1][i];
+        }
+    }
+    else
+    {
+        E[0] = tmpEt;
+        E[1] = tmpEs;
+        for (int i=0; i<N3; i++)
+        {
+          grada[0][i] = tmp_grada[1][i];
+          grada[1][i] = tmp_grada[0][i];
+        }
+    }
+    energy = (E[0]+E[1])/2;
+    for (int i=0;i<N3;i++)
+    {
+        grad[i] = (grada[0][i] + grada[1][i])/2;
+    }
     //TODO average E of singlet triplet here using qchems getE
   }
   else
@@ -737,6 +776,10 @@ void Gradient::init(int natoms0, int* anumbers0, string* anames0, double* coords
 #if QCHEM
   qchem1.init(natoms,anumbers,anames,run,rune);
   qchem1.ncpu = ncpu;
+  int sstates=1;
+  int tstates=0;
+  read_qchem_settings(sstates,tstates);
+  nstates=sstates + tstates;
 #endif
 #if QCHEMSF
   nstates = read_nstates();
@@ -798,7 +841,8 @@ void Gradient::init(int natoms0, int* anumbers0, string* anames0, double* coords
 
   E = new double[nstates];
   for (int i=0;i<nstates;i++) E[i] = 0.;
-#if QCHEMSF || USE_MOLPRO || USE_TC
+
+#if QCHEMSF || USE_MOLPRO || USE_TC || QCHEM
   grada = new double*[nstates];
   for (int i=0;i<nstates;i++)
     grada[i] = new double[N3];
