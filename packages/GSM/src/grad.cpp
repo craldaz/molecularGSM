@@ -175,8 +175,25 @@ int Gradient::external_grad(double* coords, double* grad)
     //Do multistate stuff 
     printf("Initiating Multistate stuff\n");
     printf("You still need to write this code\n");
-    qchem1.multigrad(coords,grad);
-    //TODO multigrad here. 
+    //qchem1.multigrad(coords,grad);
+
+    double tmpEt;
+    double** tmp_grada = new double*[2];
+    for (int i=0;i<2;i++)
+        tmp_grada[i] = new double[N3];
+    //TODO new functions 
+    //for swstate
+    //calc_grad(coords,multiplicity=0)
+    //get_grads(tmp_grada[0]) //overwrite make sure to get it before overwrite
+    //getE(tmpEs);
+
+     //
+     //for twstate
+     //calc_grad(coords,multipliplicity=2) //does not parse anything
+     //get_grads(tmp_grada[1]) //overwrite make sure to get it before overwrite
+     //getE(tmpEt);
+     //logic for setting E and grada
+         
     //TODO average E of singlet triplet here using qchems getE
   }
   else

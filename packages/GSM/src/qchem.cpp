@@ -213,6 +213,7 @@ int QChem::read_hess(double* hess)
   //ignore gradient stuff for now
   //the order of E will also determine the order of grad[0], etc
 
+//TODO maybe scrap this function
 void QChem::multigrad(double* coords, double* grad)
 {
   //printf(" qcg"); fflush(stdout);
@@ -476,6 +477,14 @@ void QChem::multigrad(double* coords, double* grad)
 }
 
 // END OF MULTIGRAD
+
+//TODO a new function calcgrad(coords,multiplicity)
+/*
+ * setup molecule stuff
+ * call gscreate with a argument
+ * that specifies spin state
+ * system calls qchem
+ */
 
 
 double QChem::grads(double* coords, double* grad)
