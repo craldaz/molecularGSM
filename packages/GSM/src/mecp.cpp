@@ -12,16 +12,15 @@ void Mecp::driver()
 {
     //preopt if turned on
    
-    //init() // init for qchem
     for (int n=0;n<nnmax0;n++)
-    {
         icoords[n].grad_init(ncpu,runNum,n,0,0); 
-
-        //TODO  read multistate file called QCHEM that specifies tstates and sstates , etc.  for icoords[n].grad1
-    }
  
-     //
-    calc_V0(); //TODO eventually we need to both singlet and triplet (this will be calculator dependent, e.g. qchem)
+    calc_V0(); 
+
+   double* dq = new double[len_d+100];
+   //TODO addNode
+   //addNode(0,...);
+   //TODO print_string(...); //put in base class
 }
 
 Mecp::Mecp(int run, int nprocs,int NNODES)/*, float DQMAG_SSM_MAX, float DQMAG_SSM_MIN,

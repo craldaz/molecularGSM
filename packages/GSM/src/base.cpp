@@ -488,4 +488,184 @@ int Base::isomer_init(string isofilename)
   return nfound;
 }
 
+/**
+ * Adds a node between n1 and n3. In SE, n2 is nnmax-1
+ * arbitrarily because the added node is not "between" any node. 
+ */
+int Base::addNode(int n1, int n2, int n3) //maybe need to pass ICoord objects to this function
+{
+  printf(" adding node: %i between %i %i \n",n2,n1,n3);
 
+  if (n1==n2 || n2==n3 || n1==n3)
+  {
+    printf(" cannot add node, exiting \n"); 
+    exit(1);
+  }
+
+  //TODO these need to be allocated here
+  ICoord newic,intic;
+  newic.alloc(natoms);
+  intic.alloc(natoms);
+
+#if USE_MOLPRO || USE_TC
+  if (n2>n1) icoords[n2].grad1.seedType = -1;
+  if (n2<n1) icoords[n2].grad1.seedType = -2;
+#endif
+
+  int nbonds = newic.nbonds;
+  int nangles = newic.nangles;
+  int ntor = newic.ntor;
+  int size_ic = newic.nbonds+newic.nangles+newic.ntor;
+  int len_d = newic.nicd0;
+  double* ictan = new double[size_ic];
+  double* ictan0 = new double[size_ic];
+
+  double BDISTMIN = 0.01;
+  double bdist = 0.;
+
+	if (isSE_ESSM)
+		BDISTMIN=0.05;
+
+// Add a node
+  int iR,iP,wR,wP,iN;
+  for (int n=0;n<1;n++)
+  {
+    iR = n1;
+    iP = n3;
+    iN = n2;
+    printf(" iR,iP: %i %i iN: %i ",iR,iP,iN);
+
+    newic.reset(natoms,anames,anumbers,icoords[iR].coords);
+    intic.reset(natoms,anames,anumbers,icoords[iP].coords);
+
+    newic.update_ic();
+    intic.update_ic();
+
+    if (isSSM)
+    {
+
+      //TODO tangent_1b needs to be in base class
+      bdist = tangent_1b(ictan);
+			icoords[iN].bdist=bdist;
+      printf(" bdist: %4.3f \n",bdist);
+      if (bdist<BDISTMIN) break;
+			if (bdist>icoords[iR].bdist) break; //not getting smaller
+    }
+    else
+      tangent_1(ictan); //TODO same
+
+#if 0
+    printf(" printing ictan \n");
+    for (int i=0;i<nbonds;i++)
+      printf(" %1.2f",ictan[i]);
+    printf("\n");
+    for (int i=0;i<nangles;i++)
+
+      printf(" %1.2f",ictan[nbonds+i]);
+    printf("\n");
+    if (ntors>0)
+    for (int i=0;i<ntor;i++)
+      printf(" %1.2f",ictan[nbonds+nangles+i]);
+    printf("\n");
+#endif
+
+    double dqmag = 0.;
+
+    newic.bmatp_create();
+    newic.bmatp_to_U();
+    newic.opt_constraint(ictan);
+
+    if (isSSM)
+    {
+      dqmag = get_ssm_dqmag(bdist);
+      if (tstype==2)
+        dqmag = DQMAG_SSM_MAX;
+    }
+    else
+    {
+      for (int i=0;i<size_ic;i++) ictan0[i] = ictan[i];
+
+      for (int j=0;j<size_ic-ntor;j++)
+        dqmag += ictan0[j]*newic.Ut[newic.nicd*size_ic+j];
+      for (int j=nbonds+nangles;j<size_ic;j++)
+        dqmag += ictan0[j]*newic.Ut[newic.nicd*size_ic+j]; //CPMZ check
+    }
+
+    printf(" dqmag: %1.2f",dqmag);
+
+//    newic.bmatp_create();
+//    newic.bmatp_to_U();
+//    newic.opt_constraint(ictan);
+    newic.bmat_create();
+    if (nnmax-nn!=1)
+      newic.dq0[newic.nicd0-1] = -dqmag/(nnmax-nn);
+    else
+      newic.dq0[newic.nicd0-1] = -dqmag/2;
+    if (isSSM)
+      newic.dq0[newic.nicd0-1] = -dqmag; //CPMZ check
+
+    printf(" dq0[constraint]: %1.2f \n",newic.dq0[newic.nicd0-1]);
+    int success = newic.ic_to_xyz();
+
+    if (isSSM && !success)
+    {
+      newic.dq0[newic.nicd0-1] = -dqmag/2.0;
+      success = newic.ic_to_xyz();
+      if (!success)
+      {
+        printf(" ERROR: couldn't add node, dqmag: %4.3f \n",dqmag);
+        exit(1);
+      }
+      else
+        printf(" add node working second time \n");
+    }
+    newic.update_ic();
+
+    icoords[iN].reset(natoms,anames,anumbers,newic.coords);
+    com_rotate_move(iR,iP,iN,1.0); //operates on iN via newic
+
+    icoords[iN].bmatp_create();
+    icoords[iN].bmatp_to_U();
+    icoords[iN].bmat_create();
+
+    if (!isSSM)
+    {
+      icoords[iN].make_Hint();
+#if HESS_TANG
+      //not yet implemented
+      //get_eigenv_finite(iN);
+#endif
+      icoords[iN].newHess = 5;
+    }
+    else
+    {
+      for (int i=0;i<size_ic*size_ic;i++)
+        icoords[iN].Hintp[i] = icoords[iR].Hintp[i];
+      icoords[iN].newHess = 2;
+    }
+
+    active[iN] = 1;
+
+  } //loop over interpolation
+
+  delete [] ictan;
+  delete [] ictan0;
+
+#if CLOSE_DIST_ADD
+  if (close_dist_fix(1))
+    addNode(n1,n2,n3);
+  else
+#endif
+  int success = 1;
+  if (isSSM)
+  {
+    if (bdist>=BDISTMIN && icoords[n2].bdist < icoords[n1].bdist)
+      nn++;
+    else
+      success = 0;
+  }
+  else 
+    nn++;
+
+  return success;
+}

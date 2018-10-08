@@ -9376,6 +9376,7 @@ void GString::opt_steps_seam(int osteps,double** ictan)
   return;
 }
 
+//TODO base class 
 void GString::print_string(int nodes, double** allcoords0, string xyzstring)
 {
   if (nodes>nnmax0)
